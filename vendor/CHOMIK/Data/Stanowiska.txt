@@ -1,0 +1,13 @@
+Młodszy ratownik-kierowca
+Ratownik
+Młodszy ratownik specjalista
+Młodszy operator sprzętu
+Starszy ratownik
+Starszy ratownik-kierowca
+Operator sprzętu
+Starszy operator sprzętu
+Dowódca zastępu
+Ratownik specjalista
+Dowódca sekcji
+Zastępca dowódcy zmiany
+Dowódca zmiany

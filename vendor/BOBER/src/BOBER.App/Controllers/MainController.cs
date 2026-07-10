@@ -1,0 +1,284 @@
+using System.Windows.Media;
+using BOBER.App.Helpers;
+using BOBER.App.ViewModels;
+using BOBER.Core.Constants;
+using BOBER.Core.Models;
+using BOBER.Services;
+
+namespace BOBER.App.Controllers;
+
+/// <summary>Grafik roczny: wiersze DataGrid, kolory ról, podsumowania dzienne, eksport Excel.</summary>
+public sealed class MainController(AppServices services)
+{
+    internal AppServices Services => services;
+
+    public SettingsController CreateSettingsController() => new(services);
+
+    private IReadOnlyList<Funkcjonariusz>? _funkcjonariusze;
+    private IReadOnlyDictionary<string, string>? _kolory;
+    private int _stanZmiany = 10;
+    private int _stanMinimalny = 6;
+
+    public int CurrentYear { get; } = DateTime.Today.Year;
+    public int ZmianaId => services.Auth.CurrentSession?.ZmianaId ?? 1;
+    public string NazwaZmiany => services.Auth.CurrentSession?.NazwaZmiany ?? string.Empty;
+
+    public async Task LoadAsync(CancellationToken cancellationToken = default)
+    {
+        _funkcjonariusze = await services.Funkcjonariusze.GetByZmianaAsync(ZmianaId, cancellationToken);
+        var kolory = await services.Kolory.GetAllAsync(cancellationToken);
+        _kolory = kolory.ToDictionary(k => k.KluczRoli, k => k.KolorHex);
+        _stanZmiany = await services.Settings.GetStanZmianyAsync(ZmianaId, cancellationToken);
+        _stanMinimalny = await services.Settings.GetStanMinimalnyAsync(ZmianaId, cancellationToken);
+    }
+
+    public IReadOnlyList<Funkcjonariusz> GetFunkcjonariusze() => _funkcjonariusze ?? [];
+
+    public async Task<IReadOnlyList<GrafikRowViewModel>> BuildRowsAsync(
+        int rok,
+        int miesiac,
+        CancellationToken cancellationToken = default)
+    {
+        if (_funkcjonariusze is null)
+            await LoadAsync(cancellationToken);
+
+        var wpisy = await services.Grafik.GetMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
+
+        // GroupBy zabezpiecza przed wyjątkiem przy zduplikowanych wpisach w DB
+        var wpisyLookup = wpisy
+            .GroupBy(w => (w.FunkcjonariuszId, w.Dzien))
+            .ToDictionary(g => g.Key, g => g.Last().TypWpisu);
+
+        var daysInMonth = DateTime.DaysInMonth(rok, miesiac);
+        var rows = new List<GrafikRowViewModel>();
+
+        for (int i = 0; i < _funkcjonariusze!.Count; i++)
+        {
+            var f = _funkcjonariusze[i];
+            var row = new GrafikRowViewModel
+            {
+                FunkcjonariuszId = f.Id,
+                Numer = i + 1,
+                ImieNazwisko = f.PelneImieNazwisko,
+                Stanowisko = f.Stanowisko,
+                KluczRoli = RoleClassifier.DetermineRole(f),
+                IsNurek = RoleClassifier.IsNurek(f),
+                RowBackground = GetRoleBrush(f),
+                RowForeground = GetRoleForeground(f)
+            };
+
+            for (var day = 1; day <= daysInMonth; day++)
+            {
+                if (wpisyLookup.TryGetValue((f.Id, day), out var wpis))
+                    row.SetCell(day, wpis);
+            }
+
+            rows.Add(row);
+        }
+
+        // Wiersz sumaryczny (Stan / Kierowcy / Nurkowie / Dowódcy — każda wartość w osobnym wierszu)
+        var summaryRow = new GrafikRowViewModel
+        {
+            IsSummaryRow = true,
+            ImieNazwisko = "Wolne miejsca\nDowódcy\nNurkowie\nKierowcy",
+            RowBackground = new SolidColorBrush(Color.FromRgb(0xA8, 0x98, 0x68))
+        };
+
+        for (var day = 1; day <= daysInMonth; day++)
+            UpdateSummaryForDay(summaryRow, rows, day);
+
+        rows.Add(summaryRow);
+        return rows;
+    }
+
+    public GrafikCellColors GetCellColors()
+    {
+        var nieobecnoscHex = GetKolorHex(RoleKeys.WolnaSluzba, RoleKeys.DomyslneKoloryWpisow);
+        var nieobecnosc = ParseBrush(nieobecnoscHex);
+        return new GrafikCellColors
+        {
+            DyzurTlo = nieobecnosc,
+            WsTlo = nieobecnosc
+        };
+    }
+
+    public void RefreshSummaryRow(GrafikRowViewModel summaryRow, IEnumerable<GrafikRowViewModel> allRows, int miesiac)
+    {
+        var daysInMonth = DateTime.DaysInMonth(CurrentYear, miesiac);
+        for (var day = 1; day <= daysInMonth; day++)
+            UpdateSummaryForDay(summaryRow, allRows, day);
+    }
+
+    public async Task SetWpisAsync(
+        int funkcjonariuszId,
+        int rok,
+        int miesiac,
+        int dzien,
+        string typWpisu,
+        CancellationToken cancellationToken = default) =>
+        await services.Grafik.SetWpisAsync(funkcjonariuszId, ZmianaId, rok, miesiac, dzien, typWpisu, cancellationToken);
+
+    public async Task ClearWpisAsync(
+        int funkcjonariuszId,
+        int rok,
+        int miesiac,
+        int dzien,
+        CancellationToken cancellationToken = default) =>
+        await services.Grafik.ClearWpisAsync(funkcjonariuszId, rok, miesiac, dzien, cancellationToken);
+
+    public async Task ExportMonthAsync(
+        string filePath,
+        int rok,
+        int miesiac,
+        CancellationToken cancellationToken = default)
+    {
+        if (_kolory is null)
+            await LoadAsync(cancellationToken);
+
+        var wpisy = await services.Grafik.GetMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
+        var workDays = await GetWorkDaysForMonthAsync(rok, miesiac, cancellationToken);
+        services.Export.ExportMonth(
+            filePath, rok, miesiac,
+            _funkcjonariusze ?? [],
+            wpisy,
+            _stanZmiany,
+            _stanMinimalny,
+            _kolory ?? new Dictionary<string, string>(),
+            workDays);
+    }
+
+    public async Task ExportYearAsync(
+        string filePath,
+        int rok,
+        CancellationToken cancellationToken = default)
+    {
+        if (_kolory is null || _funkcjonariusze is null)
+            await LoadAsync(cancellationToken);
+
+        var wpisyByMonth = new Dictionary<int, IReadOnlyList<GrafikWpis>>();
+        var workDaysByMonth = new Dictionary<int, IReadOnlyCollection<int>>();
+
+        for (var miesiac = 1; miesiac <= 12; miesiac++)
+        {
+            wpisyByMonth[miesiac] = await services.Grafik.GetMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
+            workDaysByMonth[miesiac] = await GetWorkDaysForMonthAsync(rok, miesiac, cancellationToken);
+        }
+
+        services.Export.ExportYear(
+            filePath, rok,
+            _funkcjonariusze ?? [],
+            wpisyByMonth,
+            workDaysByMonth,
+            _stanZmiany,
+            _stanMinimalny,
+            _kolory ?? new Dictionary<string, string>());
+    }
+
+    private SolidColorBrush GetRoleBrush(Funkcjonariusz f)
+    {
+        var role = RoleClassifier.DetermineBackgroundRole(f);
+        if (_kolory is not null && _kolory.TryGetValue(role, out var hex))
+        {
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                return new SolidColorBrush(color);
+            }
+            catch { }
+        }
+
+        if (RoleKeys.DomyslneKolory.TryGetValue(role, out var defaultHex))
+        {
+            var color = (Color)ColorConverter.ConvertFromString(defaultHex);
+            return new SolidColorBrush(color);
+        }
+
+        return new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x2D));
+    }
+
+    private SolidColorBrush GetRoleForeground(Funkcjonariusz f)
+    {
+        if (RoleClassifier.IsNurek(f))
+            return ParseBrush(GetKolorHex(RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow));
+
+        var bg = GetRoleBrush(f).Color;
+        return IsLightColor(bg)
+            ? new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E))
+            : new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0));
+    }
+
+    private static bool IsLightColor(Color c)
+    {
+        var luminance = (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255;
+        return luminance > 0.55;
+    }
+
+    public async Task<HashSet<int>> GetWorkDaysForMonthAsync(
+        int rok,
+        int miesiac,
+        CancellationToken cancellationToken = default)
+    {
+        var allWorkDays = await services.Calendar.GetWorkDaysAsync(ZmianaId, rok, cancellationToken);
+        return allWorkDays
+            .Where(d => d.Month == miesiac)
+            .Select(d => d.Day)
+            .ToHashSet();
+    }
+
+    public int GetStanMinimalny() => _stanMinimalny;
+    public int GetStanZmiany() => _stanZmiany;
+
+    private void UpdateSummaryForDay(
+        GrafikRowViewModel summaryRow,
+        IEnumerable<GrafikRowViewModel> allRows,
+        int dzien)
+    {
+        var (stan, kierowcy, nurkowie, dowodcy) = ComputeSummary(allRows, dzien);
+        summaryRow.SetCell(dzien, $"{stan}\n{dowodcy}\n{nurkowie}\n{kierowcy}");
+    }
+
+    private (int Stan, int Kierowcy, int Nurkowie, int Dowodcy) ComputeSummary(
+        IEnumerable<GrafikRowViewModel> allRows,
+        int dzien)
+    {
+        var workerRows = allRows
+            .Where(r => !r.IsSummaryRow && r.FunkcjonariuszId.HasValue)
+            .ToList();
+
+        var nieobecni = workerRows.Count(r => GrafikWpisTypy.JestNieobecnoscia(r.GetCell(dzien)));
+        var stanZmiany = workerRows.Count > 0 ? workerRows.Count : _stanZmiany;
+        var stan = stanZmiany - _stanMinimalny - nieobecni;
+
+        var funcLookup = (_funkcjonariusze ?? []).ToDictionary(f => f.Id);
+        var obecniIds = workerRows
+            .Where(r => !GrafikWpisTypy.JestNieobecnoscia(r.GetCell(dzien)))
+            .Select(r => r.FunkcjonariuszId!.Value)
+            .ToHashSet();
+
+        var kierowcy = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && f.MaUprawnieniaKierowca);
+        var nurkowie = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && RoleClassifier.IsNurek(f));
+        var dowodcy = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && RoleClassifier.IsDowodca(f));
+
+        return (stan, kierowcy, nurkowie, dowodcy);
+    }
+
+    private string GetKolorHex(string klucz, IReadOnlyDictionary<string, string> domyslne)
+    {
+        if (_kolory is not null && _kolory.TryGetValue(klucz, out var hex))
+            return hex;
+        return domyslne.TryGetValue(klucz, out var defaultHex) ? defaultHex : "#6A5C00";
+    }
+
+    private static SolidColorBrush ParseBrush(string hex)
+    {
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex)!;
+            return new SolidColorBrush(color);
+        }
+        catch
+        {
+            return new SolidColorBrush(Color.FromRgb(0x6A, 0x5C, 0x00));
+        }
+    }
+}

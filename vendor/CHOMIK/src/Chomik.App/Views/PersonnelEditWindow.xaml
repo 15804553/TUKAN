@@ -1,0 +1,201 @@
+<Window x:Class="Chomik.App.Views.PersonnelEditWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="clr-namespace:Chomik.App.Views.Chrome"
+        Title="Chomik — funkcjonariusz"
+        Height="900"
+        Width="1800"
+        MinWidth="1200"
+        WindowStartupLocation="CenterOwner">
+    <Border Background="{StaticResource SurfaceBrush}"
+            BorderBrush="#D5D8DC"
+            BorderThickness="1"
+            CornerRadius="12">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24"
+                              ShadowDepth="4"
+                              Opacity="0.35"
+                              Color="#000000" />
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <chrome:ChomikTitleBar x:Name="TitleBar"
+                                    Title="Funkcjonariusz"
+                                    ShowMinimizeButton="True"
+                                    ShowMaximizeButton="True" />
+
+            <Grid Grid.Row="1" Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="Dane podstawowe" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,12" />
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,12">
+                                <TextBlock Text="Numer na liście" />
+                                <TextBox x:Name="NumerPorzadkowyTextBox"
+                                         Style="{StaticResource ModernTextBox}"
+                                         MaxLength="5" />
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,12">
+                                <TextBlock Text="Kolejność w widoku ogólnym"
+                                           Foreground="{StaticResource MutedTextBrush}"
+                                           FontSize="12"
+                                           Margin="0,20,0,4" />
+                                <TextBlock Text="1 = pierwszy wiersz u góry. Numer można zmienić — decyduje o pozycji na liście."
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource MutedTextBrush}"
+                                           FontSize="11" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,12">
+                                <TextBlock Text="Stopień" />
+                                <ComboBox x:Name="StopienComboBox" Style="{StaticResource ModernComboBox}"
+                                          DisplayMemberPath="Nazwa" SelectedValuePath="Id" />
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,12">
+                                <TextBlock Text="Stanowisko" />
+                                <ComboBox x:Name="StanowiskoComboBox" Style="{StaticResource ModernComboBox}"
+                                          DisplayMemberPath="Nazwa" SelectedValuePath="Id" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,12">
+                                <TextBlock Text="Imię" />
+                                <TextBox x:Name="ImieTextBox" Style="{StaticResource ModernTextBox}" />
+                            </StackPanel>
+                            <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,0,0,12">
+                                <TextBlock Text="Nazwisko" />
+                                <TextBox x:Name="NazwiskoTextBox" Style="{StaticResource ModernTextBox}" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,8,12">
+                                <TextBlock Text="Telefon" />
+                                <TextBox x:Name="TelefonTextBox" Style="{StaticResource ModernTextBox}" />
+                            </StackPanel>
+                            <StackPanel Grid.Row="3" Grid.Column="1" Margin="8,0,0,12">
+                                <TextBlock Text="Staż (lata)" />
+                                <TextBlock Text="Obliczany od daty wstąpienia do służby"
+                                           Foreground="{StaticResource MutedTextBrush}"
+                                           FontSize="11"
+                                           Margin="0,0,0,4" />
+                                <TextBox x:Name="StazTextBox"
+                                         Style="{StaticResource ModernTextBox}"
+                                         IsReadOnly="True"
+                                         Background="{StaticResource SurfaceBrush}" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                                <TextBlock Text="Inne uwagi (opcjonalnie)" />
+                                <TextBox x:Name="InfoTextBox" Style="{StaticResource ModernTextBox}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Terminy ważności" FontWeight="SemiBold" FontSize="16" Margin="0,8,0,12" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="Data wstąpienia do służby" />
+                                <DatePicker x:Name="WstepienieDoSluzbyDatePicker" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="4,0">
+                                <TextBlock Text="Badania okresowe do" />
+                                <DatePicker x:Name="BadaniaDatePicker" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="4,0">
+                                <TextBlock Text="Komora dymowa do" />
+                                <DatePicker x:Name="KomoraDatePicker" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="3" Margin="8,0,0,0">
+                                <TextBlock Text="KPP do" />
+                                <DatePicker x:Name="KppDatePicker" />
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Dane wrażliwe" FontWeight="SemiBold" FontSize="16" Margin="0,20,0,12" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="Data awansu (stopień)" />
+                                <DatePicker x:Name="AwansStopienDatePicker" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="4,0">
+                                <TextBlock Text="Data awansu (grupa)" />
+                                <DatePicker x:Name="AwansGrupaDatePicker" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                                <TextBlock Text="Dodatek motywacyjny" />
+                                <TextBox x:Name="DodatekTextBox" Style="{StaticResource ModernTextBox}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,20,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <GroupBox Grid.Column="0"
+                                      Header="Uprawnienia i kursy"
+                                      Style="{StaticResource ChomikGroupBox}"
+                                      Margin="0,0,8,0">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              MaxHeight="320">
+                                    <ItemsControl x:Name="UprawnieniaItemsControl" />
+                                </ScrollViewer>
+                            </GroupBox>
+
+                            <GroupBox Grid.Column="1"
+                                      Header="Odznaczenia i medale"
+                                      Style="{StaticResource ChomikGroupBox}"
+                                      Margin="8,0,0,0">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              MaxHeight="320">
+                                    <ItemsControl x:Name="OdznaczeniaItemsControl" />
+                                </ScrollViewer>
+                            </GroupBox>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                    <Button Content="Anuluj"
+                            Margin="0,0,8,0"
+                            Style="{StaticResource SecondaryButton}"
+                            IsCancel="True"
+                            Click="OnCancelClick" />
+                    <Button Content="Zapisz" Style="{StaticResource PrimaryButton}" IsDefault="True" Click="OnSaveClick" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

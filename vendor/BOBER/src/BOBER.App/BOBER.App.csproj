@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\BOBER.Services\BOBER.Services.csproj" />
+    <ProjectReference Include="..\BOBER.Core\BOBER.Core.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(TukanIntegration)' == 'true'">
+    <OutputType>Library</OutputType>
+    <DefineConstants>$(DefineConstants);TUKAN_INTEGRATION</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TukanIntegration)' == 'true'">
+    <ApplicationDefinition Remove="App.xaml" />
+    <Compile Remove="App.xaml.cs" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType Condition="'$(TukanIntegration)' != 'true'">WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>BOBER.App</RootNamespace>
+    <AssemblyName>BOBER</AssemblyName>
+    <ApplicationIcon>Resources\bober.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\bober.ico" />
+    <Resource Include="Resources\bober_icon.png" />
+    <Resource Include="Resources\bober_logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,49 @@
+<UserControl x:Class="Chomik.App.Views.Chrome.ChomikTitleBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:branding="clr-namespace:Chomik.App.Views.Branding"
+             x:Name="TitleBarRoot"
+             Height="44">
+    <Border Background="{StaticResource PrimaryBrush}"
+            CornerRadius="12,12,0,0"
+            MouseLeftButtonDown="OnTitleBarMouseDown">
+        <Grid Margin="12,0,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <branding:ChomikLogoMark Grid.Column="0"
+                                       LogoSize="28"
+                                       Variant="Light"
+                                       VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1"
+                       x:Name="TitleTextBlock"
+                       Margin="10,0,120,0"
+                       VerticalAlignment="Center"
+                       Foreground="White"
+                       FontWeight="SemiBold"
+                       FontSize="13"
+                       TextTrimming="CharacterEllipsis"
+                       TextWrapping="NoWrap" />
+            <StackPanel Grid.Column="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Button x:Name="MinimizeButton"
+                        Content="—"
+                        Style="{StaticResource ChromeIconButton}"
+                        ToolTip="Minimalizuj"
+                        Click="OnMinimizeClick" />
+                <Button x:Name="MaximizeButton"
+                        Content="▢"
+                        Style="{StaticResource ChromeIconButton}"
+                        ToolTip="Maksymalizuj"
+                        Click="OnMaximizeClick" />
+                <Button Content="✕"
+                        Style="{StaticResource ChromeCloseButton}"
+                        Click="OnCloseClick" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,0 +1,167 @@
+<UserControl x:Class="Chomik.App.Views.Pages.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="720">
+            <Border x:Name="GeneralViewColumnsPanel"
+                    Background="{StaticResource CardBrush}"
+                    CornerRadius="8"
+                    Padding="20"
+                    Margin="0,0,0,16"
+                    Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock Text="Kolumny widoku ogólnego"
+                               FontWeight="SemiBold"
+                               FontSize="16"
+                               Margin="0,0,0,12" />
+                    <TextBlock TextWrapping="Wrap"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               FontSize="12"
+                               Margin="0,0,0,16"
+                               Text="Wybierz kolumny widoczne w tabeli widoku ogólnego. Stopień oraz imię i nazwisko są zawsze widoczne." />
+                    <Border Background="{StaticResource SurfaceBrush}"
+                            CornerRadius="8"
+                            Padding="12"
+                            BorderBrush="#E8E4F0"
+                            BorderThickness="1"
+                            Margin="0,0,0,16">
+                        <ListBox x:Name="ColumnsListBox"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 MaxHeight="280"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0,6" />
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <ContentPresenter />
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox Content="{Binding Label}"
+                                              IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              FontSize="14"
+                                              Foreground="{StaticResource TextBrush}" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                    <Button Content="Zapisz kolumny"
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource PrimaryButton}"
+                            Click="OnSaveColumnsClick" />
+                </StackPanel>
+            </Border>
+
+            <Border x:Name="UprawnieniaPanel"
+                    Background="{StaticResource CardBrush}"
+                    CornerRadius="8"
+                    Padding="20"
+                    Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock Text="Słownik uprawnień i kursów"
+                               FontWeight="SemiBold"
+                               FontSize="16"
+                               Margin="0,0,0,12" />
+                    <TextBlock TextWrapping="Wrap"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               FontSize="12"
+                               Margin="0,0,0,16"
+                               Text="Dodaj nowe lub edytuj istniejące uprawnienia i kursy (nazwa, podtyp, wymaganie daty ważności). Zmiany są widoczne przy edycji personelu i w filtrach widoku ogólnego." />
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
+                            <TextBlock Text="Nazwa" />
+                            <TextBox x:Name="NoweUprawnienieNazwaTextBox" Style="{StaticResource ModernTextBox}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,8">
+                            <TextBlock Text="Podtyp (opcjonalnie)" />
+                            <TextBox x:Name="NoweUprawnieniePodtypTextBox" Style="{StaticResource ModernTextBox}" />
+                        </StackPanel>
+                        <CheckBox x:Name="NoweUprawnienieWymagaDatyCheckBox"
+                                  Grid.Row="1"
+                                  Grid.ColumnSpan="2"
+                                  Content="Wymaga daty ważności"
+                                  Margin="0,0,0,12"
+                                  IsChecked="True" />
+                        <Button Grid.Row="2"
+                                Grid.ColumnSpan="2"
+                                Content="Dodaj do słownika"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource PrimaryButton}"
+                                Click="OnAddUprawnienieClick" />
+                    </Grid>
+
+                    <TextBlock Text="Istniejące pozycje"
+                               FontWeight="SemiBold"
+                               Margin="0,8,0,8" />
+                    <ListBox x:Name="TypyUprawnienListBox"
+                             MinHeight="120"
+                             MaxHeight="200"
+                             DisplayMemberPath="Etykieta"
+                             SelectionChanged="OnTypUprawnieniaSelectionChanged" />
+
+                    <Border x:Name="EdycjaUprawnieniaPanel"
+                            Margin="0,16,0,0"
+                            Padding="12"
+                            Background="{StaticResource SurfaceBrush}"
+                            CornerRadius="6"
+                            Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="Edycja wybranej pozycji"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,12" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
+                                    <TextBlock Text="Nazwa" />
+                                    <TextBox x:Name="EdytujUprawnienieNazwaTextBox" Style="{StaticResource ModernTextBox}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,8">
+                                    <TextBlock Text="Podtyp (opcjonalnie)" />
+                                    <TextBox x:Name="EdytujUprawnieniePodtypTextBox" Style="{StaticResource ModernTextBox}" />
+                                </StackPanel>
+                                <CheckBox x:Name="EdytujUprawnienieWymagaDatyCheckBox"
+                                          Grid.Row="1"
+                                          Grid.ColumnSpan="2"
+                                          Content="Wymaga daty ważności"
+                                          Margin="0,0,0,12" />
+                                <Button Grid.Row="2"
+                                        Grid.ColumnSpan="2"
+                                        Content="Zapisz zmiany"
+                                        HorizontalAlignment="Left"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Click="OnUpdateUprawnienieClick" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

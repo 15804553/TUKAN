@@ -1,0 +1,16 @@
+<UserControl x:Class="Chomik.App.Views.Branding.ChomikLogoMark"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="LogoRoot"
+             Width="56"
+             Height="56"
+             ToolTip="Chomik — system ewidencji personelu PSP">
+    <Border x:Name="LogoBorder"
+            Background="Transparent"
+            SnapsToDevicePixels="True">
+        <Image x:Name="LogoImage"
+               Source="/Chomik;component/Assets/logo.png"
+               Stretch="Uniform"
+               RenderOptions.BitmapScalingMode="HighQuality" />
+    </Border>
+</UserControl>

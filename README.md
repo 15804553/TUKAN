@@ -1,15 +1,19 @@
 # TUKAN
 
-Jedna aplikacja desktopowa WPF (.NET 10) do zarządzania personelem, grafikiem służb i rozkazami dziennymi. Łączy moduły **CHOMIK**, **BOBER** i **SKRYBEK** jako biblioteki UI — nie uruchamia się ich jako osobnych programów.
+Jedna aplikacja desktopowa WPF (.NET 10) do zarządzania personelem, grafikiem służb i rozkazami dziennymi.
+
+**TUKAN jest w pełni samodzielnym repozytorium** — moduły CHOMIK, BOBER i SKRYBEK są wbudowane w katalogu `vendor/` i nie wymagają osobnych repozytoriów ani folderów obok projektu.
 
 ## Wymagania
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Microsoft Access Database Engine](https://www.microsoft.com/en-us/download/details.aspx?id=54920) (ACE OLEDB 12.0, **x64**)
 
-## Uruchomienie
+## Klonowanie i uruchomienie
 
 ```powershell
+git clone https://github.com/15804553/TUKAN.git
+cd TUKAN
 dotnet run --project src/Tukan.App/Tukan.App.csproj
 ```
 
@@ -45,10 +49,12 @@ Jedno logowanie synchronizuje sesję we wszystkich trzech modułach. Konta i has
 ## Architektura
 
 ```
-Tukan.App          ← jedyny program uruchamialny
- ├── Chomik.App    (biblioteka — personel)
- ├── BOBER.App     (biblioteka — grafik)
- └── SKRYBEK.App   (biblioteka — rozkazy)
+TUKAN/
+├── src/Tukan.App/          ← jedyny program uruchamialny
+└── vendor/
+    ├── CHOMIK/             ← moduł personelu (biblioteka)
+    ├── BOBER/              ← moduł grafiku (biblioteka)
+    └── SKRYBEK/            ← moduł rozkazów (biblioteka)
 ```
 
-Repozytoria CHOMIK, BOBER i SKRYBEK służą wyłącznie jako moduły biblioteczne wbudowane w TUKAN.
+Kod w `vendor/` jest kopią modułów skompilowaną jako biblioteki DLL (`TukanIntegration=true`). Osobne repozytoria CHOMIK, BOBER i SKRYBEK **nie są wymagane** do budowy ani uruchomienia TUKAN.

@@ -1,0 +1,103 @@
+<UserControl x:Class="Chomik.App.Views.Pages.PersonnelManagementView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Chomik.App.Converters">
+    <UserControl.Resources>
+        <conv:DataGridCellContentWidthConverter x:Key="CellContentWidthConverter" PaddingSubtract="12" />
+
+        <Style x:Key="PersonnelGridTextColumnStyle" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="TextAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="2,2" />
+            <Setter Property="MaxWidth">
+                <Setter.Value>
+                    <Binding RelativeSource="{RelativeSource AncestorType=DataGridCell}"
+                             Path="ActualWidth"
+                             Converter="{StaticResource CellContentWidthConverter}" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+            <Button Content="Dodaj funkcjonariusza"
+                    Style="{StaticResource PrimaryButton}"
+                    Margin="0,0,8,0"
+                    Click="OnAddClick" />
+            <Button Content="Edytuj"
+                    Style="{StaticResource PrimaryButton}"
+                    Margin="0,0,8,0"
+                    Click="OnEditClick" />
+            <Button Content="Usuń"
+                    Style="{StaticResource PrimaryButton}"
+                    Margin="0,0,8,0"
+                    Click="OnDeleteClick" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{StaticResource CardBrush}" CornerRadius="8" Padding="8">
+            <DataGrid x:Name="PersonnelGrid"
+                      Style="{StaticResource ChomikDataGrid}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      SelectionMode="Single"
+                      HeadersVisibility="Column"
+                      BorderThickness="0"
+                      Background="Transparent"
+                      CanUserAddRows="False"
+                      ScrollViewer.CanContentScroll="False">
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Setter Property="MinHeight" Value="32" />
+                        <Setter Property="Height" Value="NaN" />
+                    </Style>
+                </DataGrid.RowStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Nr" Binding="{Binding NumerPorzadkowy}" Width="44">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}">
+                                <Setter Property="TextAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Stopień" Binding="{Binding Stopien}" Width="90">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Imię i nazwisko" Binding="{Binding PelneImieNazwisko}" Width="180">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Stanowisko" Binding="{Binding Stanowisko}" Width="120">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Telefon" Binding="{Binding Telefon}" Width="110">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Uprawnienia" Binding="{Binding UprawnieniaSkrot}" Width="*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Odznaczenia" Binding="{Binding OdznaczeniaSkrot}" Width="200">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</UserControl>

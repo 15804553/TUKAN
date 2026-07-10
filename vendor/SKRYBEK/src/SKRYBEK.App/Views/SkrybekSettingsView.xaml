@@ -1,0 +1,243 @@
+<UserControl x:Class="SKRYBEK.App.Views.SkrybekSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ContentControl x:Name="FlatSectionHost"
+                        Grid.Row="0"
+                        Margin="8"
+                        Visibility="Collapsed" />
+
+        <TabControl x:Name="NestedTabControl"
+                    Grid.Row="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Margin="8">
+            <TabItem x:Name="OgolneTabItem" Header="Ogólne" Style="{StaticResource SkrybekTabItem}">
+                <ScrollViewer Margin="16">
+                    <StackPanel>
+                        <TextBlock Text="Nr JRG"
+                                   Style="{StaticResource SectionHeader}"
+                                   Margin="0,8,0,6" />
+                        <TextBox Style="{StaticResource DarkTextBox}"
+                                 Text="{Binding NrJrg, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="60"
+                                 HorizontalAlignment="Left" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem x:Name="PojazdyTabItem" Header="Pojazdy" Style="{StaticResource SkrybekTabItem}">
+                <Grid Margin="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" MinWidth="360" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" MinWidth="260" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Grid.Column="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Button Grid.Row="0"
+                                Content="＋ Dodaj pojazd"
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{Binding DodajSamochodCommand}"
+                                IsEnabled="{Binding CanEditPojazdy}"
+                                HorizontalAlignment="Left"
+                                Margin="0,0,0,10" />
+
+                        <DataGrid x:Name="SamochodyDataGrid"
+                                  Grid.Row="1"
+                                  Style="{StaticResource SkrybekDataGrid}"
+                                  ItemsSource="{Binding Samochody}"
+                                  SelectedItem="{Binding Wybranysamochod}"
+                                  SelectionUnit="FullRow"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  MinHeight="200"
+                                  IsReadOnly="{Binding CanEditPojazdy, Converter={StaticResource InverseBoolConverter}}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Nazwa"
+                                                    Binding="{Binding Nazwa, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="*"
+                                                    MinWidth="140"
+                                                    CellStyle="{StaticResource SkrybekCell}"
+                                                    HeaderStyle="{StaticResource SkrybekColumnHeader}" />
+                                <DataGridTemplateColumn Header="Typ" Width="130">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Typ, Converter={StaticResource TypSamochoduToEtykietaConverter}}"
+                                                       VerticalAlignment="Center"
+                                                       Margin="4,0" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.TypySamochodow,
+                                                                         RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                      SelectedItem="{Binding Typ, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEditable="False"
+                                                      Style="{StaticResource DarkComboBox}"
+                                                      Margin="0">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Converter={StaticResource TypSamochoduToEtykietaConverter}}" />
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Pozycji"
+                                                    Binding="{Binding LiczbaPozycji, UpdateSourceTrigger=LostFocus}"
+                                                    Width="60"
+                                                    CellStyle="{StaticResource SkrybekCell}"
+                                                    HeaderStyle="{StaticResource SkrybekColumnHeader}" />
+                                <DataGridTextColumn Header="Kol."
+                                                    Binding="{Binding Kolejnosc, UpdateSourceTrigger=LostFocus}"
+                                                    Width="45"
+                                                    CellStyle="{StaticResource SkrybekCell}"
+                                                    HeaderStyle="{StaticResource SkrybekColumnHeader}" />
+                                <DataGridTemplateColumn Header="Akcje" Width="Auto" MinWidth="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal"
+                                                        Visibility="{Binding DataContext.CanEditPojazdy,
+                                                                     RelativeSource={RelativeSource AncestorType=DataGrid},
+                                                                     Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <Button Content="Zapisz"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Padding="6,2"
+                                                        FontSize="11"
+                                                        PreviewMouseLeftButtonDown="OnSamochodGridActionPreviewMouseDown"
+                                                        Command="{Binding DataContext.ZapiszSamochodCommand,
+                                                                 RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        Margin="0,0,6,0" />
+                                                <Button Content="Usuń"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Padding="6,2"
+                                                        FontSize="11"
+                                                        PreviewMouseLeftButtonDown="OnSamochodGridActionPreviewMouseDown"
+                                                        Command="{Binding DataContext.UsunSamochodCommand,
+                                                                 RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+
+                    <Border Grid.Column="2"
+                            Padding="12,10"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                        <Grid>
+                            <StackPanel Visibility="{Binding MaWybranyPojazd,
+                                                  Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock FontWeight="SemiBold" FontSize="12"
+                                           Foreground="{StaticResource ForegroundBrush}"
+                                           Margin="0,0,0,6">
+                                    <Run Text="Wymagane uprawnienia / kursy:" />
+                                </TextBlock>
+                                <TextBlock FontWeight="Bold" FontSize="12"
+                                           Text="{Binding Wybranysamochod.Nazwa, Mode=OneWay}"
+                                           Foreground="{StaticResource ForegroundBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,8" />
+                                <TextBlock Text="Zaznacz uprawnienia, kursy lub szkolenia wymagane do obsady tego pojazdu. Po zmianie kliknij „Zapisz” przy pojeździe lub „Zapisz zmiany” na dole okna."
+                                           FontSize="11"
+                                           Foreground="{StaticResource ForegroundMutedBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,10" />
+                                <TextBlock Text="Brak słownika uprawnień z bazy CHOMIK. Sprawdź konfigurację bazy danych."
+                                           FontSize="11"
+                                           Foreground="{StaticResource AlertBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,8"
+                                           Visibility="{Binding BrakTypowUprawnien,
+                                                        Converter={StaticResource BoolToVisibilityConverter}}" />
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              MaxHeight="420">
+                                    <ItemsControl ItemsSource="{Binding WymaganiaPojazdu}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding Nazwa}"
+                                                          IsChecked="{Binding CzyWybrane, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEnabled="{Binding DataContext.CanEditPojazdy,
+                                                                       RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          Foreground="{StaticResource ForegroundBrush}"
+                                                          Margin="0,0,0,6" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+
+                            <TextBlock Text="Wybierz pojazd z listy po lewej, aby ustawić wymagane uprawnienia i kursy do jego obsady."
+                                       FontSize="12"
+                                       Foreground="{StaticResource ForegroundMutedBrush}"
+                                       TextWrapping="Wrap"
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding MaWybranyPojazd,
+                                                    Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem x:Name="BackupTabItem" Header="Backup" Style="{StaticResource SkrybekTabItem}">
+                <StackPanel Margin="16">
+                    <TextBlock Text="Backup bazy danych"
+                               Style="{StaticResource SectionHeader}"
+                               Margin="0,0,0,8" />
+                    <TextBlock TextWrapping="Wrap"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="12"
+                               Margin="0,0,0,16">
+                        Program automatycznie tworzy backup każdego miesiąca przy starcie.
+                        Pliki backupu są przechowywane w katalogu BACKUP\ obok programu z rozszerzeniem .bck.
+                    </TextBlock>
+                    <Button Content="Wykonaj backup teraz"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding WykonajBackupCommand}"
+                            HorizontalAlignment="Left" />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+
+        <Border Grid.Row="1"
+                Background="{StaticResource SurfaceVariantBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusMessage}"
+                           Foreground="{StaticResource ForegroundMutedBrush}"
+                           FontSize="11"
+                           VerticalAlignment="Center" />
+                <Button Grid.Column="1"
+                        Content="Zapisz zmiany"
+                        Style="{StaticResource PrimaryButton}"
+                        Command="{Binding ZapiszUstawieniaCommand}"
+                        Padding="16,6"
+                        MinWidth="130" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

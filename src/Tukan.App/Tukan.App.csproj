@@ -20,17 +20,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\CHOMIK\src\Chomik.App\Chomik.App.csproj" AdditionalProperties="TukanIntegration=true" />
-    <ProjectReference Include="..\..\..\BOBER\src\BOBER.App\BOBER.App.csproj" AdditionalProperties="TukanIntegration=true" />
-    <ProjectReference Include="..\..\..\SKRYBEK\src\SKRYBEK.App\SKRYBEK.App.csproj" AdditionalProperties="TukanIntegration=true" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="..\..\..\CHOMIK\Data\Stopnie.txt" CopyToOutputDirectory="PreserveNewest" Link="Stopnie.txt" />
-    <Content Include="..\..\..\CHOMIK\Data\Stanowiska.txt" CopyToOutputDirectory="PreserveNewest" Link="Stanowiska.txt" />
-    <Content Include="..\..\..\SKRYBEK\src\SKRYBEK.App\Themes\kolory-ui.json" CopyToOutputDirectory="PreserveNewest" Link="kolory-ui.json" />
-    <Content Include="..\..\..\SKRYBEK\src\SKRYBEK.App\Themes\kolory-rol.json" CopyToOutputDirectory="PreserveNewest" Link="kolory-rol.json" />
-    <Content Include="..\..\..\SKRYBEK\src\SKRYBEK.App\Themes\kolory-grafik.json" CopyToOutputDirectory="PreserveNewest" Link="kolory-grafik.json" />
+    <ProjectReference Include="..\..\vendor\CHOMIK\src\Chomik.App\Chomik.App.csproj" AdditionalProperties="TukanIntegration=true" />
+    <ProjectReference Include="..\..\vendor\BOBER\src\BOBER.App\BOBER.App.csproj" AdditionalProperties="TukanIntegration=true" />
+    <ProjectReference Include="..\..\vendor\SKRYBEK\src\SKRYBEK.App\SKRYBEK.App.csproj" AdditionalProperties="TukanIntegration=true" />
   </ItemGroup>
 
   <ItemGroup>

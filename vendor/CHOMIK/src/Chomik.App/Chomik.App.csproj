@@ -1,0 +1,48 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chomik.Services\Chomik.Services.csproj" />
+    <ProjectReference Include="..\Chomik.Core\Chomik.Core.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(TukanIntegration)' == 'true'">
+    <OutputType>Library</OutputType>
+    <DefineConstants>$(DefineConstants);TUKAN_INTEGRATION</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TukanIntegration)' == 'true'">
+    <ApplicationDefinition Remove="App.xaml" />
+    <Compile Remove="App.xaml.cs" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType Condition="'$(TukanIntegration)' != 'true'">WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\logo.ico</ApplicationIcon>
+    <AssemblyName>Chomik</AssemblyName>
+    <Product>Chomik</Product>
+    <AssemblyTitle>Chomik</AssemblyTitle>
+    <ApplicationTitle>Chomik</ApplicationTitle>
+    <Version>2.4.0</Version>
+    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+    <FileVersion>2.4.0.0</FileVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\logo.png" />
+    <Resource Include="Assets\psp-watermark.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\Data\Stopnie.txt" CopyToOutputDirectory="PreserveNewest" Link="Stopnie.txt" />
+    <Content Include="..\..\Data\Stanowiska.txt" CopyToOutputDirectory="PreserveNewest" Link="Stanowiska.txt" />
+  </ItemGroup>
+
+</Project>

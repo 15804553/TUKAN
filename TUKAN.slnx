@@ -2,4 +2,22 @@
   <Folder Name="/src/">
     <Project Path="src/Tukan.App/Tukan.App.csproj" />
   </Folder>
+  <Folder Name="/vendor/CHOMIK/">
+    <Project Path="vendor/CHOMIK/src/Chomik.App/Chomik.App.csproj" />
+    <Project Path="vendor/CHOMIK/src/Chomik.Core/Chomik.Core.csproj" />
+    <Project Path="vendor/CHOMIK/src/Chomik.Data/Chomik.Data.csproj" />
+    <Project Path="vendor/CHOMIK/src/Chomik.Services/Chomik.Services.csproj" />
+  </Folder>
+  <Folder Name="/vendor/BOBER/">
+    <Project Path="vendor/BOBER/src/BOBER.App/BOBER.App.csproj" />
+    <Project Path="vendor/BOBER/src/BOBER.Core/BOBER.Core.csproj" />
+    <Project Path="vendor/BOBER/src/BOBER.Data/BOBER.Data.csproj" />
+    <Project Path="vendor/BOBER/src/BOBER.Services/BOBER.Services.csproj" />
+  </Folder>
+  <Folder Name="/vendor/SKRYBEK/">
+    <Project Path="vendor/SKRYBEK/src/SKRYBEK.App/SKRYBEK.App.csproj" />
+    <Project Path="vendor/SKRYBEK/src/SKRYBEK.Core/SKRYBEK.Core.csproj" />
+    <Project Path="vendor/SKRYBEK/src/SKRYBEK.Data/SKRYBEK.Data.csproj" />
+    <Project Path="vendor/SKRYBEK/src/SKRYBEK.Services/SKRYBEK.Services.csproj" />
+  </Folder>
 </Solution>
