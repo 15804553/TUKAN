@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Tukan.App/Tukan.App.csproj" />
+  </Folder>
+</Solution>

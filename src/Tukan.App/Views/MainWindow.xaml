@@ -1,0 +1,132 @@
+<Window x:Class="Tukan.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="clr-namespace:Tukan.App.Views.Chrome"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="TUKAN — Personel · Grafik · Rozkazy"
+        Height="920"
+        Width="1800"
+        MinHeight="640"
+        MinWidth="1200"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Background="{StaticResource SurfaceBrush}">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0"
+                            CornerRadius="0"
+                            GlassFrameThickness="0"
+                            ResizeBorderThickness="8"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <chrome:TukanTitleBar x:Name="TitleBar"
+                              Grid.Row="0"
+                              ShowMinimizeButton="True"
+                              ShowMaximizeButton="True" />
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="SidebarColumn" Width="220" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Background="{StaticResource TukanSidebarBrush}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="8,12,8,8">
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="BrandTextBlock"
+                                       Text="TUKAN"
+                                       FontSize="22"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource TukanSidebarAccentBrush}"
+                                       VerticalAlignment="Center" />
+                            <Button Grid.Column="1"
+                                    x:Name="ToggleSidebarButton"
+                                    Content="☰"
+                                    ToolTip="Zwiń / rozwiń panel"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Padding="8,6"
+                                    Click="OnToggleSidebarClick" />
+                        </Grid>
+                    </StackPanel>
+
+                    <Button DockPanel.Dock="Bottom"
+                            x:Name="LogoutButton"
+                            Content="Wyloguj"
+                            Style="{StaticResource TukanSidebarButton}"
+                            Margin="8"
+                            Click="OnLogoutClick" />
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,8,0,8">
+                        <StackPanel x:Name="NavigationPanel">
+                            <Button x:Name="GeneralViewButton"
+                                    Content="Widok ogólny"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnGeneralViewClick" />
+                            <Button x:Name="PersonnelEditButton"
+                                    Content="Edycja personelu"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnPersonnelEditClick"
+                                    Visibility="Collapsed" />
+                            <Button x:Name="PasswordAdminButton"
+                                    Content="Zarządzanie hasłami"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnPasswordAdminClick"
+                                    Visibility="Collapsed" />
+                            <Button x:Name="CreatePersonnelListButton"
+                                    Content="Utwórz listę osób"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnCreatePersonnelListClick"
+                                    Visibility="Collapsed" />
+
+                            <Button x:Name="BoberViewButton"
+                                    Content="Grafik służb"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnBoberViewClick" />
+
+                            <Button x:Name="SkrybekViewButton"
+                                    Content="Rozkazy dzienne"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnSkrybekViewClick" />
+
+                            <Button x:Name="SettingsButton"
+                                    Content="Ustawienia"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnSettingsClick"
+                                    Visibility="Collapsed" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <Grid Grid.Column="1" Margin="20,16,20,16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock x:Name="ViewTitleTextBlock"
+                           Text="Widok ogólny"
+                           FontSize="24"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource TextBrush}" />
+
+                <ContentControl x:Name="MainContentHost"
+                                Grid.Row="1"
+                                Margin="0,16,0,0" />
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

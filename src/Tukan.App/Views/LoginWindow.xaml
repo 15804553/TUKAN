@@ -1,0 +1,103 @@
+<Window x:Class="Tukan.App.Views.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="clr-namespace:Tukan.App.Views.Chrome"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="TUKAN — logowanie"
+        Height="520"
+        Width="460"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        Background="{StaticResource SurfaceBrush}">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0"
+                            CornerRadius="0"
+                            GlassFrameThickness="0"
+                            ResizeBorderThickness="5"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <chrome:TukanTitleBar Grid.Row="0"
+                              Title="Logowanie"
+                              ShowMinimizeButton="False"
+                              ShowMaximizeButton="False" />
+
+        <Border Grid.Row="1"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="28,20,28,28">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,16">
+                    <TextBlock Text="TUKAN"
+                               FontSize="36"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource TukanSidebarAccentBrush}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="Personel · Grafik · Rozkazy"
+                               FontSize="13"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,4,0,0" />
+                </StackPanel>
+
+                <Border Grid.Row="1"
+                        Background="{StaticResource CardBrush}"
+                        CornerRadius="8"
+                        Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="Użytkownik"
+                                   Margin="0,0,0,6"
+                                   Foreground="{StaticResource TextBrush}" />
+                        <ComboBox x:Name="LoginComboBox"
+                                  Style="{StaticResource ModernComboBox}"
+                                  IsEditable="False"
+                                  DisplayMemberPath="."
+                                  SelectionChanged="OnLoginSelectionChanged"
+                                  PreviewKeyDown="OnLoginComboPreviewKeyDown" />
+
+                        <TextBlock Text="Hasło"
+                                   Margin="0,16,0,6"
+                                   Foreground="{StaticResource TextBrush}" />
+                        <PasswordBox x:Name="PasswordBox"
+                                     Padding="10,8"
+                                     FontSize="14"
+                                     KeyDown="OnPasswordKeyDown" />
+
+                        <TextBlock x:Name="ErrorTextBlock"
+                                   Margin="0,12,0,0"
+                                   Foreground="#C0392B"
+                                   TextWrapping="Wrap"
+                                   Visibility="Collapsed" />
+
+                        <Button Content="Zaloguj"
+                                Margin="0,20,0,0"
+                                Style="{StaticResource PrimaryButton}"
+                                Click="OnLoginClick"
+                                IsDefault="True" />
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Grid.Row="2"
+                           Margin="0,16,0,0"
+                           Text="PA - bez hasła"
+                           TextWrapping="Wrap"
+                           FontSize="11"
+                           Foreground="{StaticResource MutedTextBrush}" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

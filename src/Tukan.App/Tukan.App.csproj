@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>TUKAN</AssemblyName>
+    <RootNamespace>Tukan.App</RootNamespace>
+    <Product>TUKAN</Product>
+    <ApplicationTitle>TUKAN</ApplicationTitle>
+    <Version>1.0.0</Version>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TukanIntegration>true</TukanIntegration>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\CHOMIK\src\Chomik.App\Chomik.App.csproj" AdditionalProperties="TukanIntegration=true" />
+    <ProjectReference Include="..\..\..\BOBER\src\BOBER.App\BOBER.App.csproj" AdditionalProperties="TukanIntegration=true" />
+    <ProjectReference Include="..\..\..\SKRYBEK\src\SKRYBEK.App\SKRYBEK.App.csproj" AdditionalProperties="TukanIntegration=true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\..\CHOMIK\Data\Stopnie.txt" CopyToOutputDirectory="PreserveNewest" Link="Stopnie.txt" />
+    <Content Include="..\..\..\CHOMIK\Data\Stanowiska.txt" CopyToOutputDirectory="PreserveNewest" Link="Stanowiska.txt" />
+    <Content Include="..\..\..\SKRYBEK\src\SKRYBEK.App\Themes\kolory-ui.json" CopyToOutputDirectory="PreserveNewest" Link="kolory-ui.json" />
+    <Content Include="..\..\..\SKRYBEK\src\SKRYBEK.App\Themes\kolory-rol.json" CopyToOutputDirectory="PreserveNewest" Link="kolory-rol.json" />
+    <Content Include="..\..\..\SKRYBEK\src\SKRYBEK.App\Themes\kolory-grafik.json" CopyToOutputDirectory="PreserveNewest" Link="kolory-grafik.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+</Project>
