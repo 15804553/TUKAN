@@ -1,5 +1,7 @@
 using System.Data.OleDb;
+using SKRYBEK.Core.Models;
 using SKRYBEK.Data.Connections;
+using SKRYBEK.Data.Repositories;
 
 namespace SKRYBEK.Data.Database;
 
@@ -71,6 +73,7 @@ public sealed class DatabaseBootstrapper
     {
         await EnsureDefaultSamochodyAsync();
         await EnsureDefaultUstawieniaAsync();
+        await EnsureDefaultRatownikMedycznyUstawieniaAsync();
         await EnsureDefaultUsersAsync();
     }
 
@@ -130,6 +133,14 @@ public sealed class DatabaseBootstrapper
                 await ins.ExecuteNonQueryAsync();
             }
         }
+    }
+
+    private async Task EnsureDefaultRatownikMedycznyUstawieniaAsync()
+    {
+        var ustawieniaRepo = new UstawieniaRepository(_factory);
+        var samochodyRepo = new SamochodyRepository(_factory);
+        var ratownikRepo = new RatownikMedycznyUstawieniaRepository(ustawieniaRepo, samochodyRepo);
+        await ratownikRepo.EnsureDefaultsAsync();
     }
 
     private async Task EnsureDefaultUsersAsync()

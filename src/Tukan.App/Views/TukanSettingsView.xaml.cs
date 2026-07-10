@@ -27,6 +27,7 @@ public partial class TukanSettingsView : UserControl
 
         PlaceThemeSettingsPanel();
         InitializeChomikSettings(dashboardController);
+        InitializeRatownikMedycznySettings();
 
         if (IsDcaJrgAccount)
         {
@@ -99,6 +100,20 @@ public partial class TukanSettingsView : UserControl
                 TextWrapping = TextWrapping.Wrap
             };
         }
+    }
+
+    private void InitializeRatownikMedycznySettings()
+    {
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        if (user?.IsShiftScoped != true || user.ShiftNumber is not int zmianaId)
+        {
+            RatownikMedycznySettingsHost.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var view = new RatownikMedycznyUstawieniaView(zmianaId);
+        view.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+        RatownikMedycznySettingsHost.Content = view;
     }
 
     private void InitializeBoberSettings()

@@ -8,6 +8,7 @@ using SKRYBEK.Services.Logging;
 using SKRYBEK.Services.Backup;
 using SKRYBEK.Services.Export;
 using SKRYBEK.Services.Personnel;
+using SKRYBEK.Services.Ratownicy;
 using SKRYBEK.Services.Rozkaz;
 
 namespace SKRYBEK.Services;
@@ -21,6 +22,7 @@ public sealed class AppServices
     public DatabasePatch DatabasePatch { get; }
 
     public UstawieniaRepository  UstawieniaRepo  { get; }
+    public RatownikMedycznyUstawieniaRepository RatownikMedycznyUstawieniaRepo { get; }
     public AuthRepository        AuthRepo        { get; }
     public ChomikAuthRepository  ChomikAuthRepo  { get; }
     public RozkazRepository      RozkazRepo      { get; }
@@ -29,6 +31,7 @@ public sealed class AppServices
 
     public AuthService      Auth      { get; }
     public RozkazService    Rozkaz    { get; }
+    public RatownikMedycznyAutoFillService RatownikMedycznyAutoFill { get; }
     public PersonnelService Personnel { get; }
     public BackupService    Backup    { get; }
     public WordExportService WordExport { get; }
@@ -48,14 +51,17 @@ public sealed class AppServices
         DatabasePatch = databasePatch;
 
         UstawieniaRepo = new UstawieniaRepository(skrybek);
+        SamochodyRepo  = new SamochodyRepository(skrybek);
+        RatownikMedycznyUstawieniaRepo = new RatownikMedycznyUstawieniaRepository(
+            UstawieniaRepo, SamochodyRepo);
         AuthRepo       = new AuthRepository(skrybek);
         ChomikAuthRepo = new ChomikAuthRepository(chomik);
         RozkazRepo     = new RozkazRepository(skrybek);
-        SamochodyRepo  = new SamochodyRepository(skrybek);
         PersonnelRepo  = new PersonnelRepository(bober, chomik, calendar);
 
         Auth       = new AuthService(ChomikAuthRepo);
         Rozkaz     = new RozkazService(RozkazRepo, SamochodyRepo);
+        RatownikMedycznyAutoFill = new RatownikMedycznyAutoFillService();
         Personnel  = new PersonnelService(PersonnelRepo, calendar);
         Backup     = new BackupService(skrybek, UstawieniaRepo);
         WordExport = new WordExportService();

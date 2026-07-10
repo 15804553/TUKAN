@@ -1,0 +1,101 @@
+<UserControl x:Class="SKRYBEK.App.Views.RatownikMedycznyUstawieniaView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="{StaticResource CardBrush}"
+            CornerRadius="8"
+            Padding="20"
+            Margin="0,16,0,0">
+        <StackPanel>
+            <TextBlock Text="Dyżurni ratownicy medyczni"
+                       FontWeight="SemiBold"
+                       FontSize="16"
+                       Margin="0,0,0,8" />
+            <TextBlock TextWrapping="Wrap"
+                       Foreground="{StaticResource MutedTextBrush}"
+                       FontSize="12"
+                       Margin="0,0,0,16"
+                       Text="Określ, z której pozycji na pojeździe mają być automatycznie pobierane nazwiska dyżurnych ratowników medycznych w rozkazach dziennych. Pozycje 1.D i 2.K są niedostępne. Domyślnie: ostatnia pozycja na liście obsady pojazdu (1. ratownik z 1. samochodu, 2. ratownik z 2. samochodu)." />
+
+            <TextBlock Text="{Binding NaglowekZmiany}"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,12" />
+
+            <Border Background="{StaticResource SurfaceBrush}"
+                    CornerRadius="8"
+                    Padding="12"
+                    BorderBrush="#E8E4F0"
+                    BorderThickness="1"
+                    Margin="0,0,0,8">
+                <Grid DataContext="{Binding Ratownik1}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding Etykieta}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,12,0" />
+                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                        <TextBlock Text="Samochód" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
+                        <ComboBox ItemsSource="{Binding DostepneSamochody}"
+                                  SelectedItem="{Binding WybranySamochod}"
+                                  DisplayMemberPath="NazwaWyswietlana"
+                                  Margin="0,4,0,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Pozycja na pojeździe" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
+                        <ComboBox ItemsSource="{Binding DostepnePozycje}"
+                                  SelectedItem="{Binding WybranaPozycja}"
+                                  DisplayMemberPath="Etykieta"
+                                  Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Background="{StaticResource SurfaceBrush}"
+                    CornerRadius="8"
+                    Padding="12"
+                    BorderBrush="#E8E4F0"
+                    BorderThickness="1">
+                <Grid DataContext="{Binding Ratownik2}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding Etykieta}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,12,0" />
+                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                        <TextBlock Text="Samochód" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
+                        <ComboBox ItemsSource="{Binding DostepneSamochody}"
+                                  SelectedItem="{Binding WybranySamochod}"
+                                  DisplayMemberPath="NazwaWyswietlana"
+                                  Margin="0,4,0,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Pozycja na pojeździe" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
+                        <ComboBox ItemsSource="{Binding DostepnePozycje}"
+                                  SelectedItem="{Binding WybranaPozycja}"
+                                  DisplayMemberPath="Etykieta"
+                                  Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                <Button Content="Zapisz ustawienia ratowników"
+                        Style="{StaticResource PrimaryButton}"
+                        Command="{Binding ZapiszCommand}"
+                        IsEnabled="{Binding CanSave}" />
+                <TextBlock Text="{Binding StatusMessage}"
+                           Margin="16,6,0,0"
+                           Foreground="{StaticResource MutedTextBrush}"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

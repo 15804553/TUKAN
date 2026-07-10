@@ -36,6 +36,7 @@ public partial class BoberGrafikView : UserControl
     {
         InitializeComponent();
         Loaded += OnLoaded;
+        IsVisibleChanged += OnIsVisibleChanged;
     }
 
     public void Initialize(MainController controller)
@@ -66,6 +67,21 @@ public partial class BoberGrafikView : UserControl
         {
             await LoadMonthAsync(selected);
         }
+    }
+
+    /// <summary>Odświeża dane po powrocie z innego widoku TUKAN (np. edycja personelu).</summary>
+    public async Task OdswiezPoAktywacjiAsync()
+    {
+        if (_controller is null || !_initializeCalled || !IsLoaded) return;
+        if (!Enumerable.Range(1, 12).Any(m => _monthLoaded[m])) return;
+
+        await ReloadAfterSettingsAsync();
+    }
+
+    private async void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is not true || !IsEmbedded) return;
+        await OdswiezPoAktywacjiAsync();
     }
 
     private void ApplyEmbeddedUi()

@@ -144,6 +144,15 @@ public partial class MainWindow : Window
     {
         _generalView ??= CreateGeneralView();
         NavigateTo(_generalView, "Widok ogólny — personel", GeneralViewButton);
+        _ = RefreshGeneralViewAsync();
+    }
+
+    private async Task RefreshGeneralViewAsync()
+    {
+        if (_generalView is null) return;
+
+        _dashboardController.InvalidatePersonnelCache();
+        await _generalView.LoadPersonnelAsync();
     }
 
     private GeneralPersonnelView CreateGeneralView()
@@ -297,6 +306,18 @@ public partial class MainWindow : Window
                 TukanMessageBox.Show(this, $"Nie udało się odświeżyć grafiku po zapisie ustawień:\n\n{ex.Message}", "TUKAN");
             }
         }
+
+        if (_skrybekView is not null)
+        {
+            try
+            {
+                await _skrybekView.OdswiezPoUstawieniachAsync();
+            }
+            catch (Exception ex)
+            {
+                TukanMessageBox.Show(this, $"Nie udało się odświeżyć rozkazów po zapisie ustawień:\n\n{ex.Message}", "TUKAN");
+            }
+        }
     }
 
     private async void OnCreatePersonnelListClick(object sender, RoutedEventArgs e)
@@ -362,9 +383,35 @@ public partial class MainWindow : Window
 
     private async void OnPersonnelChanged(object? sender, EventArgs e)
     {
+        _dashboardController.InvalidatePersonnelCache();
+
         if (_generalView is not null)
         {
             await _generalView.LoadPersonnelAsync();
+        }
+
+        if (_skrybekView is not null && _skrybekView.DataContext is not null)
+        {
+            try
+            {
+                await _skrybekView.OdswiezPoAktywacjiAsync();
+            }
+            catch (Exception ex)
+            {
+                TukanMessageBox.Show(this, $"Nie udało się odświeżyć rozkazów po zmianie personelu:\n\n{ex.Message}", "TUKAN");
+            }
+        }
+
+        if (_boberView is not null)
+        {
+            try
+            {
+                await _boberView.OdswiezPoAktywacjiAsync();
+            }
+            catch (Exception ex)
+            {
+                TukanMessageBox.Show(this, $"Nie udało się odświeżyć grafiku po zmianie personelu:\n\n{ex.Message}", "TUKAN");
+            }
         }
     }
 

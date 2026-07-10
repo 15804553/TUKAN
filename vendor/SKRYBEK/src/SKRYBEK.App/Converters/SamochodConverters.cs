@@ -39,6 +39,7 @@ public sealed class PozycjaOznaczenieBrushConverter : IValueConverter
     {
         var key = value is 1 ? "SamochodOznaczenieDBrush"
             : value is 2 ? "SamochodOznaczenieKBrush"
+            : value is 3 ? "SamochodOznaczenieRBrush"
             : null;
         return key is null
             ? DependencyProperty.UnsetValue

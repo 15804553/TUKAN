@@ -13,9 +13,9 @@ public sealed class Samochod
 
     public bool CzyPodstawowy => Typ == TypSamochodu.Podstawowy;
 
-    /// <summary>True gdy DCA JRG ustawił co najmniej jeden wymagany kurs/uprawnienie dla obsady.</summary>
+    /// <summary>Dodatkowe kursy/uprawnienia ustawione przez DCA JRG — obowiązują wyłącznie na pozycjach 1.D i 2.K.</summary>
     public bool CzyWymagaKursow => WymaganeUprawnieniaIds.Count > 0;
 
-    /// <summary>IDs typów uprawnień z CHOMIK wymaganych na tym pojeździe (np. kurs drabin, kurs nurka).</summary>
+    /// <summary>IDs typów uprawnień z CHOMIK wymaganych na pozycjach 1.D lub 2.K (np. kurs drabin, kurs nurka).</summary>
     public List<int> WymaganeUprawnieniaIds { get; set; } = [];
 }

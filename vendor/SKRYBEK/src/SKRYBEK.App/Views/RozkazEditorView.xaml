@@ -300,16 +300,33 @@
                                         CornerRadius="4"
                                         Padding="8,6">
                                     <StackPanel>
-                                        <!-- Nazwa pojazdu/grupy -->
+                                        <!-- Nazwa pojazdu/grupy + wymagane kursy -->
                                         <Border Background="{StaticResource AccentBrush}"
                                                 CornerRadius="3"
                                                 Padding="6,3"
                                                 Margin="0,0,0,6">
-                                            <TextBlock Text="{Binding Nazwa}"
-                                                       FontWeight="Bold"
-                                                       FontSize="12"
-                                                       Foreground="White"
-                                                       HorizontalAlignment="Center" />
+                                            <Grid HorizontalAlignment="Center">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding Nazwa}"
+                                                           FontWeight="Bold"
+                                                           FontSize="12"
+                                                           Foreground="White"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1"
+                                                           Text="ⓘ"
+                                                           FontSize="11"
+                                                           FontWeight="Bold"
+                                                           Foreground="{Binding WymaganeKursyKolor}"
+                                                           Margin="6,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Cursor="Help"
+                                                           ToolTip="{Binding WymaganeKursyTooltip}"
+                                                           Visibility="{Binding CzyPokazujIkoneWymagan, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                            </Grid>
                                         </Border>
                                         <!-- Pozycje -->
                                         <ItemsControl ItemsSource="{Binding Pozycje}">
@@ -330,7 +347,7 @@
                                                                        FontSize="12"
                                                                        FontWeight="Bold"
                                                                        Margin="5,0,0,0"
-                                                                       Foreground="{Binding Pozycja, Converter={StaticResource PozycjaOznaczenieBrushConverter}}"
+                                                                       Foreground="{Binding OznaczenieBrush}"
                                                                        Visibility="{Binding MaOznaczenie, Converter={StaticResource BoolToVisibilityConverter}}" />
                                                         </StackPanel>
                                                         <ComboBox Grid.Column="1"
@@ -342,19 +359,6 @@
                                                                   IsReadOnly="{Binding DataContext.IsReadOnly,
                                                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                   FontSize="11">
-                                                            <ComboBox.GroupStyle>
-                                                                <GroupStyle>
-                                                                    <GroupStyle.HeaderTemplate>
-                                                                        <DataTemplate>
-                                                                            <TextBlock Text="{Binding Name}"
-                                                                                       FontSize="9"
-                                                                                       FontStyle="Italic"
-                                                                                       Foreground="{StaticResource ForegroundMutedBrush}"
-                                                                                       Margin="4,1,4,1" />
-                                                                        </DataTemplate>
-                                                                    </GroupStyle.HeaderTemplate>
-                                                                </GroupStyle>
-                                                            </ComboBox.GroupStyle>
                                                             <ComboBox.ItemTemplate>
                                                                 <DataTemplate DataType="{x:Type vm:OsobaComboBoxItem}">
                                                                     <TextBlock Text="{Binding StopienINazwisko}"

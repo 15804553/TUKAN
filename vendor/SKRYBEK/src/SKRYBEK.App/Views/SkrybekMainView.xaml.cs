@@ -14,6 +14,7 @@ public partial class SkrybekMainView : UserControl
     private MainViewModel _vm = null!;
     private string _loggedInLogin = string.Empty;
     private bool _canEditAll;
+    private bool _isReadyForActivationRefresh;
 
     public bool IsEmbedded { get; set; }
 
@@ -23,6 +24,7 @@ public partial class SkrybekMainView : UserControl
     {
         InitializeComponent();
         RozkazEditor.Loaded += (_, _) => ApplyEditorAccess();
+        IsVisibleChanged += OnIsVisibleChanged;
     }
 
     public async Task InitializeAsync(SessionInfo session)
@@ -52,6 +54,7 @@ public partial class SkrybekMainView : UserControl
 
         await _vm.LoadAsync();
         ApplyEditorAccess();
+        _isReadyForActivationRefresh = true;
     }
 
     /// <summary>Aktualizuje login po zalogowaniu (TUKAN może wywołać ponownie przy wejściu w moduł).</summary>
@@ -121,6 +124,22 @@ public partial class SkrybekMainView : UserControl
         {
             _ = _vm.ZmienRokCommand.ExecuteAsync(rok);
         }
+    }
+
+    public async Task OdswiezPoUstawieniachAsync() =>
+        await _vm.OdswiezPoUstawieniachAsync();
+
+    public async Task OdswiezPoAktywacjiAsync()
+    {
+        if (!_isReadyForActivationRefresh) return;
+        await _vm.OdswiezPoAktywacjiAsync();
+        ApplyEditorAccess();
+    }
+
+    private async void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is not true || !IsEmbedded) return;
+        await OdswiezPoAktywacjiAsync();
     }
 
     private async void Settings_Click(object sender, RoutedEventArgs e)

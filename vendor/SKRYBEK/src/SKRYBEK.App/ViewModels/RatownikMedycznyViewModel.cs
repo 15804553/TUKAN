@@ -124,6 +124,34 @@ public sealed partial class RatownikMedycznyViewModel : ObservableObject
         OdswiezDostepneOsoby();
     }
 
+    /// <summary>Programowe ustawienie osoby (np. auto-uzupełnienie z obsady pojazdu).</summary>
+    public void UstawZOsoby(Funkcjonariusz? osoba, string? nazwisko = null)
+    {
+        if (osoba is not null)
+        {
+            UstawWybranaOsobe(osoba, aktualizujTekst: true);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(nazwisko))
+        {
+            _model.FunkcjonariuszId = null;
+            _model.Nazwisko = nazwisko;
+            SetProperty(ref _wybranaOsoba, null);
+            OnPropertyChanged(nameof(WybranaOsoba));
+            OnPropertyChanged(nameof(WybranyItem));
+            UstawTekstProgramowo(nazwisko);
+            return;
+        }
+
+        _model.FunkcjonariuszId = null;
+        _model.Nazwisko = string.Empty;
+        SetProperty(ref _wybranaOsoba, null);
+        OnPropertyChanged(nameof(WybranaOsoba));
+        OnPropertyChanged(nameof(WybranyItem));
+        UstawTekstProgramowo(string.Empty);
+    }
+
     private void UstawWybranaOsobe(Funkcjonariusz? osoba, bool aktualizujTekst)
     {
         if (_wybranaOsoba?.Id == osoba?.Id)

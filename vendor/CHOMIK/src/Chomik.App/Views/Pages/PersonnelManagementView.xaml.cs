@@ -13,6 +13,7 @@ public partial class PersonnelManagementView : UserControl
 {
     private readonly PersonnelManagementController _controller;
     private PersonnelDictionaries? _dictionaries;
+    private bool _hasCompletedInitialLoad;
 
     public event EventHandler? PersonnelChanged;
 
@@ -21,6 +22,7 @@ public partial class PersonnelManagementView : UserControl
         InitializeComponent();
         _controller = controller;
         Loaded += async (_, _) => await LoadAsync();
+        IsVisibleChanged += OnIsVisibleChanged;
     }
 
     private Window? OwnerWindow => Window.GetWindow(this);
@@ -32,11 +34,20 @@ public partial class PersonnelManagementView : UserControl
             _dictionaries = await _controller.GetDictionariesAsync();
             var list = await _controller.LoadPersonnelAsync();
             PersonnelGrid.ItemsSource = list.Select(f => new PersonnelGridRow(f)).ToList();
+            _hasCompletedInitialLoad = true;
         }
         catch (Exception ex)
         {
             ChomikMessageBox.Show(OwnerWindow, ex.Message, "Chomik");
         }
+    }
+
+    public Task ReloadAsync() => LoadAsync();
+
+    private async void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is not true || !_hasCompletedInitialLoad) return;
+        await ReloadAsync();
     }
 
     private Funkcjonariusz? GetSelected() =>

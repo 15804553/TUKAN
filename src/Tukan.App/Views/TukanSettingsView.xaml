@@ -7,7 +7,12 @@
             <ContentControl x:Name="WygladThemeHost" />
         </TabItem>
         <TabItem x:Name="ChomikTab" Header="Personel">
-            <ContentControl x:Name="ChomikSettingsHost" />
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <ContentControl x:Name="ChomikSettingsHost" />
+                    <ContentControl x:Name="RatownikMedycznySettingsHost" />
+                </StackPanel>
+            </ScrollViewer>
         </TabItem>
         <TabItem x:Name="GrafikTab" Header="Grafik">
             <ContentControl x:Name="BoberSettingsHost" />

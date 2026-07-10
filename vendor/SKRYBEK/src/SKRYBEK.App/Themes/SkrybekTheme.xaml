@@ -44,6 +44,7 @@
     <Color x:Key="SamochodDodatkowyBorderColor">#C4A882</Color>
     <Color x:Key="SamochodOznaczenieDColor">#4A7AB0</Color>
     <Color x:Key="SamochodOznaczenieKColor">#6BCB77</Color>
+    <Color x:Key="SamochodOznaczenieRColor">#B83280</Color>
 
     <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}" />
     <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
@@ -69,6 +70,7 @@
     <SolidColorBrush x:Key="SamochodDodatkowyBorderBrush" Color="{StaticResource SamochodDodatkowyBorderColor}" />
     <SolidColorBrush x:Key="SamochodOznaczenieDBrush" Color="{StaticResource SamochodOznaczenieDColor}" />
     <SolidColorBrush x:Key="SamochodOznaczenieKBrush" Color="{StaticResource SamochodOznaczenieKColor}" />
+    <SolidColorBrush x:Key="SamochodOznaczenieRBrush" Color="{StaticResource SamochodOznaczenieRColor}" />
 
     <!-- Przycisk Chrome: Zamknij -->
     <Style x:Key="ChromeCloseButton" TargetType="Button">

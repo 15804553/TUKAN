@@ -155,7 +155,7 @@
                                            Foreground="{StaticResource ForegroundBrush}"
                                            TextWrapping="Wrap"
                                            Margin="0,0,0,8" />
-                                <TextBlock Text="Zaznacz uprawnienia, kursy lub szkolenia wymagane do obsady tego pojazdu. Po zmianie kliknij „Zapisz” przy pojeździe lub „Zapisz zmiany” na dole okna."
+                                <TextBlock Text="Zaznacz dodatkowe uprawnienia, kursy lub szkolenia wymagane na pozycjach 1.D lub 2.K tego pojazdu (nie dotyczą pozycji 3+). Po zmianie kliknij „Zapisz” przy pojeździe lub „Zapisz zmiany” na dole okna."
                                            FontSize="11"
                                            Foreground="{StaticResource ForegroundMutedBrush}"
                                            TextWrapping="Wrap"

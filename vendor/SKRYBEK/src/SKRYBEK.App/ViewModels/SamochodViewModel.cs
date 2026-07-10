@@ -15,39 +15,44 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
     private readonly PozycjaSamochodu _model;
     private readonly SamochodViewModel _samochod;
     private readonly RozkazEditorViewModel _editor;
+    private bool _czyPozycjaRatownika;
     private Funkcjonariusz? _wybranaOsoba;
     private string _tekstOsoby;
     private bool _tekstUstawianyProgramowo;
 
     public int Pozycja => _model.Pozycja;
     public string NumerPozycji => $"{Pozycja}.";
-    public string OznaczeniePozycji => PozycjaSamochoduRules.OznaczeniePozycji(Pozycja);
+    public string OznaczeniePozycji =>
+        PozycjaSamochoduRules.OznaczenieWyswietlane(Pozycja, _czyPozycjaRatownika);
     public bool MaOznaczenie => !string.IsNullOrEmpty(OznaczeniePozycji);
 
-    public Brush OznaczenieBrush => Pozycja switch
+    public Brush OznaczenieBrush
     {
-        1 => (Brush)Application.Current.FindResource("SamochodOznaczenieDBrush"),
-        2 => (Brush)Application.Current.FindResource("SamochodOznaczenieKBrush"),
-        _ => Brushes.Transparent
-    };
+        get
+        {
+            if (Pozycja == PozycjaSamochoduRules.PozycjaDowodca)
+                return (Brush)Application.Current.FindResource("SamochodOznaczenieDBrush");
+            if (Pozycja == PozycjaSamochoduRules.PozycjaKierowca)
+                return (Brush)Application.Current.FindResource("SamochodOznaczenieKBrush");
+            if (_czyPozycjaRatownika)
+                return (Brush)Application.Current.FindResource("SamochodOznaczenieRBrush");
+            return Brushes.Transparent;
+        }
+    }
 
     private readonly ObservableCollection<OsobaComboBoxItem> _dostepneOsobyRaw = [];
     private ListCollectionView? _dostepneOsobyView;
     private bool _odswiezanieListy;
 
     /// <summary>
-    /// Zgrupowana lista dostępnych osób z podziałem na Zalecani/Pozostali (wymaganie 8 + 10).
+    /// Lista osób dostępnych w danym dniu, przefiltrowana wyłącznie według wymagań pozycji (1.D / 2.K).
     /// </summary>
     public ListCollectionView DostepneOsoby
     {
         get
         {
             if (_dostepneOsobyView is null)
-            {
                 _dostepneOsobyView = new ListCollectionView(_dostepneOsobyRaw);
-                _dostepneOsobyView.GroupDescriptions.Add(
-                    new PropertyGroupDescription(nameof(OsobaComboBoxItem.NazwaGrupy)));
-            }
             return _dostepneOsobyView;
         }
     }
@@ -120,6 +125,15 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
             : _wybranaOsoba?.StopienINazwisko ?? string.Empty;
 
         OdswiezDostepneOsoby();
+        OdswiezOznaczenieRatownika();
+    }
+
+    internal void OdswiezOznaczenieRatownika()
+    {
+        _czyPozycjaRatownika = _editor.CzyPozycjaZrodlemRatownika(_samochod.Samochod.Kolejnosc, Pozycja);
+        OnPropertyChanged(nameof(OznaczeniePozycji));
+        OnPropertyChanged(nameof(MaOznaczenie));
+        OnPropertyChanged(nameof(OznaczenieBrush));
     }
 
     private void PrzypiszOsobeZListy(Funkcjonariusz? value, bool aktualizujTekst)
@@ -139,22 +153,6 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
             {
                 SkrybekMessageBox.ShowWarning(
                     PozycjaSamochoduRules.OpisWymagania(Pozycja),
-                    "Niedozwolone przypisanie");
-                OnPropertyChanged(nameof(WybranaOsoba));
-                OnPropertyChanged(nameof(WybranyItem));
-                if (aktualizujTekst)
-                    UstawTekstProgramowo(_model.Nazwisko);
-                return;
-            }
-
-            var inniNaPojezdzie = InniPrzypisaniNaPojezdzie().ToList();
-            if (_samochod.Samochod.CzyWymagaKursow &&
-                !PozycjaSamochoduRules.CzyObsadaSpelniaWymaganiaPojazdu(
-                    inniNaPojezdzie.Append(value), _samochod.Samochod))
-            {
-                SkrybekMessageBox.ShowWarning(
-                    PozycjaSamochoduRules.OpisBrakujacychWymaganObsadyPojazdu(
-                        inniNaPojezdzie.Append(value), _samochod.Samochod, _editor.NazwaTypuUprawnienia),
                     "Niedozwolone przypisanie");
                 OnPropertyChanged(nameof(WybranaOsoba));
                 OnPropertyChanged(nameof(WybranyItem));
@@ -208,12 +206,9 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
 
         if (_samochod.CzyPodstawowy)
             _editor.OdswiezInnePojazdyPodstawowe(_samochod.Samochod.Id);
-    }
 
-    private IEnumerable<Funkcjonariusz> InniPrzypisaniNaPojezdzie() =>
-        _samochod.Pozycje
-            .Where(p => p.Pozycja != Pozycja && p.WybranaOsoba is not null)
-            .Select(p => p.WybranaOsoba!);
+        _editor.OnZmianaObsadyPojazdu(_samochod.Samochod.Kolejnosc, Pozycja);
+    }
 
     private void UstawTekstProgramowo(string tekst)
     {
@@ -227,7 +222,7 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Odświeża listę dostępnych osób — tylko osoby spełniające wymagania pozycji i pojazdu.
+    /// Odświeża listę dostępnych osób — tylko osoby spełniające wymagania pozycji (1.D / 2.K).
     /// Na pojazdach podstawowych ukrywa osoby już przypisane do innego pojazdu podstawowego.
     /// </summary>
     public void OdswiezDostepneOsoby()
@@ -237,21 +232,16 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
         {
             _dostepneOsobyRaw.Clear();
 
-            var inniNaPojezdzie = InniPrzypisaniNaPojezdzie().ToList();
-
             foreach (var osoba in _editor.WszystkieOsoby)
             {
-                if (!PozycjaSamochoduRules.CzyOsobaDozwolonaNaPozycjiIPojezdzie(
-                        osoba, Pozycja, _samochod.Samochod, inniNaPojezdzie))
+                if (!PozycjaSamochoduRules.CzyOsobaDozwolonaNaPozycji(osoba, Pozycja))
                     continue;
 
                 if (_samochod.CzyPodstawowy &&
                     _editor.CzyKonfliktPodstawowy(osoba.Id, _samochod.Samochod.Id, Pozycja))
                     continue;
 
-                var czySugerowana = PozycjaSamochoduRules.CzyOsobaMaSugerowaneKwalifikacje(
-                    osoba, Pozycja, _samochod.Samochod);
-                _dostepneOsobyRaw.Add(new OsobaComboBoxItem(osoba, czySugerowana));
+                _dostepneOsobyRaw.Add(new OsobaComboBoxItem(osoba, czySugerowana: true));
             }
 
             if (_wybranaOsoba is not null && _dostepneOsobyRaw.All(i => i.Osoba.Id != _wybranaOsoba.Id))
@@ -276,10 +266,19 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
 
 public sealed class SamochodViewModel : ObservableObject
 {
+    private readonly RozkazEditorViewModel _editor;
+
     public Samochod Samochod { get; }
     public ObservableCollection<PozycjaSamochoduViewModel> Pozycje { get; } = [];
     public string Nazwa => Samochod.Nazwa;
     public bool CzyPodstawowy => Samochod.CzyPodstawowy;
+    public bool CzyPokazujIkoneWymagan => Samochod.LiczbaPozycji >= PozycjaSamochoduRules.PozycjaDowodca;
+    public bool CzyWymaganiaSpelnione { get; private set; }
+    public string WymaganeKursyTooltip { get; private set; } = string.Empty;
+
+    public Brush WymaganeKursyKolor => CzyWymaganiaSpelnione
+        ? (Brush)Application.Current.FindResource("OkBrush")
+        : (Brush)Application.Current.FindResource("AlertBrush");
 
     public SamochodViewModel(
         Samochod samochod,
@@ -288,14 +287,37 @@ public sealed class SamochodViewModel : ObservableObject
         RozkazEditorViewModel editor)
     {
         Samochod = samochod;
+        _editor = editor;
         foreach (var m in modele.OrderBy(m => m.Pozycja))
             Pozycje.Add(new PozycjaSamochoduViewModel(m, this, editor, personel));
+        OdswiezOznaczeniaRatownika();
+        OdswiezStatusWymagan();
+    }
+
+    public void OdswiezOznaczeniaRatownika()
+    {
+        foreach (var pozycja in Pozycje)
+            pozycja.OdswiezOznaczenieRatownika();
     }
 
     public void OdswiezWszystkiePozycje()
     {
         foreach (var p in Pozycje)
             p.OdswiezDostepneOsoby();
+        OdswiezStatusWymagan();
+    }
+
+    public void OdswiezStatusWymagan()
+    {
+        var pozycje = Pozycje.Select(p => (p.Pozycja, p.WybranaOsoba)).ToList();
+        CzyWymaganiaSpelnione = PozycjaSamochoduRules.CzySpelniaWymaganiaPojazdu(pozycje, Samochod);
+        WymaganeKursyTooltip = PozycjaSamochoduRules.BudujTooltipWymaganPojazdu(
+            Samochod, pozycje, _editor.NazwaTypuUprawnienia);
+
+        OnPropertyChanged(nameof(CzyPokazujIkoneWymagan));
+        OnPropertyChanged(nameof(CzyWymaganiaSpelnione));
+        OnPropertyChanged(nameof(WymaganeKursyTooltip));
+        OnPropertyChanged(nameof(WymaganeKursyKolor));
     }
 
     public IEnumerable<PozycjaSamochodu> GetModele()

@@ -67,11 +67,10 @@ public sealed class RozkazService
 
     public async Task<int> ZapiszAsync(
         RozkazDzienny rozkaz,
-        IReadOnlyList<Funkcjonariusz>? personel = null,
-        IReadOnlyDictionary<int, string>? nazwyTypowUprawnien = null)
+        IReadOnlyList<Funkcjonariusz>? personel = null)
     {
         var samochody = await _samochodyRepo.GetAktywneAsync();
-        ValidatePodzialBojowy(rozkaz, samochody, personel, nazwyTypowUprawnien);
+        ValidatePodzialBojowy(rozkaz, samochody, personel);
         var id = await _repo.SaveAsync(rozkaz);
         SkrybekLog.Info($"Zapisano rozkaz nr {rozkaz.NumerRozkazu}/{rozkaz.Rok}, Id={id}");
         return id;
@@ -112,15 +111,10 @@ public sealed class RozkazService
     public static void ValidatePodzialBojowy(
         RozkazDzienny rozkaz,
         IReadOnlyList<Samochod> samochody,
-        IReadOnlyList<Funkcjonariusz>? personel = null,
-        IReadOnlyDictionary<int, string>? nazwyTypowUprawnien = null)
+        IReadOnlyList<Funkcjonariusz>? personel = null)
     {
         var samochodPoId = samochody.ToDictionary(s => s.Id);
         var personelPoId = personel?.ToDictionary(p => p.Id);
-        string? NazwaTypu(int id) =>
-            nazwyTypowUprawnien is not null && nazwyTypowUprawnien.TryGetValue(id, out var nazwa)
-                ? nazwa
-                : null;
 
         if (personelPoId is not null)
         {
@@ -138,29 +132,6 @@ public sealed class RozkazService
                         $"{osoba.StopienINazwisko} — pozycja {PozycjaSamochoduRules.EtykietaPozycji(pozycja.Pozycja)} " +
                         $"w pojeździe „{samochod.Nazwa}”: {PozycjaSamochoduRules.OpisWymagania(pozycja.Pozycja)}");
                 }
-
-            }
-
-            var pozycjePoPojezdzie = rozkaz.PodzialBojowy
-                .Where(p => p.FunkcjonariuszId.HasValue)
-                .GroupBy(p => p.SamochodId);
-
-            foreach (var grupa in pozycjePoPojezdzie)
-            {
-                if (!samochodPoId.TryGetValue(grupa.Key, out var samochod) || !samochod.CzyWymagaKursow)
-                    continue;
-
-                var obsada = grupa
-                    .Select(p => personelPoId!.TryGetValue(p.FunkcjonariuszId!.Value, out var o) ? o : null)
-                    .Where(o => o is not null)
-                    .Cast<Funkcjonariusz>()
-                    .ToList();
-
-                if (PozycjaSamochoduRules.CzyObsadaSpelniaWymaganiaPojazdu(obsada, samochod))
-                    continue;
-
-                throw new InvalidOperationException(
-                    PozycjaSamochoduRules.OpisBrakujacychWymaganObsadyPojazdu(obsada, samochod, NazwaTypu));
             }
         }
 

@@ -6,6 +6,7 @@ using System.ComponentModel;
 using SKRYBEK.App.Helpers;
 using SKRYBEK.Core.Enums;
 using SKRYBEK.Core.Models;
+using SKRYBEK.Core.Rules;
 using SKRYBEK.Services.Logging;
 using SKRYBEK.Services.Personnel;
 
@@ -19,6 +20,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     private readonly SessionInfo _session;
     private readonly bool _isNew;
     private readonly Dictionary<int, string> _nazwyTypowUprawnien;
+    private readonly List<RatownikMedycznyPozycjaUstawienie> _ustawieniaRatownikow;
 
     public event EventHandler<int>? Saved;
 
@@ -112,7 +114,8 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         string nrJrg,
         SessionInfo session,
         bool isNew,
-        IReadOnlyDictionary<int, string>? nazwyTypowUprawnien = null)
+        IReadOnlyDictionary<int, string>? nazwyTypowUprawnien = null,
+        IReadOnlyList<RatownikMedycznyPozycjaUstawienie>? ustawieniaRatownikow = null)
     {
         _rozkaz        = rozkaz;
         _samochody     = samochody;
@@ -122,6 +125,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         _nazwyTypowUprawnien = nazwyTypowUprawnien is not null
             ? new Dictionary<int, string>(nazwyTypowUprawnien)
             : [];
+        _ustawieniaRatownikow = ustawieniaRatownikow?.ToList() ?? [];
 
         session.NormalizePaFlags();
         CzyKontoPa = session.IsPaUser;
@@ -176,6 +180,83 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 
         PodlaczSynchronizacjeDyzuru();
         SynchronizujDyzurZWolnaSluzba();
+
+        if (_isNew && CzyAutoRatownicyAktywne)
+            ZastosujAutoFillRatownikow();
+        else
+            OdswiezOznaczeniaPozycjiRatownika();
+    }
+
+    private int NrZmianyRozkazu =>
+        _rozkaz.ZmianaId > 0 ? _rozkaz.ZmianaId
+        : (_session.NumerZmiany > 0 ? _session.NumerZmiany : 1);
+
+    private bool CzyAutoRatownicyAktywne =>
+        !CzyKontoPa && NrZmianyRozkazu is >= 1 and <= 3 && _ustawieniaRatownikow.Count > 0;
+
+    /// <summary>Wywoływane po zmianie obsady pojazdu — synchronizuje ratowników medycznych.</summary>
+    public void OnZmianaObsadyPojazdu(int samochodKolejnosc, int pozycjaPojazdu)
+    {
+        if (!CzyAutoRatownicyAktywne)
+            return;
+
+        if (!ServiceProvider.Services.RatownikMedycznyAutoFill.CzyWplywaNaRatownika(
+                samochodKolejnosc, pozycjaPojazdu, _ustawieniaRatownikow))
+            return;
+
+        ZastosujAutoFillRatownikow();
+    }
+
+    public void ZaktualizujUstawieniaRatownikow(IReadOnlyList<RatownikMedycznyPozycjaUstawienie> ustawienia)
+    {
+        _ustawieniaRatownikow.Clear();
+        _ustawieniaRatownikow.AddRange(ustawienia);
+        OdswiezOznaczeniaPozycjiRatownika();
+        if (CzyAutoRatownicyAktywne)
+            ZastosujAutoFillRatownikow();
+    }
+
+    public void ZastosujAutoFillRatownikow()
+    {
+        if (!CzyAutoRatownicyAktywne)
+            return;
+
+        var podzial = PodzialBojowy.SelectMany(s => s.GetModele()).ToList();
+        var ratownicy = RatownicyMedyczni.Select(r => r.ToModel()).ToList();
+
+        ServiceProvider.Services.RatownikMedycznyAutoFill.Zastosuj(
+            ratownicy,
+            podzial,
+            _samochody,
+            _ustawieniaRatownikow,
+            WszystkieOsoby.ToList());
+
+        foreach (var ratVm in RatownicyMedyczni)
+        {
+            var model = ratownicy.FirstOrDefault(r => r.Pozycja == ratVm.Pozycja);
+            if (model is null)
+                continue;
+
+            var osoba = model.FunkcjonariuszId is int fid
+                ? WszystkieOsoby.FirstOrDefault(f => f.Id == fid)
+                : null;
+            ratVm.UstawZOsoby(osoba, model.Nazwisko);
+        }
+
+        OdswiezOznaczeniaPozycjiRatownika();
+    }
+
+    public bool CzyPozycjaZrodlemRatownika(int samochodKolejnosc, int pozycjaPojazdu) =>
+        CzyAutoRatownicyAktywne &&
+        PozycjaSamochoduRules.CzyPozycjaDozwolonaDlaRatownika(pozycjaPojazdu) &&
+        _ustawieniaRatownikow.Any(u =>
+            u.SamochodKolejnosc == samochodKolejnosc &&
+            u.PozycjaPojazdu == pozycjaPojazdu);
+
+    public void OdswiezOznaczeniaPozycjiRatownika()
+    {
+        foreach (var samVm in PodzialBojowy)
+            samVm.OdswiezOznaczeniaRatownika();
     }
 
     // ── Zmiana daty (wymaganie 5) — odświeża personel ────────────────────────
@@ -188,6 +269,21 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 
     private async Task OdswiezPersonelNaDateAsync(DateOnly data) =>
         await PrzeladujDostepnyPersonelAsync(data, odswiezNieobecnych: true);
+
+    /// <summary>
+    /// Odświeża dane personelu (stopień, uprawnienia) i dostępność z grafiku BOBER
+    /// po powrocie z innego widoku (edycja personelu, grafik służb).
+    /// </summary>
+    public async Task OdswiezPoPowrocieZInnegoWidokuAsync()
+    {
+        if (IsReadOnly || IsReloadingPersonel) return;
+
+        var nrZmiany = _rozkaz.ZmianaId > 0 ? _rozkaz.ZmianaId
+            : (_session.NumerZmiany > 0 ? _session.NumerZmiany : 1);
+
+        _wszyscyZmiany = await ServiceProvider.Services.Personnel.GetWszyscyZmianaAsync(nrZmiany);
+        await PrzeladujDostepnyPersonelAsync(Data, odswiezNieobecnych: true);
+    }
 
     /// <summary>
     /// Ponownie odczytuje dostępny personel z grafiku BOBER na bieżącą datę rozkazu.
@@ -242,6 +338,9 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
                     ratVm.TekstOsoby = match.StopienINazwisko;
             }
 
+            if (CzyAutoRatownicyAktywne)
+                ZastosujAutoFillRatownikow();
+
             if (odswiezNieobecnych)
                 await OdswiezNieobecnychZBoberaAsync(data, nrZmiany);
             else
@@ -292,8 +391,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         BuildModelFromViewModels();
         await ServiceProvider.Services.Rozkaz.ZapiszAsync(
             _rozkaz,
-            WszystkieOsoby.ToList(),
-            _nazwyTypowUprawnien);
+            WszystkieOsoby.ToList());
         await ServiceProvider.Services.Rozkaz.UpdateStatusAsync(_rozkaz.Id, StatusRozkazu.Zatwierdzony);
 
         _rozkaz.Status = StatusRozkazu.Zatwierdzony;
@@ -328,7 +426,8 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         List<Samochod> samochody,
         List<Funkcjonariusz> personel,
         List<Funkcjonariusz> wszyscyZmiany,
-        string nrJrg)
+        string nrJrg,
+        IReadOnlyList<RatownikMedycznyPozycjaUstawienie>? ustawieniaRatownikow = null)
     {
         BuildModelFromViewModels();
 
@@ -383,6 +482,8 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             PodzialBojowy.Add(new SamochodViewModel(sam, pozycjeModelu, personel, this));
         }
 
+        OdswiezOznaczeniaPozycjiRatownika();
+
         foreach (var ratVm in RatownicyMedyczni)
         {
             var tekst = ratVm.TekstOsoby;
@@ -391,6 +492,11 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             if (match is not null)
                 ratVm.TekstOsoby = match.StopienINazwisko;
         }
+
+        if (ustawieniaRatownikow is not null)
+            ZaktualizujUstawieniaRatownikow(ustawieniaRatownikow);
+        else if (CzyAutoRatownicyAktywne)
+            ZastosujAutoFillRatownikow();
     }
 
     // ── Filtrowanie personelu ─────────────────────────────────────────────────
@@ -428,8 +534,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             BuildModelFromViewModels();
             var id = await ServiceProvider.Services.Rozkaz.ZapiszAsync(
                 _rozkaz,
-                WszystkieOsoby.ToList(),
-                _nazwyTypowUprawnien);
+                WszystkieOsoby.ToList());
 
             // Po pierwszym zapisie nowego rozkazu odblokuj przycisk Akceptuj
             OnPropertyChanged(nameof(MozeAkceptowac));

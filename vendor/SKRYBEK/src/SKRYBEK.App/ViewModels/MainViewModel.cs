@@ -77,13 +77,16 @@ public sealed partial class MainViewModel : ObservableObject
             var personel  = await ServiceProvider.Services.Personnel.GetDostepniAsync(data, nrZmiany);
             var nrJrg     = await ServiceProvider.Services.UstawieniaRepo.GetAsync(Core.Models.UstawieniaKlucze.NrJRG, "4");
             var nazwyTypow = await PobierzNazwyTypowUprawnienAsync();
+            var ustawieniaRatownikow = await ServiceProvider.Services.RatownikMedycznyUstawieniaRepo
+                .GetDlaZmianyAsync(nrZmiany);
 
             // Wstępne wypełnienie nieobecnych z BOBER (wymaganie 6)
             rozkaz.Nieobecni = await ServiceProvider.Services.Personnel.GetNieobecniWDniuAsync(data, nrZmiany, wszyscy);
 
             WybranyRozkaz = null;
             EditorVm = null;
-            EditorVm = new RozkazEditorViewModel(rozkaz, samochody, personel, wszyscy, nrJrg, Session, isNew: true, nazwyTypow);
+            EditorVm = new RozkazEditorViewModel(
+                rozkaz, samochody, personel, wszyscy, nrJrg, Session, isNew: true, nazwyTypow, ustawieniaRatownikow);
             EditorVm.Saved += OnRozkazSaved;
 
             StatusMessage = personel.Count == 0
@@ -122,9 +125,12 @@ public sealed partial class MainViewModel : ObservableObject
             var wszyscy   = await ServiceProvider.Services.Personnel.GetWszyscyZmianaAsync(nrZmiany);
             var nrJrg     = await ServiceProvider.Services.UstawieniaRepo.GetAsync(Core.Models.UstawieniaKlucze.NrJRG, "4");
             var nazwyTypow = await PobierzNazwyTypowUprawnienAsync();
+            var ustawieniaRatownikow = await ServiceProvider.Services.RatownikMedycznyUstawieniaRepo
+                .GetDlaZmianyAsync(nrZmiany);
 
             WybranyRozkaz = pelny;
-            EditorVm = new RozkazEditorViewModel(pelny, samochody, personel, wszyscy, nrJrg, Session, isNew: false, nazwyTypow);
+            EditorVm = new RozkazEditorViewModel(
+                pelny, samochody, personel, wszyscy, nrJrg, Session, isNew: false, nazwyTypow, ustawieniaRatownikow);
             EditorVm.Saved += OnRozkazSaved;
         }
         catch (Exception ex)
@@ -173,6 +179,21 @@ public sealed partial class MainViewModel : ObservableObject
         StatusMessage = $"Rozkaz zapisany — Id {id}";
     }
 
+    /// <summary>Odświeża otwarty edytor po powrocie z innego widoku TUKAN.</summary>
+    public async Task OdswiezPoAktywacjiAsync()
+    {
+        if (EditorVm is null) return;
+
+        try
+        {
+            await EditorVm.OdswiezPoPowrocieZInnegoWidokuAsync();
+        }
+        catch (Exception ex)
+        {
+            SkrybekLog.Error("Błąd odświeżania po aktywacji widoku", ex);
+        }
+    }
+
     /// <summary>Odświeża listę rozkazów i otwarty edytor po zamknięciu ustawień.</summary>
     public async Task OdswiezPoUstawieniachAsync()
     {
@@ -190,8 +211,10 @@ public sealed partial class MainViewModel : ObservableObject
             var wszyscy   = await ServiceProvider.Services.Personnel.GetWszyscyZmianaAsync(nrZmiany);
             var nrJrg     = await ServiceProvider.Services.UstawieniaRepo.GetAsync(
                 Core.Models.UstawieniaKlucze.NrJRG, "4");
+            var ustawieniaRatownikow = await ServiceProvider.Services.RatownikMedycznyUstawieniaRepo
+                .GetDlaZmianyAsync(nrZmiany);
 
-            EditorVm.OdswiezPoZamknieciuUstawien(samochody, personel, wszyscy, nrJrg);
+            EditorVm.OdswiezPoZamknieciuUstawien(samochody, personel, wszyscy, nrJrg, ustawieniaRatownikow);
             StatusMessage = $"Odświeżono widok — dostępnych: {personel.Count}";
         }
         catch (Exception ex)
