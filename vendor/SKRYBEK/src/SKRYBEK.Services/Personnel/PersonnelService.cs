@@ -43,19 +43,16 @@ public sealed class PersonnelService
         return await _repo.GetByZmianaAsync(nrZmiany);
     }
 
-    public List<Funkcjonariusz> FiltrujWgKryteriow(
+    public List<Funkcjonariusz> FiltrujWgUprawnieniami(
         IEnumerable<Funkcjonariusz> lista,
-        bool tylkoKierowcyC,
-        bool tylkoKierowcyCE,
-        bool tylkoNurkowie,
-        bool tylkoKPP)
+        IReadOnlyCollection<int> wymaganeTypyIds)
     {
-        return lista.Where(f =>
-            (!tylkoKierowcyC  || f.MaUprawnieniaKierowcaC) &&
-            (!tylkoKierowcyCE || f.MaUprawnieniaKierowcaCE) &&
-            (!tylkoNurkowie   || f.MaUprawnieniaNumek) &&
-            (!tylkoKPP        || f.MaUprawnieniaKPP)
-        ).ToList();
+        if (wymaganeTypyIds.Count == 0)
+            return lista.ToList();
+
+        return lista
+            .Where(f => wymaganeTypyIds.All(id => f.IdUprawnien.Contains(id)))
+            .ToList();
     }
 
     /// <summary>
