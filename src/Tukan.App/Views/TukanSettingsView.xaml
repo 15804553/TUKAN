@@ -1,11 +1,7 @@
 <UserControl x:Class="Tukan.App.Views.TukanSettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:Tukan.App.Views">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <TabControl x:Name="SettingsTabControl">
-        <TabItem x:Name="WygladTab" Header="Wygląd">
-            <ContentControl x:Name="WygladThemeHost" />
-        </TabItem>
         <TabItem x:Name="ChomikTab" Header="Personel">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
@@ -17,19 +13,14 @@
         <TabItem x:Name="GrafikTab" Header="Grafik">
             <ContentControl x:Name="BoberSettingsHost" />
         </TabItem>
-        <TabItem x:Name="OgolneTab" Header="Ogólne" Visibility="Collapsed">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel>
-                    <ContentControl x:Name="DcaThemeHost" />
-                    <ContentControl x:Name="SkrybekOgolneBackupHost" />
-                </StackPanel>
-            </ScrollViewer>
-        </TabItem>
         <TabItem x:Name="PojazdyTab" Header="Pojazdy" Visibility="Collapsed">
             <ContentControl x:Name="SkrybekPojazdyHost" />
         </TabItem>
-        <TabItem x:Name="RozkazyTab" Header="Rozkazy">
+        <TabItem x:Name="RozkazyTab" Header="Rozkazy" Visibility="Collapsed">
             <ContentControl x:Name="SkrybekSettingsHost" />
+        </TabItem>
+        <TabItem x:Name="ExportPathsTab" Header="Ścieżki eksportu" Visibility="Collapsed">
+            <ContentControl x:Name="ExportPathsHost" />
         </TabItem>
     </TabControl>
 </UserControl>

@@ -5,8 +5,10 @@ using BOBER.Services.Auth;
 using BOBER.Services.Database;
 using BOBER.Services.Export;
 using BOBER.Services.Grafik;
+using BOBER.Services.GrafikNurkowy;
 using BOBER.Services.Personnel;
 using BOBER.Services.Settings;
+using BOBER.Services.Urlop;
 
 namespace BOBER.Services;
 
@@ -24,6 +26,8 @@ public sealed class AppServices
 
         var authRepository = new AuthRepository(boberFactory);
         var grafikRepository = new GrafikRepository(boberFactory);
+        var urlopPlanRepository = new UrlopPlanRepository(boberFactory);
+        var grafikNurkowyRepository = new GrafikNurkowyRepository(boberFactory);
         var kolejnoscRepository = new KolejnoscRepository(boberFactory);
         var koloryRepository = new KoloryRepository(boberFactory);
         var ustawieniaRepository = new UstawieniaRepository(boberFactory);
@@ -40,6 +44,21 @@ public sealed class AppServices
         Calendar = calendarEngine;
         Funkcjonariusze = new FunkcjonariuszService(chomikRepository, kolejnoscRepository);
         Export = new ExportService();
+        UrlopPlan = new UrlopPlanService(
+            urlopPlanRepository,
+            grafikRepository,
+            calendarEngine,
+            Funkcjonariusze,
+            Settings,
+            new UrlopPlanValidator(),
+            new UrlopPlanExcelService());
+        GrafikNurkowy = new GrafikNurkowyService(
+            grafikRepository,
+            grafikNurkowyRepository,
+            calendarEngine,
+            Funkcjonariusze,
+            Settings,
+            new GrafikNurkowyExcelService());
         Database = new DatabaseService(bootstrapper, ChomikOptions);
     }
 
@@ -54,5 +73,7 @@ public sealed class AppServices
     public ShiftCalendarEngine Calendar { get; }
     public IFunkcjonariuszService Funkcjonariusze { get; }
     public ExportService Export { get; }
+    public IUrlopPlanService UrlopPlan { get; }
+    public IGrafikNurkowyService GrafikNurkowy { get; }
     public DatabaseService Database { get; }
 }

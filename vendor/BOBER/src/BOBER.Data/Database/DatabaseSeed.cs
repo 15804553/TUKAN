@@ -96,6 +96,7 @@ internal static class DatabaseSeed
                 "CHOMIK", "ChomikDatabase.accdb") },
             { "StanZmiany", "10" },
             { "StanMinimalny", "6" },
+            { "MaxUrlopowNaSluzbie", "5" },
             { "DataReferencyjna", "2026-01-01" },
             { "OffsetyZmian", "{\"1\":1,\"2\":2,\"3\":0}" },
             { "LiczbaZmian", "3" }

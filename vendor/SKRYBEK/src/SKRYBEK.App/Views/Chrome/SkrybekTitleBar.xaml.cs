@@ -18,6 +18,10 @@ public partial class SkrybekTitleBar : UserControl
         DependencyProperty.Register(nameof(ShowMaximizeButton), typeof(bool), typeof(SkrybekTitleBar),
             new PropertyMetadata(true, OnButtonVisibilityChanged));
 
+    public static readonly DependencyProperty ShowAppIconProperty =
+        DependencyProperty.Register(nameof(ShowAppIcon), typeof(bool), typeof(SkrybekTitleBar),
+            new PropertyMetadata(true, OnShowAppIconChanged));
+
     public string Title
     {
         get => (string)GetValue(TitleProperty);
@@ -36,9 +40,20 @@ public partial class SkrybekTitleBar : UserControl
         set => SetValue(ShowMaximizeButtonProperty, value);
     }
 
+    public bool ShowAppIcon
+    {
+        get => (bool)GetValue(ShowAppIconProperty);
+        set => SetValue(ShowAppIconProperty, value);
+    }
+
     public SkrybekTitleBar()
     {
         InitializeComponent();
+        Loaded += (_, _) =>
+        {
+            UpdateButtonVisibility();
+            UpdateAppIconVisibility();
+        };
     }
 
     private static void OnTitleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -50,10 +65,27 @@ public partial class SkrybekTitleBar : UserControl
     private static void OnButtonVisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is SkrybekTitleBar tb)
-        {
-            tb.MinimizeButton.Visibility = tb.ShowMinimizeButton ? Visibility.Visible : Visibility.Collapsed;
-            tb.MaximizeButton.Visibility = tb.ShowMaximizeButton ? Visibility.Visible : Visibility.Collapsed;
-        }
+            tb.UpdateButtonVisibility();
+    }
+
+    private static void OnShowAppIconChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is SkrybekTitleBar tb)
+            tb.UpdateAppIconVisibility();
+    }
+
+    private void UpdateButtonVisibility()
+    {
+        MinimizeButton.Visibility = ShowMinimizeButton ? Visibility.Visible : Visibility.Collapsed;
+        MaximizeButton.Visibility = ShowMaximizeButton ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdateAppIconVisibility()
+    {
+        if (AppIconImage is null)
+            return;
+
+        AppIconImage.Visibility = ShowAppIcon ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private Window? GetWindow() => Window.GetWindow(this);

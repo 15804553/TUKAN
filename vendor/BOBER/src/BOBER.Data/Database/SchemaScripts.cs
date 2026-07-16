@@ -43,6 +43,26 @@ internal static class SchemaScripts
             Klucz TEXT(100) NOT NULL,
             Wartosc TEXT(255) NOT NULL
         )
+        """,
+        """
+        CREATE TABLE UrlopPlanWpisy (
+            Id AUTOINCREMENT PRIMARY KEY,
+            FunkcjonariuszId LONG NOT NULL,
+            ZmianaId SHORT NOT NULL,
+            Rok SHORT NOT NULL,
+            Miesiac SHORT NOT NULL,
+            Dzien SHORT NOT NULL,
+            TypUrlopu TEXT(1) NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE GrafikNurkowyZatwierdzenia (
+            Rok SHORT NOT NULL,
+            Miesiac SHORT NOT NULL,
+            Zatwierdzony YESNO NOT NULL,
+            ZatwierdzonyPrzez TEXT(100),
+            DataZatwierdzenia DATETIME
+        )
         """
     ];
 }

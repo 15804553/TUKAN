@@ -33,7 +33,8 @@ public sealed class Funkcjonariusz
     public bool MaUprawnieniaKierowca => MaUprawnieniaKierowcaC || MaUprawnieniaKierowcaCE;
 
     public bool MaUprawnieniaNumek =>
-        IdUprawnien.Contains(ChomikSlowniki.UprawnienieNurek);
+        IdUprawnien.Contains(ChomikSlowniki.UprawnienieNurek)
+        || NazwyUprawnien.Any(u => u.Contains("Nurek", StringComparison.OrdinalIgnoreCase));
 
     public bool MaUprawnieniaKPP =>
         IdUprawnien.Contains(ChomikSlowniki.UprawnienieKPP);

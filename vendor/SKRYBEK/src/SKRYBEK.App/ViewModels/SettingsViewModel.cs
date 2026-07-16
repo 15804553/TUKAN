@@ -156,7 +156,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         await LoadAsync();
         Wybranysamochod = Samochody.FirstOrDefault(x => x.Id == noweId)
             ?? Samochody.LastOrDefault();
-        StatusMessage = "Dodano pojazd — ustaw wymagane uprawnienia po prawej i kliknij „Zapisz”.";
+        StatusMessage = "Dodano pojazd — ustaw wymagane uprawnienia po prawej i kliknij „Zapisz zmiany”.";
     }
 
     [RelayCommand]
@@ -190,7 +190,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         if (!SkrybekMessageBox.Confirm(
             $"Czy usunąć pojazd '{s.Nazwa}'?",
-            "Potwierdź usunięcie",
+            "TUKAN",
             SkrybekMessageKind.Warning)) return;
 
         try

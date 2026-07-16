@@ -17,6 +17,7 @@ public static class RoleKeys
     /// <summary>Legacy — usuwany migracją; D i WS używają <see cref="WolnaSluzba"/>.</summary>
     public const string Dyzur = "Dyzur";
     public const string WolnaSluzba = "WolnaSluzba";
+    public const string DzienSluzby = "DzienSluzby";
     public const string EksportNaglowekStopkaTlo = "EksportNaglowekStopkaTlo";
     public const string EksportNaglowekStopkaCzcionka = "EksportNaglowekStopkaCzcionka";
 
@@ -34,6 +35,7 @@ public static class RoleKeys
         [
             .. WszystkieRole,
             WolnaSluzba,
+            DzienSluzby,
             NurekCzcionka,
             EksportNaglowekStopkaTlo,
             EksportNaglowekStopkaCzcionka
@@ -50,6 +52,7 @@ public static class RoleKeys
             { Kierowca, "Kierowca (C/C+E/D)" },
             { Zwykly, "Zwykły strażak" },
             { WolnaSluzba, "D / WS — tło komórki" },
+            { DzienSluzby, "Dzień służby — plan urlopów" },
             { EksportNaglowekStopkaTlo, "Eksport — tło nagłówka i stopki" },
             { EksportNaglowekStopkaCzcionka, "Eksport — czcionka nagłówka i stopki" }
         };
@@ -71,6 +74,7 @@ public static class RoleKeys
         new Dictionary<string, string>
         {
             { WolnaSluzba, "#6A5C00" },
+            { DzienSluzby, "#FFD700" },
             { NurekCzcionka, "#F80808" }
         };
 

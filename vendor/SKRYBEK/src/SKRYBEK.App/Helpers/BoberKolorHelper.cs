@@ -37,9 +37,15 @@ public static class BoberKolorHelper
     public static Brush DomyslnyForeground =>
         new SolidColorBrush(KontrastowyTekst(Color.FromRgb(0x2D, 0x2D, 0x2D)));
 
+    /// <summary>Stały czarny tekst na liście personelu — niezależnie od roli i uprawnień.</summary>
+    public static Brush KolorCzcionkiListy => Brushes.Black;
+
     public static Brush WyznaczKolorTla(Funkcjonariusz osoba) =>
         new SolidColorBrush(PobierzKolorTlaRoli(WyznaczKluczRoliTla(osoba)));
 
+    /// <summary>
+    /// Kolor tekstu w comboboxach — kontrast do tła roli; czerwony dla nurka (jak w grafiku BOBER).
+    /// </summary>
     public static Brush WyznaczKolorForeground(Funkcjonariusz osoba)
     {
         if (CzyNurek(osoba))
@@ -49,7 +55,16 @@ public static class BoberKolorHelper
         return new SolidColorBrush(KontrastowyTekst(tlo));
     }
 
-    private static bool CzyNurek(Funkcjonariusz osoba) =>
+    /// <summary>
+    /// Czerwona obwódka wyróżniająca nurka na liście dostępnego personelu.
+    /// Dla pozostałych — przezroczysta, przy stałej grubości 2 px bez przesuwania layoutu.
+    /// </summary>
+    public static Brush WyznaczKolorObramowaniaNurek(Funkcjonariusz osoba) =>
+        CzyNurek(osoba)
+            ? new SolidColorBrush(PobierzHexKlucza(KluczNurekCzcionka))
+            : Brushes.Transparent;
+
+    public static bool CzyNurek(Funkcjonariusz osoba) =>
         osoba.MaUprawnieniaNumek || osoba.MaUprawnieniaKPP;
 
     /// <summary>

@@ -95,6 +95,8 @@ public partial class BoberSettingsView : UserControl
             NazwaZmianyHeader.Text = _controller.NazwaZmiany;
             StanZmianyTextBox.Text = (await _controller.GetStanZmianyAsync(_controller.ZmianaId)).ToString();
             StanMinimalnyTextBox.Text = (await _controller.GetStanMinimalnyAsync(_controller.ZmianaId)).ToString();
+            MaxUrlopowNaSluzbieTextBox.Text =
+                (await _controller.GetMaxUrlopowNaSluzbieAsync(_controller.ZmianaId)).ToString();
         }
         catch (Exception ex)
         {
@@ -195,6 +197,11 @@ public partial class BoberSettingsView : UserControl
                 await _controller.SetStanMinimalnyAsync(_controller.ZmianaId, stanMin);
             }
 
+            if (int.TryParse(MaxUrlopowNaSluzbieTextBox.Text, out var maxUrlopow))
+            {
+                await _controller.SetMaxUrlopowNaSluzbieAsync(_controller.ZmianaId, maxUrlopow);
+            }
+
             var kolejnosc = _kolejnoscLista.Select(f => f.Id).ToList();
             await _controller.SaveKolejnoscAsync(kolejnosc);
 
@@ -255,20 +262,19 @@ public partial class BoberSettingsView : UserControl
 
     private async void OnClearH1Click(object sender, RoutedEventArgs e)
     {
-        var result = BoberMessageBox.Show(
-            GetOwnerWindow(),
-            "Czy wyczyścić wszystkie wpisy z I półrocza (Styczeń–Czerwiec)?",
-            "BOBER",
-            BoberMessageButtons.YesNo);
+        var dialog = new ClearHalfYearDialog("I półrocza (Styczeń–Czerwiec)")
+        {
+            Owner = GetOwnerWindow()
+        };
 
-        if (result != MessageBoxResult.Yes)
+        if (dialog.ShowDialog() != true)
         {
             return;
         }
 
         try
         {
-            await _controller.ClearHalfYearAsync(1);
+            await _controller.ClearHalfYearAsync(1, dialog.AlsoClearUrlopPlan);
             BoberMessageBox.Show(GetOwnerWindow(), "I półrocze zostało wyczyszczone.", "BOBER");
         }
         catch (Exception ex)
@@ -279,20 +285,19 @@ public partial class BoberSettingsView : UserControl
 
     private async void OnClearH2Click(object sender, RoutedEventArgs e)
     {
-        var result = BoberMessageBox.Show(
-            GetOwnerWindow(),
-            "Czy wyczyścić wszystkie wpisy z II półrocza (Lipiec–Grudzień)?",
-            "BOBER",
-            BoberMessageButtons.YesNo);
+        var dialog = new ClearHalfYearDialog("II półrocza (Lipiec–Grudzień)")
+        {
+            Owner = GetOwnerWindow()
+        };
 
-        if (result != MessageBoxResult.Yes)
+        if (dialog.ShowDialog() != true)
         {
             return;
         }
 
         try
         {
-            await _controller.ClearHalfYearAsync(2);
+            await _controller.ClearHalfYearAsync(2, dialog.AlsoClearUrlopPlan);
             BoberMessageBox.Show(GetOwnerWindow(), "II półrocze zostało wyczyszczone.", "BOBER");
         }
         catch (Exception ex)

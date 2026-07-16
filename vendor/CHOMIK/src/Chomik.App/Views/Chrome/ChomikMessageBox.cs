@@ -10,6 +10,11 @@ public enum ChomikMessageButtons
 
 public static class ChomikMessageBox
 {
+    /// <summary>
+    /// Gdy ustawione (np. przez hosta TUKAN), zastępuje tytuł okienka komunikatu.
+    /// </summary>
+    public static string? ApplicationTitleOverride { get; set; }
+
     public static void Show(Window? owner, string message, string title = "Chomik") =>
         Show(owner, message, title, ChomikMessageButtons.Ok);
 
@@ -20,7 +25,7 @@ public static class ChomikMessageBox
         ChomikMessageButtons buttons)
     {
         var window = new ChomikMessageWindow();
-        window.Configure(message, title, buttons);
+        window.Configure(message, ResolveTitle(title), buttons);
 
         if (owner is not null)
         {
@@ -35,4 +40,7 @@ public static class ChomikMessageBox
         window.ShowDialog();
         return window.Result;
     }
+
+    private static string ResolveTitle(string title) =>
+        string.IsNullOrWhiteSpace(ApplicationTitleOverride) ? title : ApplicationTitleOverride;
 }

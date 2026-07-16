@@ -1,0 +1,96 @@
+<UserControl x:Class="BOBER.App.Views.GrafikNurkowyView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Rok:"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <ComboBox x:Name="YearComboBox"
+                              Width="90"
+                              Margin="0,0,16,0"
+                              SelectionChanged="OnYearOrMonthChanged" />
+                    <TextBlock Text="Miesiąc:"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <ComboBox x:Name="MonthComboBox"
+                              Width="130"
+                              SelectionChanged="OnYearOrMonthChanged" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="RefreshButton"
+                            Content="Odśwież"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="12,6"
+                            Margin="0,0,8,0"
+                            Click="OnRefreshClick" />
+                    <Button x:Name="ApproveButton"
+                            Content="Zatwierdź grafik"
+                            Style="{StaticResource PrimaryButton}"
+                            Padding="12,6"
+                            Margin="0,0,8,0"
+                            Visibility="Collapsed"
+                            Click="OnApproveClick" />
+                    <Button x:Name="UnlockButton"
+                            Content="Cofnij zatwierdzenie"
+                            Style="{StaticResource DangerButton}"
+                            Padding="12,6"
+                            Visibility="Collapsed"
+                            Click="OnUnlockClick" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1"
+                Background="{StaticResource BackgroundBrush}"
+                Padding="12,8,12,4">
+            <TextBlock x:Name="StatusTextBlock"
+                       Foreground="{StaticResource ForegroundMutedBrush}"
+                       FontSize="12"
+                       TextWrapping="Wrap" />
+        </Border>
+
+        <DataGrid x:Name="PreviewGrid"
+                  Grid.Row="2"
+                  Margin="8"
+                  Style="{StaticResource BoberDataGrid}"
+                  IsReadOnly="True"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  AutoGenerateColumns="False"
+                  HeadersVisibility="Column"
+                  SelectionMode="Single"
+                  SelectionUnit="FullRow" />
+
+        <Border Grid.Row="3"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="12,5">
+            <TextBlock Foreground="{StaticResource ForegroundMutedBrush}"
+                       FontSize="11"
+                       Text="Wartości: 1 — dostępny w pracy  |  U — urlop  |  puste — dzień wolny lub inny status (nie uwzględniany)" />
+        </Border>
+    </Grid>
+</UserControl>

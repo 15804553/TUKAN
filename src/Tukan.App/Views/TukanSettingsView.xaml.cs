@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using BOBER.App.Controllers;
 using BOBER.App.Views;
 using Chomik.App.Controllers;
@@ -25,7 +24,12 @@ public partial class TukanSettingsView : UserControl
         _tukanServices = tukanServices;
         _chomikSettingsController = new Chomik.App.Controllers.SettingsController(tukanServices.Chomik);
 
-        PlaceThemeSettingsPanel();
+        if (IsAdministratorAccount)
+        {
+            ConfigureAdministratorTabs();
+            return;
+        }
+
         InitializeChomikSettings(dashboardController);
         InitializeRatownikMedycznySettings();
 
@@ -36,47 +40,56 @@ public partial class TukanSettingsView : UserControl
         else
         {
             InitializeBoberSettings();
-            InitializeSkrybekSettings();
+            RozkazyTab.Visibility = Visibility.Collapsed;
         }
     }
 
     private bool IsDcaJrgAccount => _tukanServices.SkrybekSession?.CanEditAll == true;
 
-    private void PlaceThemeSettingsPanel()
+    private bool IsAdministratorAccount =>
+        _tukanServices.Chomik.Auth.CurrentUser?.CanManageExportPaths == true;
+
+    private void ConfigureAdministratorTabs()
     {
-        var themePanel = new TukanThemeSettingsControl();
+        ChomikTab.Visibility = Visibility.Collapsed;
+        GrafikTab.Visibility = Visibility.Collapsed;
+        RozkazyTab.Visibility = Visibility.Collapsed;
+        PojazdyTab.Visibility = Visibility.Collapsed;
+        ExportPathsTab.Visibility = Visibility.Visible;
 
-        if (IsDcaJrgAccount)
-        {
-            DcaThemeHost.Content = themePanel;
-            return;
-        }
-
-        WygladThemeHost.Content = themePanel;
+        var pathsControl = new ExportPathsSettingsControl(_tukanServices.Bober.Settings);
+        pathsControl.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+        ExportPathsHost.Content = pathsControl;
+        SettingsTabControl.SelectedItem = ExportPathsTab;
     }
 
     private void ConfigureDcaJrgTabs()
     {
         ChomikTab.Header = "Uprawnienia/Kursy";
-        WygladTab.Visibility = Visibility.Collapsed;
         GrafikTab.Visibility = Visibility.Collapsed;
-        RozkazyTab.Visibility = Visibility.Collapsed;
-        OgolneTab.Visibility = Visibility.Visible;
         PojazdyTab.Visibility = Visibility.Visible;
+        RozkazyTab.Visibility = Visibility.Visible;
 
         var session = _tukanServices.SkrybekSession!;
         var skrybekViewModel = new SettingsViewModel(session);
         _ = skrybekViewModel.LoadAsync();
 
-        SkrybekOgolneBackupHost.Content = new SkrybekSettingsView(
+        SkrybekSettingsHost.Content = new SkrybekSettingsView(
             session, SkrybekSettingsSection.OgolneZBackupem, skrybekViewModel);
-        SkrybekPojazdyHost.Content = new SkrybekSettingsView(session, SkrybekSettingsSection.Pojazdy, skrybekViewModel);
+        SkrybekPojazdyHost.Content = new SkrybekSettingsView(
+            session, SkrybekSettingsSection.Pojazdy, skrybekViewModel);
 
         SelectDefaultTab();
     }
 
     public void SelectDefaultTab()
     {
+        if (IsAdministratorAccount)
+        {
+            SettingsTabControl.SelectedItem = ExportPathsTab;
+            return;
+        }
+
         if (IsDcaJrgAccount)
         {
             SettingsTabControl.SelectedItem = ChomikTab;
@@ -125,22 +138,5 @@ public partial class TukanSettingsView : UserControl
         };
         view.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
         BoberSettingsHost.Content = view;
-    }
-
-    private void InitializeSkrybekSettings()
-    {
-        if (_tukanServices.SkrybekSession?.CanEditAll == true)
-        {
-            SkrybekSettingsHost.Content = new SkrybekSettingsView(_tukanServices.SkrybekSession);
-            return;
-        }
-
-        SkrybekSettingsHost.Content = new TextBlock
-        {
-            Text = "Ustawienia rozkazów są dostępne wyłącznie dla konta DCA JRG.",
-            Margin = new Thickness(16),
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = (Brush)FindResource("MutedTextBrush")
-        };
     }
 }

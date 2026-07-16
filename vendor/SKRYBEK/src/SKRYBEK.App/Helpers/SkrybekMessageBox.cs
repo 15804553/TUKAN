@@ -28,6 +28,11 @@ public enum SkrybekMessageResult
 /// <summary>Okna komunikatów w stylistyce SKRYBEK (zamiast systemowego MessageBox).</summary>
 public static class SkrybekMessageBox
 {
+    /// <summary>
+    /// Gdy ustawione (np. przez hosta TUKAN), zastępuje tytuł okienka komunikatu.
+    /// </summary>
+    public static string? ApplicationTitleOverride { get; set; }
+
     public static SkrybekMessageResult Show(
         string message,
         string title,
@@ -35,7 +40,7 @@ public static class SkrybekMessageBox
         SkrybekMessageKind kind = SkrybekMessageKind.Information,
         Window? owner = null)
     {
-        var dlg = new SkrybekMessageDialog(message, title, buttons, kind);
+        var dlg = new SkrybekMessageDialog(message, ResolveTitle(title), buttons, kind);
         UstawWlasciciela(dlg, owner);
         dlg.ShowDialog();
         return dlg.Result;
@@ -66,4 +71,7 @@ public static class SkrybekMessageBox
             dlg.WindowStartupLocation = WindowStartupLocation.CenterScreen;
         }
     }
+
+    private static string ResolveTitle(string title) =>
+        string.IsNullOrWhiteSpace(ApplicationTitleOverride) ? title : ApplicationTitleOverride;
 }

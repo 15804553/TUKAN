@@ -92,12 +92,23 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     // ── Personel ──────────────────────────────────────────────────────────────
     public ObservableCollection<Funkcjonariusz> WszystkieOsoby { get; } = [];
     public ObservableCollection<Funkcjonariusz> Przefiltrowane { get; } = [];
-    [ObservableProperty] private bool _filterKierowcaC;
-    [ObservableProperty] private bool _filterKierowcaCE;
-    [ObservableProperty] private bool _filterNurek;
-    [ObservableProperty] private bool _filterKPP;
+    public ObservableCollection<TypUprawnieniaItem> FiltryUprawnien { get; } = [];
+    [ObservableProperty] private bool _czyFiltryDropDownOtwarte;
     [ObservableProperty] private int _liczbaDostepnych;
     [ObservableProperty] private string _personelInfo = string.Empty;
+
+    public string OpisFiltrowUprawnien
+    {
+        get
+        {
+            var wybrane = FiltryUprawnien.Where(f => f.CzyWybrane).ToList();
+            if (wybrane.Count == 0)
+                return "Wybierz uprawnienia / kursy…";
+            if (wybrane.Count == 1)
+                return wybrane[0].Nazwa;
+            return $"Wybrano: {wybrane.Count}";
+        }
+    }
 
     // ── Sekcje ────────────────────────────────────────────────────────────────
     public ObservableCollection<PozycjaSluzbyViewModel> Sluzba { get; } = [];
@@ -147,6 +158,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         }
 
         LiczbaDostepnych = personel.Count;
+        ZbudujListeFiltrowUprawnien();
         PersonelInfo = personel.Count == 0
             ? "Brak osób w pracy w tym dniu — sprawdź grafik BOBER."
             : $"{personel.Count} os. dostępnych na {rozkaz.Data:dd.MM.yyyy}";
@@ -501,19 +513,41 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 
     // ── Filtrowanie personelu ─────────────────────────────────────────────────
 
-    partial void OnFilterKierowcaCChanged(bool value) => ApplyFilter();
-    partial void OnFilterKierowcaCEChanged(bool value) => ApplyFilter();
-    partial void OnFilterNurekChanged(bool value) => ApplyFilter();
-    partial void OnFilterKPPChanged(bool value) => ApplyFilter();
+    private bool _pominOdswiezanieFiltra;
+
+    private void ZbudujListeFiltrowUprawnien()
+    {
+        FiltryUprawnien.Clear();
+        foreach (var (id, nazwa) in _nazwyTypowUprawnien
+                     .OrderBy(kv => kv.Value, StringComparer.CurrentCultureIgnoreCase))
+        {
+            var item = new TypUprawnieniaItem(id, nazwa);
+            item.PropertyChanged += OnFiltrUprawnieniaChanged;
+            FiltryUprawnien.Add(item);
+        }
+    }
+
+    private void OnFiltrUprawnieniaChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_pominOdswiezanieFiltra)
+            return;
+
+        if (e.PropertyName == nameof(TypUprawnieniaItem.CzyWybrane))
+        {
+            OnPropertyChanged(nameof(OpisFiltrowUprawnien));
+            ApplyFilter();
+        }
+    }
 
     private void ApplyFilter()
     {
-        var filtered = ServiceProvider.Services.Personnel.FiltrujWgKryteriow(
-            WszystkieOsoby,
-            FilterKierowcaC,
-            FilterKierowcaCE,
-            FilterNurek,
-            FilterKPP);
+        var wymaganeIds = FiltryUprawnien
+            .Where(f => f.CzyWybrane)
+            .Select(f => f.Id)
+            .ToList();
+
+        var filtered = ServiceProvider.Services.Personnel.FiltrujWgUprawnieniami(
+            WszystkieOsoby, wymaganeIds);
 
         Przefiltrowane.Clear();
         foreach (var osoba in filtered)
@@ -564,7 +598,10 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         BuildModelFromViewModels();
         try
         {
-            var outputDir = System.IO.Path.Combine(AppContext.BaseDirectory, "Eksport");
+            var configured = await ServiceProvider.Services.UstawieniaRepo.GetAsync("ExportPathRozkazy");
+            var outputDir = !string.IsNullOrWhiteSpace(configured)
+                ? configured.Trim()
+                : System.IO.Path.Combine(AppContext.BaseDirectory, "Eksport");
             var path = ServiceProvider.Services.WordExport.ExportRozkaz(_rozkaz, _samochody, NrJrg, outputDir);
             StatusMessage = $"Wyeksportowano: {System.IO.Path.GetFileName(path)}";
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
@@ -578,13 +615,19 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     [RelayCommand]
     private void ResetujFiltr()
     {
-        FilterKierowcaC  = false;
-        FilterKierowcaCE = false;
-        FilterNurek      = false;
-        FilterKPP        = false;
-        Przefiltrowane.Clear();
-        foreach (var osoba in WszystkieOsoby)
-            Przefiltrowane.Add(osoba);
+        _pominOdswiezanieFiltra = true;
+        try
+        {
+            foreach (var filtr in FiltryUprawnien)
+                filtr.CzyWybrane = false;
+        }
+        finally
+        {
+            _pominOdswiezanieFiltra = false;
+        }
+
+        OnPropertyChanged(nameof(OpisFiltrowUprawnien));
+        ApplyFilter();
     }
 
     // ── Walidacja konfliktu pojazd podstawowy ────────────────────────────────

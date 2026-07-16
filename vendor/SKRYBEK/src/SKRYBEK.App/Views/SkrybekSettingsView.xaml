@@ -95,41 +95,36 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellEditingTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Pozycji"
+                                <DataGridTextColumn Header="Ilość osób"
                                                     Binding="{Binding LiczbaPozycji, UpdateSourceTrigger=LostFocus}"
-                                                    Width="60"
+                                                    Width="80"
                                                     CellStyle="{StaticResource SkrybekCell}"
                                                     HeaderStyle="{StaticResource SkrybekColumnHeader}" />
-                                <DataGridTextColumn Header="Kol."
+                                <DataGridTextColumn Header="Kolejność"
                                                     Binding="{Binding Kolejnosc, UpdateSourceTrigger=LostFocus}"
-                                                    Width="45"
+                                                    Width="80"
                                                     CellStyle="{StaticResource SkrybekCell}"
                                                     HeaderStyle="{StaticResource SkrybekColumnHeader}" />
-                                <DataGridTemplateColumn Header="Akcje" Width="Auto" MinWidth="120">
+                                <DataGridTemplateColumn Header="Usuwanie" Width="Auto" MinWidth="70">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal"
-                                                        Visibility="{Binding DataContext.CanEditPojazdy,
-                                                                     RelativeSource={RelativeSource AncestorType=DataGrid},
-                                                                     Converter={StaticResource BoolToVisibilityConverter}}">
-                                                <Button Content="Zapisz"
-                                                        Style="{StaticResource SecondaryButton}"
-                                                        Padding="6,2"
-                                                        FontSize="11"
-                                                        PreviewMouseLeftButtonDown="OnSamochodGridActionPreviewMouseDown"
-                                                        Command="{Binding DataContext.ZapiszSamochodCommand,
-                                                                 RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                        CommandParameter="{Binding}"
-                                                        Margin="0,0,6,0" />
-                                                <Button Content="Usuń"
-                                                        Style="{StaticResource SecondaryButton}"
-                                                        Padding="6,2"
-                                                        FontSize="11"
-                                                        PreviewMouseLeftButtonDown="OnSamochodGridActionPreviewMouseDown"
-                                                        Command="{Binding DataContext.UsunSamochodCommand,
-                                                                 RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                        CommandParameter="{Binding}" />
-                                            </StackPanel>
+                                            <Button Content="✕"
+                                                    Width="26" Height="26"
+                                                    FontSize="12"
+                                                    FontWeight="Bold"
+                                                    Padding="0"
+                                                    Cursor="Hand"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Foreground="{StaticResource ButtonCloseBrush}"
+                                                    ToolTip="Usuń pojazd"
+                                                    Visibility="{Binding DataContext.CanEditPojazdy,
+                                                                 RelativeSource={RelativeSource AncestorType=DataGrid},
+                                                                 Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    PreviewMouseLeftButtonDown="OnSamochodGridActionPreviewMouseDown"
+                                                    Command="{Binding DataContext.UsunSamochodCommand,
+                                                             RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -155,7 +150,7 @@
                                            Foreground="{StaticResource ForegroundBrush}"
                                            TextWrapping="Wrap"
                                            Margin="0,0,0,8" />
-                                <TextBlock Text="Zaznacz dodatkowe uprawnienia, kursy lub szkolenia wymagane na pozycjach 1.D lub 2.K tego pojazdu (nie dotyczą pozycji 3+). Po zmianie kliknij „Zapisz” przy pojeździe lub „Zapisz zmiany” na dole okna."
+                                <TextBlock Text="Zaznacz dodatkowe uprawnienia, kursy lub szkolenia wymagane na pozycjach 1.D lub 2.K tego pojazdu (nie dotyczą pozycji 3+). Po zmianie kliknij „Zapisz zmiany” na dole okna."
                                            FontSize="11"
                                            Foreground="{StaticResource ForegroundMutedBrush}"
                                            TextWrapping="Wrap"

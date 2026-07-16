@@ -19,6 +19,13 @@ public partial class SkrybekMessageDialog : Window
         Title = title;
         TitleBar.Title = title;
         MessageText.Text = message;
+
+        if (!string.IsNullOrWhiteSpace(SkrybekMessageBox.ApplicationTitleOverride))
+        {
+            TitleBar.ShowAppIcon = false;
+            Icon = null;
+        }
+
         UstawIkone(kind);
         ZbudujPrzyciski(buttons);
         KeyDown += OnKeyDown;

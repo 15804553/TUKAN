@@ -13,6 +13,8 @@ public static class TukanDatabaseConsolidator
     [
         "UzytkownicyBOBER",
         "GrafikWpisy",
+        "UrlopPlanWpisy",
+        "GrafikNurkowyZatwierdzenia",
         "KolejnoscFunkcjonariuszy",
         "KoloryStanowisk"
     ];

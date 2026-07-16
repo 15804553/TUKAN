@@ -56,6 +56,89 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         await MigrateNurekRoleMergeAsync(connection, cancellationToken);
         await MigrateRemoveDyzurColorAsync(connection, cancellationToken);
         await MigrateExportBandColorsAsync(connection, cancellationToken);
+        await MigrateUrlopPlanWpisyTableAsync(connection, cancellationToken);
+        await MigrateDzienSluzbyColorAsync(connection, cancellationToken);
+        await MigrateGrafikNurkowyZatwierdzeniaTableAsync(connection, cancellationToken);
+    }
+
+    private static async Task MigrateGrafikNurkowyZatwierdzeniaTableAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await ExecuteDdlAsync(connection,
+            """
+            CREATE TABLE GrafikNurkowyZatwierdzenia (
+                Rok SHORT NOT NULL,
+                Miesiac SHORT NOT NULL,
+                Zatwierdzony YESNO NOT NULL,
+                ZatwierdzonyPrzez TEXT(100),
+                DataZatwierdzenia DATETIME
+            )
+            """,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Dodaje domyślny kolor oznaczenia dnia służby w planie urlopów.
+    /// </summary>
+    private static async Task MigrateDzienSluzbyColorAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        const string migrationKey = "MigratedDzienSluzbyColor20260710";
+
+        try
+        {
+            await using var checkCmd = new OleDbCommand(
+                "SELECT COUNT(*) FROM Ustawienia WHERE Klucz = ? AND Wartosc = '1'",
+                connection);
+            checkCmd.Parameters.AddWithValue("@p1", migrationKey);
+            if (Convert.ToInt32(await checkCmd.ExecuteScalarAsync(cancellationToken)) > 0)
+                return;
+
+            await using (var existsCmd = new OleDbCommand(
+                "SELECT COUNT(*) FROM KoloryStanowisk WHERE KluczRoli = ?",
+                connection))
+            {
+                existsCmd.Parameters.AddWithValue("@p1", RoleKeys.DzienSluzby);
+                if (Convert.ToInt32(await existsCmd.ExecuteScalarAsync(cancellationToken)) == 0)
+                {
+                    await using var insertCmd = new OleDbCommand(
+                        "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
+                        connection);
+                    insertCmd.Parameters.AddWithValue("@p1", RoleKeys.DzienSluzby);
+                    insertCmd.Parameters.AddWithValue("@p2", RoleKeys.DomyslneKoloryWpisow[RoleKeys.DzienSluzby]);
+                    await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+                }
+            }
+
+            await using var flagCmd = new OleDbCommand(
+                "INSERT INTO Ustawienia (Klucz, Wartosc) VALUES (?, ?)",
+                connection);
+            flagCmd.Parameters.AddWithValue("@p1", migrationKey);
+            flagCmd.Parameters.AddWithValue("@p2", "1");
+            await flagCmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch { /* seed uzupełni brakujące dane */ }
+    }
+
+    private static async Task MigrateUrlopPlanWpisyTableAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await ExecuteDdlAsync(connection,
+            """
+            CREATE TABLE UrlopPlanWpisy (
+                Id AUTOINCREMENT PRIMARY KEY,
+                FunkcjonariuszId LONG NOT NULL,
+                ZmianaId SHORT NOT NULL,
+                Rok SHORT NOT NULL,
+                Miesiac SHORT NOT NULL,
+                Dzien SHORT NOT NULL,
+                TypUrlopu TEXT(1) NOT NULL
+            )
+            """,
+            cancellationToken);
     }
 
     private static void MigrateLegacyDatabaseFile(string newFullPath)
