@@ -26,6 +26,7 @@
     <Color x:Key="ForegroundColor">#E0E0E0</Color>
     <Color x:Key="ForegroundMutedColor">#9E9E9E</Color>
     <Color x:Key="TitleBarColor">#252525</Color>
+    <Color x:Key="TitleBarForegroundColor">#E0E0E0</Color>
     <Color x:Key="ButtonHoverColor">#3A3A3A</Color>
     <Color x:Key="ControlHoverBorderColor">#7AAAC8</Color>
     <Color x:Key="ControlHoverFillColor">#333333</Color>
@@ -56,6 +57,7 @@
     <SolidColorBrush x:Key="ForegroundBrush" Color="{StaticResource ForegroundColor}" />
     <SolidColorBrush x:Key="ForegroundMutedBrush" Color="{StaticResource ForegroundMutedColor}" />
     <SolidColorBrush x:Key="TitleBarBrush" Color="{StaticResource TitleBarColor}" />
+    <SolidColorBrush x:Key="TitleBarForegroundBrush" Color="{StaticResource TitleBarForegroundColor}" />
     <SolidColorBrush x:Key="ButtonHoverBrush" Color="{StaticResource ButtonHoverColor}" />
     <SolidColorBrush x:Key="ControlHoverBorderBrush" Color="{StaticResource ControlHoverBorderColor}" />
     <SolidColorBrush x:Key="ControlHoverFillBrush" Color="{StaticResource ControlHoverFillColor}" />
@@ -80,7 +82,7 @@
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TitleBarForegroundBrush}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="ToolTip" Value="Zamknij" />
@@ -108,7 +110,7 @@
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TitleBarForegroundBrush}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">

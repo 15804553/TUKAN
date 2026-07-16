@@ -35,7 +35,8 @@ public static class TukanAppTheme
         SurfaceVariant: C("#E8ECED"), Card: C("#FFFFFF"), Border: C("#D5D8DC"),
         Text: C("#2C3E50"), MutedText: C("#7F8C8D"), SidebarMuted: C("#95A5A6"),
         SidebarBackground: C("#1E2A38"), AccentLight: C("#F39C12"),
-        TitleBar: C("#2C3E50"), ButtonHover: C("#2C3E50"), ButtonClose: C("#C42B1C"),
+        TitleBar: C("#2C3E50"), TitleBarForeground: C("#ECF0F1"),
+        ButtonHover: C("#2C3E50"), ButtonClose: C("#C42B1C"),
         ControlHoverBorder: C("#E67E22"), ControlHoverFill: C("#E8ECED"),
         Sidebar: C("#1E2A38"), SidebarAccent: C("#E67E22"), SidebarText: C("#ECF0F1"),
         SidebarMutedText: C("#95A5A6"), SidebarHover: C("#2C3E50"));
@@ -60,6 +61,7 @@ public static class TukanAppTheme
         SetColor(root, "ForegroundColor", palette.Text);
         SetColor(root, "ForegroundMutedColor", palette.MutedText);
         SetColor(root, "TitleBarColor", palette.TitleBar);
+        SetColor(root, "TitleBarForegroundColor", palette.TitleBarForeground);
         SetColor(root, "ButtonHoverColor", palette.ButtonHover);
         SetColor(root, "ButtonCloseColor", palette.ButtonClose);
         SetColor(root, "ControlHoverBorderColor", palette.ControlHoverBorder);
@@ -83,6 +85,7 @@ public static class TukanAppTheme
         SetBrush(root, "ForegroundBrush", palette.Text);
         SetBrush(root, "ForegroundMutedBrush", palette.MutedText);
         SetBrush(root, "TitleBarBrush", palette.TitleBar);
+        SetBrush(root, "TitleBarForegroundBrush", palette.TitleBarForeground);
         SetBrush(root, "ButtonHoverBrush", palette.ButtonHover);
         SetBrush(root, "ButtonCloseBrush", palette.ButtonClose);
         SetBrush(root, "ControlHoverBorderBrush", palette.ControlHoverBorder);
@@ -165,6 +168,7 @@ public static class TukanAppTheme
         Color SidebarBackground,
         Color AccentLight,
         Color TitleBar,
+        Color TitleBarForeground,
         Color ButtonHover,
         Color ButtonClose,
         Color ControlHoverBorder,

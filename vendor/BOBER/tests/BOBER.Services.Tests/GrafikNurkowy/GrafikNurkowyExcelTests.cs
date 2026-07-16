@@ -164,16 +164,17 @@ public sealed class GrafikNurkowyExcelServiceTests
             var ws = workbook.Worksheet(GrafikNurkowyConstants.BuildSheetName(8, 2026));
 
             // Day 1 header = róż (zm. II), day 3 = żółty (zm. I)
-            Assert.True(ColorsMatch(ws.Cell(2, 5).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana2));
-            Assert.True(ColorsMatch(ws.Cell(2, 7).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana1));
+            Assert.True(ColorsMatch(ws.Cell(2, 4).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana2));
+            Assert.True(ColorsMatch(ws.Cell(2, 6).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana1));
 
             Assert.True(ws.Cell(3, 1).IsMerged());
-            Assert.True(ws.Cell(3, 2).IsMerged());
-            Assert.True(ColorsMatch(ws.Cell(3, 1).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorSgrwn));
-            Assert.True(ColorsMatch(ws.Cell(3, 3).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana1));
-            Assert.True(ColorsMatch(ws.Cell(4, 3).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana2));
+            Assert.False(ws.Cell(3, 1).GetString().Contains("SGRW", StringComparison.OrdinalIgnoreCase));
+            Assert.True(ColorsMatch(ws.Cell(3, 1).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorJednostkaPsp));
+            Assert.True(ColorsMatch(ws.Cell(3, 2).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana1));
+            Assert.True(ColorsMatch(ws.Cell(4, 2).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana2));
             Assert.Equal(XLAlignmentHorizontalValues.Center,
-                ws.Cell(3, 7).Style.Alignment.Horizontal);
+                ws.Cell(3, 6).Style.Alignment.Horizontal);
+            Assert.True(string.IsNullOrWhiteSpace(ws.Cell(2, 1).GetString()));
         }
         finally
         {
@@ -227,7 +228,8 @@ public sealed class GrafikNurkowyExcelServiceTests
 
             // Znajdź wiersz podsumowania po etykiecie
             summaryRow = Enumerable.Range(3, 10)
-                .First(r => ws.Cell(r, 3).GetString().Contains("JRG", StringComparison.OrdinalIgnoreCase));
+                .First(r => ws.Cell(r, GrafikNurkowyConstants.ColImieNazwisko).GetString()
+                    .Contains("JRG", StringComparison.OrdinalIgnoreCase));
 
             var day3Col = GrafikNurkowyConstants.FirstDayCol + 3 - 1;
             var formula = ws.Cell(summaryRow, day3Col).FormulaA1;

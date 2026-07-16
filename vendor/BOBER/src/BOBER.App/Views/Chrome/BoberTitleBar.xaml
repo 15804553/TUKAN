@@ -15,7 +15,7 @@
                        Grid.Column="0"
                        Margin="14,0,0,0"
                        VerticalAlignment="Center"
-                       Foreground="{StaticResource ForegroundBrush}"
+                       Foreground="{StaticResource TitleBarForegroundBrush}"
                        FontWeight="SemiBold"
                        FontSize="13"
                        TextTrimming="CharacterEllipsis" />

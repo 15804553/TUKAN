@@ -23,7 +23,7 @@
             <TextBlock Grid.Column="1"
                        x:Name="TitleText"
                        Text="SKRYBEK"
-                       Foreground="{StaticResource ForegroundBrush}"
+                       Foreground="{StaticResource TitleBarForegroundBrush}"
                        FontWeight="Bold"
                        FontSize="13"
                        VerticalAlignment="Center"

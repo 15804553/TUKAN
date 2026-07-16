@@ -14,6 +14,8 @@ internal static class GrafikNurkowyExcelFormatter
         int miesiac,
         IReadOnlyList<Funkcjonariusz> wszyscyNurkowie)
     {
+        RemoveObsoleteSgrwnColumn(ws);
+
         var daysInMonth = DateTime.DaysInMonth(rok, miesiac);
         var lastDayCol = GrafikNurkowyConstants.FirstDayCol + daysInMonth - 1;
         var lastDataRow = FindLastDataRow(ws);
@@ -27,13 +29,32 @@ internal static class GrafikNurkowyExcelFormatter
 
         StyleTitle(ws, lastDayCol);
         StyleHeaderRow(ws, daysInMonth);
-        StyleUnitColumns(ws, lastDataRow, summaryRow);
+        StyleUnitColumn(ws, lastDataRow, summaryRow);
         StylePersonRows(ws, lastDataRow, daysInMonth, nameToZmiana);
         StyleSummaryRow(ws, summaryRow, daysInMonth);
         ApplyConditionalFormats(ws, lastDataRow, summaryRow, daysInMonth);
         StyleLegend(ws, summaryRow);
         ApplyColumnWidths(ws);
         ApplyRowHeights(ws, lastDataRow, summaryRow);
+    }
+
+    /// <summary>
+    /// Usuwa dawną kolumnę A (SGRW-N), jeśli plik powstał w starszym układzie.
+    /// </summary>
+    public static void RemoveObsoleteSgrwnColumn(IXLWorksheet ws)
+    {
+        var probe = ws.Cell(GrafikNurkowyConstants.FirstDataRow, 1);
+        var text = probe.IsMerged()
+            ? probe.MergedRange().FirstCell().GetString().Trim()
+            : probe.GetString().Trim();
+
+        if (!text.Contains("SGRW", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        if (probe.IsMerged())
+            probe.MergedRange().Unmerge();
+
+        ws.Column(1).Delete();
     }
 
     /// <summary>
@@ -136,9 +157,12 @@ internal static class GrafikNurkowyExcelFormatter
 
     private static void StyleHeaderRow(IXLWorksheet ws, int daysInMonth)
     {
+        // Bez etykiety „Jednostka PSP” w A2 — zostaje tylko scalona kolumna jednostki w danych.
+        ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.ColJednostkaPsp).Clear(XLClearOptions.Contents);
+
         var headerLabel = ws.Range(
             GrafikNurkowyConstants.HeaderRow,
-            GrafikNurkowyConstants.ColJednostkaPsp,
+            GrafikNurkowyConstants.ColImieNazwisko,
             GrafikNurkowyConstants.HeaderRow,
             GrafikNurkowyConstants.ColFunkcja);
         headerLabel.Style.Font.Bold = true;
@@ -146,8 +170,6 @@ internal static class GrafikNurkowyExcelFormatter
         headerLabel.Style.Fill.BackgroundColor = XLColor.FromHtml(GrafikNurkowyConstants.ColorBiale);
         headerLabel.Style.Alignment.Vertical = XLAlignmentVerticalValues.Bottom;
 
-        ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.ColJednostkaPsp)
-            .Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.ColImieNazwisko)
             .Style.Alignment.Horizontal = XLAlignmentHorizontalValues.General;
         ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.ColFunkcja)
@@ -164,33 +186,18 @@ internal static class GrafikNurkowyExcelFormatter
             ApplyThinBorder(cell);
         }
 
-        for (var col = GrafikNurkowyConstants.ColJednostkaPsp; col <= GrafikNurkowyConstants.ColFunkcja; col++)
+        for (var col = GrafikNurkowyConstants.ColImieNazwisko; col <= GrafikNurkowyConstants.ColFunkcja; col++)
             ApplyThinBorder(ws.Cell(GrafikNurkowyConstants.HeaderRow, col));
+        ApplyThinBorder(ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.ColJednostkaPsp));
     }
 
-    private static void StyleUnitColumns(IXLWorksheet ws, int lastDataRow, int summaryRow)
+    private static void StyleUnitColumn(IXLWorksheet ws, int lastDataRow, int summaryRow)
     {
         if (lastDataRow < GrafikNurkowyConstants.FirstDataRow)
             return;
 
         var endRow = Math.Max(lastDataRow, summaryRow);
-        UnmergeColumnIfNeeded(ws, GrafikNurkowyConstants.ColJednostkaSgrwn, GrafikNurkowyConstants.FirstDataRow, endRow);
         UnmergeColumnIfNeeded(ws, GrafikNurkowyConstants.ColJednostkaPsp, GrafikNurkowyConstants.FirstDataRow, endRow);
-
-        var sgrwnRange = ws.Range(
-            GrafikNurkowyConstants.FirstDataRow,
-            GrafikNurkowyConstants.ColJednostkaSgrwn,
-            endRow,
-            GrafikNurkowyConstants.ColJednostkaSgrwn);
-        sgrwnRange.Merge();
-        sgrwnRange.Value = GrafikNurkowyConstants.JednostkaSgrwn;
-        sgrwnRange.Style.Font.Bold = true;
-        sgrwnRange.Style.Font.FontSize = 26;
-        sgrwnRange.Style.Fill.BackgroundColor = XLColor.FromHtml(GrafikNurkowyConstants.ColorSgrwn);
-        sgrwnRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-        sgrwnRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-        sgrwnRange.Style.Alignment.TextRotation = 90;
-        ApplyThinBorder(sgrwnRange);
 
         var pspRange = ws.Range(
             GrafikNurkowyConstants.FirstDataRow,
@@ -233,10 +240,13 @@ internal static class GrafikNurkowyExcelFormatter
             ApplyThinBorder(nameCell);
 
             var funkcjaCell = ws.Cell(row, GrafikNurkowyConstants.ColFunkcja);
+            var funkcja = funkcjaCell.GetString().Trim();
             funkcjaCell.Style.Font.Bold = true;
             funkcjaCell.Style.Font.FontSize = 14;
-            // Kolor czcionki funkcji ustala formatowanie warunkowe (KPP → czerwony).
-            funkcjaCell.Style.Font.FontColor = XLColor.Black;
+            funkcjaCell.Style.Font.FontColor = funkcja.Equals(
+                    GrafikNurkowyConstants.FunkcjaKpp, StringComparison.OrdinalIgnoreCase)
+                ? XLColor.FromHtml(GrafikNurkowyConstants.ColorWartoscCzcionka)
+                : XLColor.Black;
             funkcjaCell.Style.Fill.BackgroundColor = rowColor;
             funkcjaCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
             funkcjaCell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
@@ -324,7 +334,6 @@ internal static class GrafikNurkowyExcelFormatter
 
     private static void ApplyColumnWidths(IXLWorksheet ws)
     {
-        ws.Column(GrafikNurkowyConstants.ColJednostkaSgrwn).Width = 8.43;
         ws.Column(GrafikNurkowyConstants.ColJednostkaPsp).Width = 8.43;
         ws.Column(GrafikNurkowyConstants.ColImieNazwisko).Width = 24.71;
         ws.Column(GrafikNurkowyConstants.ColFunkcja).Width = 12;

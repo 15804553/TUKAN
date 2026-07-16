@@ -17,10 +17,12 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
     public string ImieNazwisko { get; init; } = string.Empty;
     public string Stanowisko { get; init; } = string.Empty;
     public string KluczRoli { get; init; } = string.Empty;
-    /// <summary>Ma uprawnienia nurka (KPP lub Nurek) — czerwona czcionka w kolumnie imienia.</summary>
+    /// <summary>Ma uprawnienia nurka (KPP lub Nurek) — czerwone obramowanie w kolumnie imienia.</summary>
     public bool IsNurek { get; init; }
     public Brush RowBackground { get; set; } = Brushes.Transparent;
     public Brush RowForeground { get; set; } = Brushes.White;
+    /// <summary>Kolor obramowania imienia (czerwony dla nurka, przezroczysty w pozostałych przypadkach).</summary>
+    public Brush NameBorderBrush { get; set; } = Brushes.Transparent;
 
     /// <summary>Indekser dla kolumn dni DataGrid — binding: {Binding [1]}, {Binding [15]}, itd.</summary>
     public string this[int day]

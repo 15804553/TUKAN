@@ -20,13 +20,11 @@ public static class GrafikNurkowyConstants
     public const int TitleRow = 1;
     public const int HeaderRow = 2;
     public const int FirstDataRow = 3;
-    public const int ColJednostkaSgrwn = 1;
-    public const int ColJednostkaPsp = 2;
-    public const int ColImieNazwisko = 3;
-    public const int ColFunkcja = 4;
-    public const int FirstDayCol = 5;
+    public const int ColJednostkaPsp = 1;
+    public const int ColImieNazwisko = 2;
+    public const int ColFunkcja = 3;
+    public const int FirstDayCol = 4;
 
-    public const string ColorSgrwn = "#FFC000";
     public const string ColorJednostkaPsp = "#99CCFF";
     public const string ColorZmiana1 = "#FFFF00";
     public const string ColorZmiana2 = "#FF99CC";

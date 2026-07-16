@@ -12,7 +12,7 @@ public static class UrlopPlanGridBuilder
 {
     private static readonly SolidColorBrush SummaryRowBg = new(Color.FromRgb(0xA8, 0x98, 0x68));
     private static readonly SolidColorBrush NormalFg = new(Color.FromRgb(0x2C, 0x28, 0x18));
-    private static readonly SolidColorBrush DayNumberFg = new(Color.FromRgb(0x2C, 0x28, 0x18));
+    private static readonly SolidColorBrush DayNumberFg = Brushes.White;
     private static readonly SolidColorBrush Transparent = new(Colors.Transparent);
     private static readonly SolidColorBrush OverLimitBg = new(Color.FromRgb(0xC4, 0x2B, 0x1C));
     private static readonly SolidColorBrush FullLimitBg = new(Color.FromRgb(0x4A, 0x8C, 0x2A));

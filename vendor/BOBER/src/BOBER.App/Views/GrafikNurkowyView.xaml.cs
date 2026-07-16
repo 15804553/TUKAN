@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Media;
 using BOBER.App.Controllers;
 using BOBER.App.Views.Chrome;
 using BOBER.Core.Constants;
@@ -181,31 +182,91 @@ public partial class GrafikNurkowyView : UserControl
     private void BuildColumns()
     {
         PreviewGrid.Columns.Clear();
+        var zmianaCellStyle = CreateZmianaCellStyle();
+        var funkcjaCellStyle = CreateFunkcjaCellStyle();
         PreviewGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Imię i nazwisko",
             Binding = new Binding(nameof(PreviewRow.ImieNazwisko)),
-            Width = new DataGridLength(180)
+            Width = new DataGridLength(180),
+            CellStyle = zmianaCellStyle
         });
         PreviewGrid.Columns.Add(new DataGridTextColumn
         {
             Header = "Funkcja",
             Binding = new Binding(nameof(PreviewRow.Funkcja)),
-            Width = new DataGridLength(90)
+            Width = new DataGridLength(90),
+            CellStyle = funkcjaCellStyle
         });
 
         var days = DateTime.DaysInMonth(_year, _month);
+        var whiteDayCellStyle = CreateWhiteDayCellStyle();
         for (var day = 1; day <= days; day++)
         {
             var d = day;
             PreviewGrid.Columns.Add(new DataGridTextColumn
             {
                 Header = d.ToString(),
+                HeaderTemplate = CreateDayHeaderTemplate(d),
                 Binding = new Binding($"Day{d}"),
                 Width = new DataGridLength(32),
-                ElementStyle = CreateCenteredStyle()
+                ElementStyle = CreateCenteredStyle(),
+                CellStyle = whiteDayCellStyle
             });
         }
+    }
+
+    private static DataTemplate CreateDayHeaderTemplate(int day)
+    {
+        var template = new DataTemplate();
+        var borderFactory = new FrameworkElementFactory(typeof(Border));
+        borderFactory.SetValue(Border.BackgroundProperty, BrushFromHex(GrafikNurkowyConstants.ColorForDayHeader(day)));
+        borderFactory.SetValue(Border.PaddingProperty, new Thickness(2, 4, 2, 4));
+        borderFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        borderFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Stretch);
+
+        var textFactory = new FrameworkElementFactory(typeof(TextBlock));
+        textFactory.SetValue(TextBlock.TextProperty, day.ToString());
+        textFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+        textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+        textFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
+
+        borderFactory.AppendChild(textFactory);
+        template.VisualTree = borderFactory;
+        return template;
+    }
+
+    private static Style CreateWhiteDayCellStyle()
+    {
+        var style = new Style(typeof(DataGridCell));
+        style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.White));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        return style;
+    }
+
+    private static Style CreateZmianaCellStyle()
+    {
+        var style = new Style(typeof(DataGridCell));
+        style.Setters.Add(new Setter(
+            Control.BackgroundProperty,
+            new Binding(nameof(PreviewRow.ZmianaBackground))));
+        style.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.Black));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        return style;
+    }
+
+    private static Style CreateFunkcjaCellStyle()
+    {
+        var style = new Style(typeof(DataGridCell));
+        style.Setters.Add(new Setter(
+            Control.BackgroundProperty,
+            new Binding(nameof(PreviewRow.ZmianaBackground))));
+        style.Setters.Add(new Setter(
+            Control.ForegroundProperty,
+            new Binding(nameof(PreviewRow.FunkcjaForeground))));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        return style;
     }
 
     private static Style CreateCenteredStyle()
@@ -214,6 +275,22 @@ public partial class GrafikNurkowyView : UserControl
         style.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
         style.Setters.Add(new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center));
         return style;
+    }
+
+    private static Brush BrushForZmiana(int? zmianaId)
+    {
+        if (zmianaId is not (>= 1 and <= 3))
+            return Brushes.Transparent;
+
+        return BrushFromHex(GrafikNurkowyConstants.ColorForZmiana(zmianaId.Value));
+    }
+
+    private static Brush BrushFromHex(string hex)
+    {
+        var color = (Color)ColorConverter.ConvertFromString(hex)!;
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
     }
 
     private Window? OwnerWindow => Window.GetWindow(this);
@@ -229,6 +306,11 @@ public partial class GrafikNurkowyView : UserControl
         {
             ImieNazwisko = source.ImieNazwisko;
             Funkcja = source.Funkcja;
+            ZmianaBackground = BrushForZmiana(source.ZmianaId);
+            FunkcjaForeground = source.Funkcja.Equals(
+                    GrafikNurkowyConstants.FunkcjaKpp, StringComparison.OrdinalIgnoreCase)
+                ? Brushes.Red
+                : Brushes.Black;
             for (var d = 1; d <= 31; d++)
             {
                 if (source.Dni.TryGetValue(d, out var v))
@@ -238,6 +320,8 @@ public partial class GrafikNurkowyView : UserControl
 
         public string ImieNazwisko { get; }
         public string Funkcja { get; }
+        public Brush ZmianaBackground { get; }
+        public Brush FunkcjaForeground { get; }
         public string Day1 { get; private set; } = "";
         public string Day2 { get; private set; } = "";
         public string Day3 { get; private set; } = "";

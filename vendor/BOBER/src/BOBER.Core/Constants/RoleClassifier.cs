@@ -19,14 +19,14 @@ public static class RoleClassifier
     /// <summary>
     /// Określa rolę funkcjonariusza na podstawie stanowiska.
     /// Priorytet: dowódca zmiany → dowódca sekcji / z-ca dcy zmiany → dowódca zastępu → kierowca → zwykły.
-    /// Status nureka nie wpływa na rolę — jest obsługiwany wyłącznie przez kolor czcionki (NurekCzcionka).
+    /// Status nureka nie wpływa na rolę — jest obsługiwany wyłącznie przez kolor obramowania (NurekCzcionka).
     /// </summary>
     public static string DetermineRole(Funkcjonariusz f) => DetermineBackgroundRole(f);
 
     /// <summary>
     /// Zwraca rolę używaną do koloru tła wiersza oraz kolejności sortowania.
     /// Nurek nie ma własnej roli — otrzymuje kolor tła i sort wynikający ze stanowiska,
-    /// a wyróżnienie kolorem czcionki jest ustawiane oddzielnie jako NurekCzcionka.
+    /// a wyróżnienie obramowaniem jest ustawiane oddzielnie jako NurekCzcionka.
     /// </summary>
     public static string DetermineBackgroundRole(Funkcjonariusz f)
     {

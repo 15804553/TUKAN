@@ -4,6 +4,7 @@ using BOBER.Data.Repositories;
 using BOBER.Services.Grafik;
 using BOBER.Services.Personnel;
 using BOBER.Services.Settings;
+using BOBER.Services.Urlop;
 
 namespace BOBER.Services.GrafikNurkowy;
 
@@ -102,7 +103,26 @@ public sealed class GrafikNurkowyService(
             return [];
 
         var filePath = Path.Combine(dir.Trim(), GrafikNurkowyConstants.BuildFileName(miesiac, rok));
-        return excel.ReadPreview(filePath, rok, miesiac);
+        var rows = excel.ReadPreview(filePath, rok, miesiac);
+        if (rows.Count == 0)
+            return rows;
+
+        var wszyscy = await GetWszyscyNurkowieAsync(cancellationToken);
+        var nameToZmiana = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var f in wszyscy)
+        {
+            nameToZmiana[UrlopNameMatcher.Normalize(UrlopNameMatcher.ToExcelFormat(f.Imie, f.Nazwisko))] =
+                f.NumerZmiany;
+            nameToZmiana[UrlopNameMatcher.Normalize($"{f.Imie} {f.Nazwisko}".Trim())] = f.NumerZmiany;
+        }
+
+        foreach (var row in rows)
+        {
+            if (nameToZmiana.TryGetValue(UrlopNameMatcher.Normalize(row.ImieNazwisko), out var zmiana))
+                row.ZmianaId = zmiana;
+        }
+
+        return rows;
     }
 
     public Task<GrafikNurkowyZatwierdzenie?> GetZatwierdzenieAsync(

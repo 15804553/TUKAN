@@ -67,7 +67,8 @@ public sealed class MainController(AppServices services)
                 KluczRoli = RoleClassifier.DetermineRole(f),
                 IsNurek = RoleClassifier.IsNurek(f),
                 RowBackground = GetRoleBrush(f),
-                RowForeground = GetRoleForeground(f)
+                RowForeground = GetRoleForeground(f),
+                NameBorderBrush = GetNurekBorderBrush(f)
             };
 
             for (var day = 1; day <= daysInMonth; day++)
@@ -210,13 +211,18 @@ public sealed class MainController(AppServices services)
 
     private SolidColorBrush GetRoleForeground(Funkcjonariusz f)
     {
-        if (RoleClassifier.IsNurek(f))
-            return ParseBrush(GetKolorHex(RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow));
-
         var bg = GetRoleBrush(f).Color;
         return IsLightColor(bg)
             ? new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E))
             : new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0));
+    }
+
+    private Brush GetNurekBorderBrush(Funkcjonariusz f)
+    {
+        if (!RoleClassifier.IsNurek(f))
+            return Brushes.Transparent;
+
+        return ParseBrush(GetKolorHex(RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow));
     }
 
     private static bool IsLightColor(Color c)

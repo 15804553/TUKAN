@@ -48,7 +48,7 @@ public static class RoleKeys
             { DowodcaSekcji, "Dowódca sekcji" },
             { DowodcaZastepu, "Dowódca zastępu" },
             { Nurek, "Nurek" },
-            { NurekCzcionka, "Nurek — czcionka (imię i nazwisko)" },
+            { NurekCzcionka, "Nurek — obramowanie (imię i nazwisko)" },
             { Kierowca, "Kierowca (C/C+E/D)" },
             { Zwykly, "Zwykły strażak" },
             { WolnaSluzba, "D / WS — tło komórki" },

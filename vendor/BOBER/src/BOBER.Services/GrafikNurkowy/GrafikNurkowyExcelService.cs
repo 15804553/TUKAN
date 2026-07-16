@@ -28,6 +28,10 @@ public sealed class GrafikNurkowyExcelService
         {
             ws = CreateSheet(workbook, rok, miesiac, wszyscyNurkowie);
         }
+        else
+        {
+            GrafikNurkowyExcelFormatter.RemoveObsoleteSgrwnColumn(ws);
+        }
 
         UpdateShiftRows(ws, rok, miesiac, zmianaId, nurkowieZmiany, wartosciDni, workDays);
         RemoveBlankRowsBetweenDataAndSummary(ws);
@@ -62,6 +66,8 @@ public sealed class GrafikNurkowyExcelService
         using var workbook = new XLWorkbook(filePath);
         if (!TryGetMonthSheet(workbook, miesiac, rok, out var ws) || ws is null)
             return [];
+
+        GrafikNurkowyExcelFormatter.RemoveObsoleteSgrwnColumn(ws);
 
         var daysInMonth = DateTime.DaysInMonth(rok, miesiac);
         var result = new List<GrafikNurkowyWiersz>();
@@ -141,7 +147,6 @@ public sealed class GrafikNurkowyExcelService
             GrafikNurkowyConstants.TitleRow,
             lastDayCol).Merge();
 
-        ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.ColJednostkaPsp).Value = "Jednostka PSP";
         ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.ColImieNazwisko).Value = "Imię i nazwisko";
         ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.ColFunkcja).Value = "funkcja";
         for (var day = 1; day <= daysInMonth; day++)

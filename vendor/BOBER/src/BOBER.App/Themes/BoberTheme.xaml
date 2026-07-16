@@ -11,6 +11,7 @@
     <Color x:Key="ForegroundColor">#2C2818</Color>
     <Color x:Key="ForegroundMutedColor">#5C5538</Color>
     <Color x:Key="TitleBarColor">#B8AA78</Color>
+    <Color x:Key="TitleBarForegroundColor">#2C2818</Color>
     <Color x:Key="ButtonHoverColor">#A08850</Color>
     <Color x:Key="ButtonCloseColor">#C42B1C</Color>
 
@@ -32,6 +33,7 @@
     <SolidColorBrush x:Key="ForegroundBrush" Color="{StaticResource ForegroundColor}" />
     <SolidColorBrush x:Key="ForegroundMutedBrush" Color="{StaticResource ForegroundMutedColor}" />
     <SolidColorBrush x:Key="TitleBarBrush" Color="{StaticResource TitleBarColor}" />
+    <SolidColorBrush x:Key="TitleBarForegroundBrush" Color="{StaticResource TitleBarForegroundColor}" />
     <SolidColorBrush x:Key="ButtonHoverBrush" Color="{StaticResource ButtonHoverColor}" />
     <SolidColorBrush x:Key="ButtonCloseBrush" Color="{StaticResource ButtonCloseColor}" />
     <SolidColorBrush x:Key="SaturdayBrush" Color="{StaticResource SaturdayColor}" />
@@ -49,7 +51,7 @@
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TitleBarForegroundBrush}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="ToolTip" Value="Zamknij" />
@@ -77,7 +79,7 @@
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TitleBarForegroundBrush}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
