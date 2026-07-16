@@ -92,7 +92,8 @@ internal static class DatabaseSeed
             ("GPS", null, false),
             ("Medyk", null, false),
             ("Chemiczny kurs", null, true),
-            ("IDZ", null, true)
+            ("IDZ", null, true),
+            ("Mł.nurek", null, true)
         };
 
         var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);

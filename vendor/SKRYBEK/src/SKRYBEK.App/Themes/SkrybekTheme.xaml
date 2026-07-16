@@ -14,6 +14,7 @@
     <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
     <conv:FunkcjonariuszBoberKolorConverter x:Key="FunkcjonariuszBoberKolorConverter" />
     <conv:FunkcjonariuszBoberTloConverter x:Key="FunkcjonariuszBoberTloConverter" />
+    <conv:FunkcjonariuszNurekObramowanieConverter x:Key="FunkcjonariuszNurekObramowanieConverter" />
 
     <!-- Paleta grafitowa (grafit + szarości) -->
     <Color x:Key="BackgroundColor">#1E1E1E</Color>

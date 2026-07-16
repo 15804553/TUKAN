@@ -83,6 +83,8 @@
                             <Border Margin="4,2"
                                     Padding="6,4"
                                     CornerRadius="3"
+                                    BorderThickness="2"
+                                    BorderBrush="{Binding Converter={StaticResource FunkcjonariuszNurekObramowanieConverter}}"
                                     Background="{Binding Converter={StaticResource FunkcjonariuszBoberTloConverter}}">
                                 <StackPanel>
                                     <TextBlock FontWeight="SemiBold" FontSize="12"

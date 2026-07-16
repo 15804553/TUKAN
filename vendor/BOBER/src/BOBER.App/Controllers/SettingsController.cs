@@ -54,8 +54,18 @@ public sealed class SettingsController(AppServices services)
     public Task SetStanMinimalnyAsync(int zmianaId, int stan, CancellationToken ct = default) =>
         services.Settings.SetStanMinimalnyAsync(zmianaId, stan, ct);
 
-    public async Task ClearHalfYearAsync(int polrocze, CancellationToken ct = default) =>
+    public Task<int> GetMaxUrlopowNaSluzbieAsync(int zmianaId, CancellationToken ct = default) =>
+        services.Settings.GetMaxUrlopowNaSluzbieAsync(zmianaId, ct);
+
+    public Task SetMaxUrlopowNaSluzbieAsync(int zmianaId, int max, CancellationToken ct = default) =>
+        services.Settings.SetMaxUrlopowNaSluzbieAsync(zmianaId, max, ct);
+
+    public async Task ClearHalfYearAsync(int polrocze, bool alsoClearUrlopPlan = false, CancellationToken ct = default)
+    {
         await services.Grafik.ClearHalfYearAsync(ZmianaId, DateTime.Today.Year, polrocze, ct);
+        if (alsoClearUrlopPlan)
+            await services.UrlopPlan.ClearHalfYearAsync(ZmianaId, DateTime.Today.Year, polrocze, ct);
+    }
 
     public async Task GenerateBaseScheduleAsync(int year, CancellationToken ct = default)
     {

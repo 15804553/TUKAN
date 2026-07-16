@@ -26,6 +26,9 @@ public partial class MainWindow : Window
     private PasswordManagementView? _passwordView;
     private TukanSettingsView? _unifiedSettingsView;
     private BoberGrafikView? _boberView;
+    private UrlopPlanView? _urlopPlanView;
+    private UrlopPlanController? _urlopPlanController;
+    private GrafikNurkowyView? _grafikNurkowyView;
     private SkrybekMainView? _skrybekView;
 
     private MainController? _boberController;
@@ -81,6 +84,12 @@ public partial class MainWindow : Window
         BoberViewButton.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.IsPaUser == true
             ? Visibility.Collapsed
             : Visibility.Visible;
+        UrlopPlanButton.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.CanManageUrlopPlan == true
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        GrafikNurkowyButton.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.CanViewGrafikNurkowy == true
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -107,7 +116,7 @@ public partial class MainWindow : Window
         foreach (var button in new[]
         {
             GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
-            BoberViewButton, SkrybekViewButton, SettingsButton, LogoutButton
+            BoberViewButton, UrlopPlanButton, GrafikNurkowyButton, SkrybekViewButton, SettingsButton, LogoutButton
         })
         {
             button.Content = _sidebarExpanded ? GetButtonLabel(button) : GetButtonIcon(button);
@@ -121,6 +130,8 @@ public partial class MainWindow : Window
         nameof(PasswordAdminButton) => "Zarządzanie hasłami",
         nameof(CreatePersonnelListButton) => "Utwórz listę osób",
         nameof(BoberViewButton) => "Grafik służb",
+        nameof(UrlopPlanButton) => "Plan urlopów",
+        nameof(GrafikNurkowyButton) => "Grafik nurkowy",
         nameof(SkrybekViewButton) => "Rozkazy dzienne",
         nameof(SettingsButton) => "Ustawienia",
         nameof(LogoutButton) => "Wyloguj",
@@ -134,6 +145,8 @@ public partial class MainWindow : Window
         nameof(PasswordAdminButton) => "🔑",
         nameof(CreatePersonnelListButton) => "📋",
         nameof(BoberViewButton) => "📅",
+        nameof(UrlopPlanButton) => "🏖",
+        nameof(GrafikNurkowyButton) => "🤿",
         nameof(SkrybekViewButton) => "📄",
         nameof(SettingsButton) => "⚙",
         nameof(LogoutButton) => "⎋",
@@ -240,6 +253,40 @@ public partial class MainWindow : Window
         _boberView ??= new BoberGrafikView { IsEmbedded = true };
         _boberView.Initialize(_boberController);
         NavigateTo(_boberView, "Grafik służb", BoberViewButton);
+    }
+
+    private void OnUrlopPlanClick(object sender, RoutedEventArgs e)
+    {
+        if (_tukanServices.Chomik.Auth.CurrentUser?.CanManageUrlopPlan != true)
+            return;
+
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        var zmianaId = user?.ShiftNumber
+            ?? _tukanServices.Bober.Auth.CurrentSession?.ZmianaId
+            ?? 1;
+        var nazwaZmiany = user?.Login
+            ?? _tukanServices.Bober.Auth.CurrentSession?.NazwaZmiany
+            ?? $"Zmiana {zmianaId}";
+
+        _urlopPlanController = new UrlopPlanController(_tukanServices.Bober, zmianaId, nazwaZmiany);
+        _urlopPlanView ??= new UrlopPlanView { IsEmbedded = true };
+        _urlopPlanView.Initialize(_urlopPlanController);
+        NavigateTo(_urlopPlanView, "Plan urlopów", UrlopPlanButton);
+    }
+
+    private void OnGrafikNurkowyClick(object sender, RoutedEventArgs e)
+    {
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        if (user?.CanViewGrafikNurkowy != true)
+            return;
+
+        var controller = new GrafikNurkowyController(_tukanServices.Bober);
+        _grafikNurkowyView ??= new GrafikNurkowyView { IsEmbedded = true };
+        _grafikNurkowyView.Initialize(
+            controller,
+            canApprove: user.CanApproveGrafikNurkowy,
+            approverLogin: user.Login);
+        NavigateTo(_grafikNurkowyView, "Grafik nurkowy", GrafikNurkowyButton);
     }
 
     private async void OnSkrybekViewClick(object sender, RoutedEventArgs e)
@@ -437,7 +484,7 @@ public partial class MainWindow : Window
         foreach (var button in new[]
         {
             GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
-            BoberViewButton, SkrybekViewButton, SettingsButton
+            BoberViewButton, UrlopPlanButton, GrafikNurkowyButton, SkrybekViewButton, SettingsButton
         })
         {
             if (button.Visibility != Visibility.Visible)

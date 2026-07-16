@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -182,6 +183,19 @@ public partial class BoberGrafikView : UserControl
         };
         exportBtn.Click += OnExportClick;
         btnPanel.Children.Add(exportBtn);
+
+        if (IsEmbedded && _controller is { IsShiftScoped: true })
+        {
+            var nurkowyBtn = new Button
+            {
+                Content = $"Generuj / aktualizuj grafik nurkowy — {MonthNames[month]}",
+                Style = (Style)FindResource("PrimaryButton"),
+                Margin = new Thickness(0, 0, 8, 0),
+                Tag = month
+            };
+            nurkowyBtn.Click += OnGenerateGrafikNurkowyClick;
+            btnPanel.Children.Add(nurkowyBtn);
+        }
 
         Grid.SetRow(btnPanel, 0);
         outerGrid.Children.Add(btnPanel);
@@ -501,12 +515,14 @@ public partial class BoberGrafikView : UserControl
         }
 
         var month = (int)btn.Tag;
+        var initialDir = await _controller.GetExportPathGrafikSluzbAsync();
 
         var dlg = new SaveFileDialog
         {
             Title = $"Eksport grafiku — {MonthNames[month]} {_year}",
             Filter = "Plik Excel (*.xlsx)|*.xlsx",
-            FileName = $"{SanitizeFileName(_controller.NazwaZmiany)}_{MonthNames[month]}_{_year}.xlsx"
+            FileName = $"{SanitizeFileName(_controller.NazwaZmiany)}_{MonthNames[month]}_{_year}.xlsx",
+            InitialDirectory = Directory.Exists(initialDir) ? initialDir : string.Empty
         };
 
         if (dlg.ShowDialog(OwnerWindow) != true)
@@ -525,6 +541,26 @@ public partial class BoberGrafikView : UserControl
         }
     }
 
+    private async void OnGenerateGrafikNurkowyClick(object? sender, RoutedEventArgs e)
+    {
+        if (_controller is null || sender is not Button btn)
+            return;
+
+        var month = (int)btn.Tag;
+        try
+        {
+            var result = await _controller.GenerateGrafikNurkowyAsync(_year, month);
+            BoberMessageBox.Show(
+                OwnerWindow,
+                $"{result.Message}\n\n{result.FilePath}",
+                "Grafik nurkowy");
+        }
+        catch (Exception ex)
+        {
+            UiErrorReporter.Show(OwnerWindow, ex, "Błąd generowania grafiku nurkowego");
+        }
+    }
+
     private async void OnExportYearClick(object sender, RoutedEventArgs e)
     {
         if (_controller is null)
@@ -532,11 +568,13 @@ public partial class BoberGrafikView : UserControl
             return;
         }
 
+        var initialDir = await _controller.GetExportPathGrafikSluzbAsync();
         var dlg = new SaveFileDialog
         {
             Title = $"Eksport grafiku — cały rok {_year}",
             Filter = "Plik Excel (*.xlsx)|*.xlsx",
-            FileName = $"{SanitizeFileName(_controller.NazwaZmiany)}_CalyRok_{_year}.xlsx"
+            FileName = $"{SanitizeFileName(_controller.NazwaZmiany)}_CalyRok_{_year}.xlsx",
+            InitialDirectory = Directory.Exists(initialDir) ? initialDir : string.Empty
         };
 
         if (dlg.ShowDialog(OwnerWindow) != true)

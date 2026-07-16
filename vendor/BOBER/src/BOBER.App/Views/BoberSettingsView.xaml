@@ -28,6 +28,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="10" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="10" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
@@ -55,7 +56,18 @@
                                    Style="{StaticResource FormLabel}"
                                    VerticalAlignment="Center" />
                         <TextBox x:Name="StanMinimalnyTextBox"
-                                 Grid.Row="4"
+                                 Grid.Row="3"
+                                 Grid.Column="2"
+                                 Style="{StaticResource DarkTextBox}"
+                                 TextAlignment="Center" />
+
+                        <TextBlock Grid.Row="5"
+                                   Grid.Column="0"
+                                   Text="Max ilość urlopów"
+                                   Style="{StaticResource FormLabel}"
+                                   VerticalAlignment="Center" />
+                        <TextBox x:Name="MaxUrlopowNaSluzbieTextBox"
+                                 Grid.Row="5"
                                  Grid.Column="2"
                                  Style="{StaticResource DarkTextBox}"
                                  TextAlignment="Center" />

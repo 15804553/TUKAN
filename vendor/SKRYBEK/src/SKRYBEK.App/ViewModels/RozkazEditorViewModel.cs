@@ -564,7 +564,10 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         BuildModelFromViewModels();
         try
         {
-            var outputDir = System.IO.Path.Combine(AppContext.BaseDirectory, "Eksport");
+            var configured = await ServiceProvider.Services.UstawieniaRepo.GetAsync("ExportPathRozkazy");
+            var outputDir = !string.IsNullOrWhiteSpace(configured)
+                ? configured.Trim()
+                : System.IO.Path.Combine(AppContext.BaseDirectory, "Eksport");
             var path = ServiceProvider.Services.WordExport.ExportRozkaz(_rozkaz, _samochody, NrJrg, outputDir);
             StatusMessage = $"Wyeksportowano: {System.IO.Path.GetFileName(path)}";
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });

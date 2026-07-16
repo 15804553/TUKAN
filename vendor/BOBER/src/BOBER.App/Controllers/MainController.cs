@@ -22,6 +22,9 @@ public sealed class MainController(AppServices services)
     public int CurrentYear { get; } = DateTime.Today.Year;
     public int ZmianaId => services.Auth.CurrentSession?.ZmianaId ?? 1;
     public string NazwaZmiany => services.Auth.CurrentSession?.NazwaZmiany ?? string.Empty;
+    public bool IsShiftScoped =>
+        ZmianaId is >= 1 and <= 3
+        && NazwaZmiany.StartsWith("Zmiana ", StringComparison.OrdinalIgnoreCase);
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
@@ -173,6 +176,15 @@ public sealed class MainController(AppServices services)
             _stanMinimalny,
             _kolory ?? new Dictionary<string, string>());
     }
+
+    public Task<string> GetExportPathGrafikSluzbAsync(CancellationToken cancellationToken = default) =>
+        services.Settings.GetExportPathGrafikSluzbAsync(cancellationToken);
+
+    public Task<GrafikNurkowySyncResult> GenerateGrafikNurkowyAsync(
+        int rok,
+        int miesiac,
+        CancellationToken cancellationToken = default) =>
+        services.GrafikNurkowy.GenerateOrUpdateAsync(ZmianaId, rok, miesiac, cancellationToken);
 
     private SolidColorBrush GetRoleBrush(Funkcjonariusz f)
     {

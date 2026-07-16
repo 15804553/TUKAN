@@ -105,15 +105,25 @@
                                                    Foreground="{StaticResource ForegroundMutedBrush}"
                                                    Text="{Binding DataFormatowana, Mode=OneWay}" />
                                     </StackPanel>
-                                    <Button Grid.Column="1"
-                                            Content="✕"
-                                            Style="{StaticResource ChromeIconButton}"
-                                            Width="22" Height="22" FontSize="10"
-                                            Visibility="{Binding DataContext.CanUsunRozkaz,
-                                                         RelativeSource={RelativeSource AncestorType=UserControl},
-                                                         Converter={StaticResource BoolToVisibilityConverter}}"
-                                            Tag="{Binding}"
-                                            Click="DeleteRozkaz_Click" />
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="🔒"
+                                                   FontSize="12"
+                                                   Margin="0,0,4,0"
+                                                   VerticalAlignment="Center"
+                                                   ToolTip="Edycja zablokowana przez DCA JRG"
+                                                   Visibility="{Binding CzyZablokowany,
+                                                                Converter={StaticResource BoolToVisibilityConverter}}" />
+                                        <Button Content="✕"
+                                                Style="{StaticResource ChromeIconButton}"
+                                                Width="22" Height="22" FontSize="10"
+                                                Visibility="{Binding DataContext.CanUsunRozkaz,
+                                                             RelativeSource={RelativeSource AncestorType=UserControl},
+                                                             Converter={StaticResource BoolToVisibilityConverter}}"
+                                                Tag="{Binding}"
+                                                Click="DeleteRozkaz_Click" />
+                                    </StackPanel>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

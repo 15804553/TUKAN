@@ -49,10 +49,19 @@ public sealed class SessionUser
 
     public bool CanCustomizeGeneralViewColumns => IsShiftScoped || IsDcaJrgUser;
 
-    public bool ShowSettingsNavButton => CanManageSettings || CanCustomizeGeneralViewColumns;
+    public bool ShowSettingsNavButton =>
+        CanManageSettings || CanCustomizeGeneralViewColumns || CanManageExportPaths;
 
     public bool IsShiftScoped => Role is UserRole.Zmiana1 or UserRole.Zmiana2
         or UserRole.Zmiana3;
+
+    public bool CanManageUrlopPlan => IsShiftScoped;
+
+    public bool CanViewGrafikNurkowy => IsShiftScoped || IsDcaJrgUser;
+
+    public bool CanApproveGrafikNurkowy => IsDcaJrgUser;
+
+    public bool CanManageExportPaths => IsAdministrator;
 
     public bool CanAccessShift(int shiftNumber) =>
         CanViewAllShifts || (IsShiftScoped && ShiftNumber == shiftNumber);

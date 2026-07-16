@@ -1,0 +1,103 @@
+<UserControl x:Class="BOBER.App.Views.UrlopPlanView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Focusable="True"
+             PreviewKeyDown="OnViewPreviewKeyDown">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="ZmianaTextBlock"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="12"
+                               Margin="0,0,16,0" />
+                    <TextBlock Text="Rok planu:"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <ComboBox x:Name="YearComboBox"
+                              Width="90"
+                              SelectionChanged="OnYearChanged" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Importuj z Excel"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="12,6"
+                            Margin="0,0,8,0"
+                            Click="OnImportClick" />
+                    <Button Content="Eksportuj do Excel"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="12,6"
+                            Margin="0,0,8,0"
+                            Click="OnExportClick" />
+                    <Button Content="Wyczyść plan roku"
+                            Style="{StaticResource DangerButton}"
+                            Padding="12,6"
+                            Margin="0,0,8,0"
+                            Click="OnClearYearClick" />
+                    <Button Content="Zastosuj na grafiku"
+                            Style="{StaticResource PrimaryButton}"
+                            Padding="12,6"
+                            Click="OnApplyToGrafikClick" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1"
+                Background="{StaticResource BackgroundBrush}"
+                Padding="12,6,12,0">
+            <StackPanel>
+                <TextBlock x:Name="EmptyPersonnelTextBlock"
+                           Foreground="{StaticResource ForegroundMutedBrush}"
+                           TextWrapping="Wrap"
+                           FontSize="12"
+                           Margin="0,0,0,6"
+                           Visibility="Collapsed" />
+                <TextBlock x:Name="ValidationTextBlock"
+                           Foreground="#C87830"
+                           TextWrapping="Wrap"
+                           FontSize="11"
+                           Visibility="Collapsed" />
+            </StackPanel>
+        </Border>
+
+        <TabControl x:Name="MonthTabControl"
+                    Grid.Row="2"
+                    Background="{StaticResource BackgroundBrush}"
+                    Margin="8,8,8,0"
+                    SelectionChanged="OnMonthTabChanged">
+            <TabControl.ItemContainerStyle>
+                <Style TargetType="TabItem" BasedOn="{StaticResource BoberTabItem}" />
+            </TabControl.ItemContainerStyle>
+        </TabControl>
+
+        <Border Grid.Row="3"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="12,5,12,5">
+            <TextBlock x:Name="ShortcutsStatusTextBlock"
+                       Foreground="{StaticResource ForegroundMutedBrush}"
+                       FontSize="11"
+                       VerticalAlignment="Center"
+                       Text="Skróty klawiszowe: zaznacz komórkę dnia, następnie W — wypoczynkowy  |  D — dodatkowy  |  Spacja — wyczyść  |  Prawy przycisk — menu kontekstowe" />
+        </Border>
+    </Grid>
+</UserControl>

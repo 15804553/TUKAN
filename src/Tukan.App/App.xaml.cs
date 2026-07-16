@@ -1,7 +1,10 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Threading;
+using BOBER.App.Views.Chrome;
 using Chomik.App.Controls;
+using Chomik.App.Views.Chrome;
+using SKRYBEK.App.Helpers;
 using Tukan.App.Infrastructure;
 using Tukan.App.Services;
 using Tukan.App.Views;
@@ -10,11 +13,9 @@ namespace Tukan.App;
 
 public partial class App : Application
 {
-    private TukanAppServices? _services;
-    private readonly TukanJsonSettingsService _settingsService = new();
+    private const string ApplicationTitle = "TUKAN";
 
-    public static TukanJsonSettingsService SettingsService =>
-        ((App)Current)._settingsService;
+    private TukanAppServices? _services;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -24,10 +25,10 @@ public partial class App : Application
 
         base.OnStartup(e);
         ToolTipPlacementFix.Register();
+        ConfigureHostedModuleBranding();
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-        var settings = _settingsService.Load();
-        TukanAppTheme.Apply(TukanAppTheme.Parse(settings.UiColorPalette));
+        TukanAppTheme.Apply();
 
         DispatcherUnhandledException += (_, args) =>
         {
@@ -36,7 +37,7 @@ public partial class App : Application
                 args.Exception);
             MessageBox.Show(
                 $"Wystąpił nieoczekiwany błąd:\n\n{args.Exception.Message}",
-                "TUKAN",
+                ApplicationTitle,
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             args.Handled = true;
@@ -61,7 +62,7 @@ public partial class App : Application
             MessageBox.Show(
                 $"Nie udało się przygotować baz danych.\n\n{ex.Message}\n\n" +
                 "Upewnij się, że zainstalowany jest Microsoft Access Database Engine (ACE) x64.",
-                "TUKAN",
+                ApplicationTitle,
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown();
@@ -69,6 +70,13 @@ public partial class App : Application
         }
 
         RunLoginLoop();
+    }
+
+    private static void ConfigureHostedModuleBranding()
+    {
+        BoberMessageBox.ApplicationTitleOverride = ApplicationTitle;
+        ChomikMessageBox.ApplicationTitleOverride = ApplicationTitle;
+        SkrybekMessageBox.ApplicationTitleOverride = ApplicationTitle;
     }
 
     private void RunLoginLoop()

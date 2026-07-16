@@ -91,6 +91,18 @@
                                     Click="OnCreatePersonnelListClick"
                                     Visibility="Collapsed" />
 
+                            <Button x:Name="UrlopPlanButton"
+                                    Content="Plan urlopów"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnUrlopPlanClick"
+                                    Visibility="Collapsed" />
+
+                            <Button x:Name="GrafikNurkowyButton"
+                                    Content="Grafik nurkowy"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnGrafikNurkowyClick"
+                                    Visibility="Collapsed" />
+
                             <Button x:Name="BoberViewButton"
                                     Content="Grafik służb"
                                     Style="{StaticResource TukanSidebarButton}"
