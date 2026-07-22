@@ -41,6 +41,7 @@ public partial class TukanSettingsView : UserControl
         {
             InitializeBoberSettings();
             RozkazyTab.Visibility = Visibility.Collapsed;
+            KalendarzTab.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -55,6 +56,7 @@ public partial class TukanSettingsView : UserControl
         GrafikTab.Visibility = Visibility.Collapsed;
         RozkazyTab.Visibility = Visibility.Collapsed;
         PojazdyTab.Visibility = Visibility.Collapsed;
+        KalendarzTab.Visibility = Visibility.Collapsed;
         ExportPathsTab.Visibility = Visibility.Visible;
 
         var pathsControl = new ExportPathsSettingsControl(_tukanServices.Bober.Settings);
@@ -69,6 +71,7 @@ public partial class TukanSettingsView : UserControl
         GrafikTab.Visibility = Visibility.Collapsed;
         PojazdyTab.Visibility = Visibility.Visible;
         RozkazyTab.Visibility = Visibility.Visible;
+        KalendarzTab.Visibility = Visibility.Visible;
 
         var session = _tukanServices.SkrybekSession!;
         var skrybekViewModel = new SettingsViewModel(session);
@@ -78,6 +81,11 @@ public partial class TukanSettingsView : UserControl
             session, SkrybekSettingsSection.OgolneZBackupem, skrybekViewModel);
         SkrybekPojazdyHost.Content = new SkrybekSettingsView(
             session, SkrybekSettingsSection.Pojazdy, skrybekViewModel);
+
+        var kalendarzController = new KalendarzController(_tukanServices.Bober);
+        var kalendarzSettings = new KalendarzSettingsView(kalendarzController);
+        kalendarzSettings.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+        KalendarzSettingsHost.Content = kalendarzSettings;
 
         SelectDefaultTab();
     }

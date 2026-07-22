@@ -19,6 +19,9 @@
         <TabItem x:Name="RozkazyTab" Header="Rozkazy" Visibility="Collapsed">
             <ContentControl x:Name="SkrybekSettingsHost" />
         </TabItem>
+        <TabItem x:Name="KalendarzTab" Header="Kalendarz" Visibility="Collapsed">
+            <ContentControl x:Name="KalendarzSettingsHost" />
+        </TabItem>
         <TabItem x:Name="ExportPathsTab" Header="Ścieżki eksportu" Visibility="Collapsed">
             <ContentControl x:Name="ExportPathsHost" />
         </TabItem>

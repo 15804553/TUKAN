@@ -104,6 +104,12 @@
                                     Click="OnGrafikNurkowyClick"
                                     Visibility="Collapsed" />
 
+                            <Button x:Name="KalendarzButton"
+                                    Content="Kalendarz"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnKalendarzClick"
+                                    Visibility="Collapsed" />
+
                             <Button x:Name="BoberViewButton"
                                     Content="Grafik służb"
                                     Style="{StaticResource TukanSidebarButton}"

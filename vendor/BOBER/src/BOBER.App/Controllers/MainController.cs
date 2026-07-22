@@ -109,6 +109,15 @@ public sealed class MainController(AppServices services)
                 notesRow.SetCell(notatka.Dzien, notatka.Tresc);
         }
 
+        // Notatki kalendarza DCA dla tej zmiany — niebieska ikona obok zielonej „N”.
+        var kalendarzWpisy = await services.Kalendarz.GetMonthAsync(
+            rok, miesiac, zmianaFilter: ZmianaId, cancellationToken);
+        foreach (var wpis in kalendarzWpisy)
+        {
+            if (!string.IsNullOrWhiteSpace(wpis.Tresc))
+                notesRow.SetKalendarzNote(wpis.Data.Day, wpis.Tresc);
+        }
+
         rows.Add(notesRow);
         return rows;
     }

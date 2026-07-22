@@ -336,6 +336,9 @@ public static class GrafikGridBuilder
     private static readonly SolidColorBrush NoteIconBrush =
         new(Color.FromRgb(0x2E, 0xA8, 0x44));
 
+    private static readonly SolidColorBrush KalendarzIconBrush =
+        new(Color.FromRgb(0x1E, 0x88, 0xE5));
+
     private static FrameworkElementFactory CreateNotesCellPanel(int day)
     {
         var borderFactory = new FrameworkElementFactory(typeof(Border));
@@ -344,31 +347,27 @@ public static class GrafikGridBuilder
         borderFactory.SetValue(Border.BackgroundProperty, Brushes.Transparent);
         borderFactory.SetValue(Border.PaddingProperty, new Thickness(0, 2, 0, 2));
 
-        var iconBorder = new FrameworkElementFactory(typeof(Border));
-        iconBorder.SetValue(Border.WidthProperty, 18.0);
-        iconBorder.SetValue(Border.HeightProperty, 18.0);
-        iconBorder.SetValue(Border.CornerRadiusProperty, new CornerRadius(9));
-        iconBorder.SetValue(Border.BackgroundProperty, NoteIconBrush);
-        iconBorder.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        iconBorder.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-        iconBorder.SetValue(FrameworkElement.CursorProperty, Cursors.Help);
-        iconBorder.SetBinding(FrameworkElement.ToolTipProperty, new Binding($"[{day}]"));
-        // Opacity zamiast Visibility — pewniejsze odświeżanie w DataGrid po Items.Refresh().
-        iconBorder.SetBinding(UIElement.OpacityProperty,
-            new Binding($"[{day}]") { Converter = NonEmptyOpacityConverter.Instance });
-        iconBorder.SetBinding(UIElement.IsHitTestVisibleProperty,
-            new Binding($"[{day}]") { Converter = NonEmptyBoolConverter.Instance });
+        var iconsPanel = new FrameworkElementFactory(typeof(StackPanel));
+        iconsPanel.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
+        iconsPanel.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        iconsPanel.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
 
-        var letter = new FrameworkElementFactory(typeof(TextBlock));
-        letter.SetValue(TextBlock.TextProperty, "N");
-        letter.SetValue(TextBlock.ForegroundProperty, Brushes.White);
-        letter.SetValue(TextBlock.FontSizeProperty, 10.0);
-        letter.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
-        letter.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        letter.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
-        iconBorder.AppendChild(letter);
+        // Zielona „N” — notatka grafiku służb.
+        iconsPanel.AppendChild(CreateRoundNoteIcon(
+            day,
+            bindingPath: $"[{day}]",
+            background: NoteIconBrush,
+            letter: "N"));
 
-        borderFactory.AppendChild(iconBorder);
+        // Niebieska „i” — notatka kalendarza od DCA.
+        iconsPanel.AppendChild(CreateRoundNoteIcon(
+            day,
+            bindingPath: $"{nameof(GrafikRowViewModel.KalendarzNotes)}[{day}]",
+            background: KalendarzIconBrush,
+            letter: "i",
+            margin: new Thickness(2, 0, 0, 0)));
+
+        borderFactory.AppendChild(iconsPanel);
 
         var notesStyle = new Style(typeof(Border));
         notesStyle.Setters.Add(new Setter(FrameworkElement.VisibilityProperty, Visibility.Collapsed));
@@ -382,6 +381,43 @@ public static class GrafikGridBuilder
         borderFactory.SetValue(FrameworkElement.StyleProperty, notesStyle);
 
         return borderFactory;
+    }
+
+    private static FrameworkElementFactory CreateRoundNoteIcon(
+        int day,
+        string bindingPath,
+        Brush background,
+        string letter,
+        Thickness? margin = null)
+    {
+        var iconBorder = new FrameworkElementFactory(typeof(Border));
+        iconBorder.SetValue(Border.WidthProperty, 18.0);
+        iconBorder.SetValue(Border.HeightProperty, 18.0);
+        iconBorder.SetValue(Border.CornerRadiusProperty, new CornerRadius(9));
+        iconBorder.SetValue(Border.BackgroundProperty, background);
+        iconBorder.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        iconBorder.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        iconBorder.SetValue(FrameworkElement.CursorProperty, Cursors.Help);
+        if (margin is Thickness m)
+            iconBorder.SetValue(FrameworkElement.MarginProperty, m);
+
+        iconBorder.SetBinding(FrameworkElement.ToolTipProperty, new Binding(bindingPath));
+        // Opacity zamiast Visibility — pewniejsze odświeżanie w DataGrid po Items.Refresh().
+        iconBorder.SetBinding(UIElement.OpacityProperty,
+            new Binding(bindingPath) { Converter = NonEmptyOpacityConverter.Instance });
+        iconBorder.SetBinding(UIElement.IsHitTestVisibleProperty,
+            new Binding(bindingPath) { Converter = NonEmptyBoolConverter.Instance });
+
+        var letterBlock = new FrameworkElementFactory(typeof(TextBlock));
+        letterBlock.SetValue(TextBlock.TextProperty, letter);
+        letterBlock.SetValue(TextBlock.ForegroundProperty, Brushes.White);
+        letterBlock.SetValue(TextBlock.FontSizeProperty, 10.0);
+        letterBlock.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+        letterBlock.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        letterBlock.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+        iconBorder.AppendChild(letterBlock);
+
+        return iconBorder;
     }
 
     private sealed class NonEmptyOpacityConverter : IValueConverter

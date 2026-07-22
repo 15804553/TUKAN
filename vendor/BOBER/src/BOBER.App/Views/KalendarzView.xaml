@@ -1,0 +1,104 @@
+<UserControl x:Class="BOBER.App.Views.KalendarzView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="◀"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="10,4"
+                            Margin="0,0,8,0"
+                            Click="OnPrevMonthClick" />
+                    <TextBlock x:Name="MonthTitleTextBlock"
+                               Foreground="{StaticResource ForegroundBrush}"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               MinWidth="180"
+                               TextAlignment="Center" />
+                    <Button Content="▶"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="10,4"
+                            Margin="8,0,16,0"
+                            Click="OnNextMonthClick" />
+                    <ComboBox x:Name="YearComboBox"
+                              Width="90"
+                              SelectionChanged="OnYearChanged" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Content="Odśwież"
+                        Style="{StaticResource SecondaryButton}"
+                        Padding="12,6"
+                        Click="OnRefreshClick" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1"
+                Background="{StaticResource BackgroundBrush}"
+                Padding="12,8">
+            <StackPanel Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                    <Border x:Name="Legend1" Width="16" Height="16" CornerRadius="3" Margin="0,0,6,0" />
+                    <TextBlock Text="Zmiana I"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="12"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                    <Border x:Name="Legend2" Width="16" Height="16" CornerRadius="3" Margin="0,0,6,0" />
+                    <TextBlock Text="Zmiana II"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="12"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                    <Border x:Name="Legend3" Width="16" Height="16" CornerRadius="3" Margin="0,0,6,0" />
+                    <TextBlock Text="Zmiana III"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="12"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock x:Name="HintTextBlock"
+                           Foreground="{StaticResource ForegroundMutedBrush}"
+                           FontSize="12"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2"
+                Margin="8"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6">
+            <Grid x:Name="CalendarGrid" Margin="8" />
+        </Border>
+
+        <Border Grid.Row="3"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="12,5">
+            <TextBlock x:Name="FooterTextBlock"
+                       Foreground="{StaticResource ForegroundMutedBrush}"
+                       FontSize="11"
+                       TextWrapping="Wrap" />
+        </Border>
+    </Grid>
+</UserControl>

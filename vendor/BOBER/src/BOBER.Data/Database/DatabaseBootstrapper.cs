@@ -60,6 +60,84 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         await MigrateDzienSluzbyColorAsync(connection, cancellationToken);
         await MigrateGrafikNurkowyZatwierdzeniaTableAsync(connection, cancellationToken);
         await MigrateGrafikNotatkiTableAsync(connection, cancellationToken);
+        await MigrateKalendarzTablesAsync(connection, cancellationToken);
+        await MigrateKalendarzKoloryAsync(connection, cancellationToken);
+    }
+
+    private static async Task MigrateKalendarzTablesAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await ExecuteDdlAsync(connection,
+            """
+            CREATE TABLE KalendarzWpisy (
+                Id AUTOINCREMENT PRIMARY KEY,
+                Data DATETIME NOT NULL,
+                ZmianaId SHORT NOT NULL,
+                Tresc MEMO NOT NULL,
+                AutorLogin TEXT(100) NOT NULL,
+                DataUtworzenia DATETIME NOT NULL,
+                DataModyfikacji DATETIME NOT NULL
+            )
+            """,
+            cancellationToken);
+
+        await ExecuteDdlAsync(connection,
+            """
+            CREATE TABLE KalendarzOdczyty (
+                WpisId LONG NOT NULL,
+                ZmianaId SHORT NOT NULL,
+                Przeczytane YESNO NOT NULL,
+                PrzeczytanePrzez TEXT(100),
+                DataOdczytu DATETIME
+            )
+            """,
+            cancellationToken);
+    }
+
+    private static async Task MigrateKalendarzKoloryAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        const string migrationKey = "MigratedKalendarzKolory20260722";
+
+        try
+        {
+            await using var checkCmd = new OleDbCommand(
+                "SELECT COUNT(*) FROM Ustawienia WHERE Klucz = ? AND Wartosc = '1'",
+                connection);
+            checkCmd.Parameters.AddWithValue("@p1", migrationKey);
+            if (Convert.ToInt32(await checkCmd.ExecuteScalarAsync(cancellationToken)) > 0)
+                return;
+
+            foreach (var (klucz, kolor) in RoleKeys.DomyslneKoloryKalendarza)
+            {
+                await using var existsCmd = new OleDbCommand(
+                    "SELECT COUNT(*) FROM KoloryStanowisk WHERE KluczRoli = ?",
+                    connection);
+                existsCmd.Parameters.AddWithValue("@p1", klucz);
+                if (Convert.ToInt32(await existsCmd.ExecuteScalarAsync(cancellationToken)) > 0)
+                    continue;
+
+                await using var insertCmd = new OleDbCommand(
+                    "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
+                    connection);
+                insertCmd.Parameters.AddWithValue("@p1", klucz);
+                insertCmd.Parameters.AddWithValue("@p2", kolor);
+                await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await using var flagCmd = new OleDbCommand(
+                "INSERT INTO Ustawienia (Klucz, Wartosc) VALUES (?, ?)",
+                connection);
+            flagCmd.Parameters.AddWithValue("@p1", migrationKey);
+            flagCmd.Parameters.AddWithValue("@p2", "1");
+            await flagCmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch (OleDbException)
+        {
+            // Tabela może jeszcze nie istnieć przy pierwszym starcie — pomijamy.
+        }
     }
 
     private static async Task MigrateGrafikNotatkiTableAsync(

@@ -61,6 +61,10 @@ public sealed class SessionUser
 
     public bool CanApproveGrafikNurkowy => IsDcaJrgUser;
 
+    public bool CanViewKalendarz => IsShiftScoped || IsDcaJrgUser;
+
+    public bool CanEditKalendarz => IsDcaJrgUser;
+
     public bool CanManageExportPaths => IsAdministrator;
 
     public bool CanAccessShift(int shiftNumber) =>

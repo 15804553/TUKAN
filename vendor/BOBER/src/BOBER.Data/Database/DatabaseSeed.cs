@@ -82,6 +82,16 @@ internal static class DatabaseSeed
             cmd.Parameters.AddWithValue("@p2", kolor);
             await cmd.ExecuteNonQueryAsync(cancellationToken);
         }
+
+        foreach (var (klucz, kolor) in RoleKeys.DomyslneKoloryKalendarza)
+        {
+            await using var cmd = new OleDbCommand(
+                "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
+                connection);
+            cmd.Parameters.AddWithValue("@p1", klucz);
+            cmd.Parameters.AddWithValue("@p2", kolor);
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 
     private static async Task EnsureUstawieniaAsync(

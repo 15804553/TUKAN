@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private UrlopPlanView? _urlopPlanView;
     private UrlopPlanController? _urlopPlanController;
     private GrafikNurkowyView? _grafikNurkowyView;
+    private KalendarzView? _kalendarzView;
     private SkrybekMainView? _skrybekView;
 
     private MainController? _boberController;
@@ -90,6 +91,9 @@ public partial class MainWindow : Window
         GrafikNurkowyButton.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.CanViewGrafikNurkowy == true
             ? Visibility.Visible
             : Visibility.Collapsed;
+        KalendarzButton.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.CanViewKalendarz == true
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -116,7 +120,8 @@ public partial class MainWindow : Window
         foreach (var button in new[]
         {
             GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
-            BoberViewButton, UrlopPlanButton, GrafikNurkowyButton, SkrybekViewButton, SettingsButton, LogoutButton
+            BoberViewButton, UrlopPlanButton, GrafikNurkowyButton, KalendarzButton, SkrybekViewButton,
+            SettingsButton, LogoutButton
         })
         {
             button.Content = _sidebarExpanded ? GetButtonLabel(button) : GetButtonIcon(button);
@@ -132,6 +137,7 @@ public partial class MainWindow : Window
         nameof(BoberViewButton) => "Grafik służb",
         nameof(UrlopPlanButton) => "Plan urlopów",
         nameof(GrafikNurkowyButton) => "Grafik nurkowy",
+        nameof(KalendarzButton) => "Kalendarz",
         nameof(SkrybekViewButton) => "Rozkazy dzienne",
         nameof(SettingsButton) => "Ustawienia",
         nameof(LogoutButton) => "Wyloguj",
@@ -147,6 +153,7 @@ public partial class MainWindow : Window
         nameof(BoberViewButton) => "📅",
         nameof(UrlopPlanButton) => "🏖",
         nameof(GrafikNurkowyButton) => "🤿",
+        nameof(KalendarzButton) => "🗓",
         nameof(SkrybekViewButton) => "📄",
         nameof(SettingsButton) => "⚙",
         nameof(LogoutButton) => "⎋",
@@ -289,6 +296,22 @@ public partial class MainWindow : Window
         NavigateTo(_grafikNurkowyView, "Grafik nurkowy", GrafikNurkowyButton);
     }
 
+    private void OnKalendarzClick(object sender, RoutedEventArgs e)
+    {
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        if (user?.CanViewKalendarz != true)
+            return;
+
+        var controller = new KalendarzController(_tukanServices.Bober);
+        _kalendarzView ??= new KalendarzView { IsEmbedded = true };
+        _kalendarzView.Initialize(
+            controller,
+            canEdit: user.CanEditKalendarz,
+            userLogin: user.Login,
+            shiftNumber: user.ShiftNumber);
+        NavigateTo(_kalendarzView, "Kalendarz", KalendarzButton);
+    }
+
     private async void OnSkrybekViewClick(object sender, RoutedEventArgs e)
     {
         if (_tukanServices.SkrybekSession is null)
@@ -363,6 +386,18 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 TukanMessageBox.Show(this, $"Nie udało się odświeżyć rozkazów po zapisie ustawień:\n\n{ex.Message}", "TUKAN");
+            }
+        }
+
+        if (_kalendarzView is not null)
+        {
+            try
+            {
+                await _kalendarzView.RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                TukanMessageBox.Show(this, $"Nie udało się odświeżyć kalendarza po zapisie ustawień:\n\n{ex.Message}", "TUKAN");
             }
         }
     }
@@ -484,7 +519,8 @@ public partial class MainWindow : Window
         foreach (var button in new[]
         {
             GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
-            BoberViewButton, UrlopPlanButton, GrafikNurkowyButton, SkrybekViewButton, SettingsButton
+            BoberViewButton, UrlopPlanButton, GrafikNurkowyButton, KalendarzButton, SkrybekViewButton,
+            SettingsButton
         })
         {
             if (button.Visibility != Visibility.Visible)

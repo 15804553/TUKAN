@@ -21,6 +21,10 @@ public static class RoleKeys
     public const string EksportNaglowekStopkaTlo = "EksportNaglowekStopkaTlo";
     public const string EksportNaglowekStopkaCzcionka = "EksportNaglowekStopkaCzcionka";
 
+    public const string KalendarzZmiana1 = "KalendarzZmiana1";
+    public const string KalendarzZmiana2 = "KalendarzZmiana2";
+    public const string KalendarzZmiana3 = "KalendarzZmiana3";
+
     public static IReadOnlyList<string> WszystkieRole =>
     [
         DowodcaZmiany,
@@ -29,6 +33,13 @@ public static class RoleKeys
         Nurek,
         Kierowca,
         Zwykly
+    ];
+
+    public static IReadOnlyList<string> KalendarzKolory =>
+    [
+        KalendarzZmiana1,
+        KalendarzZmiana2,
+        KalendarzZmiana3
     ];
 
     public static IReadOnlyList<string> WszystkieKolory =>
@@ -54,7 +65,10 @@ public static class RoleKeys
             { WolnaSluzba, "D / WS — tło komórki" },
             { DzienSluzby, "Dzień służby — plan urlopów" },
             { EksportNaglowekStopkaTlo, "Eksport — tło nagłówka i stopki" },
-            { EksportNaglowekStopkaCzcionka, "Eksport — czcionka nagłówka i stopki" }
+            { EksportNaglowekStopkaCzcionka, "Eksport — czcionka nagłówka i stopki" },
+            { KalendarzZmiana1, "Kalendarz — zmiana I" },
+            { KalendarzZmiana2, "Kalendarz — zmiana II" },
+            { KalendarzZmiana3, "Kalendarz — zmiana III" }
         };
 
     /// <summary>Kolory tła wiersza w grafiku.</summary>
@@ -86,6 +100,23 @@ public static class RoleKeys
             { EksportNaglowekStopkaCzcionka, "#FFFFFF" }
         };
 
+    /// <summary>Domyślne kolory zmian w kalendarzu (jak grafik nurkowy).</summary>
+    public static IReadOnlyDictionary<string, string> DomyslneKoloryKalendarza =>
+        new Dictionary<string, string>
+        {
+            { KalendarzZmiana1, GrafikNurkowyConstants.ColorZmiana1 },
+            { KalendarzZmiana2, GrafikNurkowyConstants.ColorZmiana2 },
+            { KalendarzZmiana3, GrafikNurkowyConstants.ColorZmiana3 }
+        };
+
+    public static string KalendarzKluczForZmiana(int zmianaId) => zmianaId switch
+    {
+        1 => KalendarzZmiana1,
+        2 => KalendarzZmiana2,
+        3 => KalendarzZmiana3,
+        _ => KalendarzZmiana1
+    };
+
     public static string GetDefaultKolorHex(string klucz)
     {
         if (DomyslneKolory.TryGetValue(klucz, out var rola))
@@ -94,6 +125,8 @@ public static class RoleKeys
             return wpis;
         if (DomyslneKoloryEksportu.TryGetValue(klucz, out var eksport))
             return eksport;
+        if (DomyslneKoloryKalendarza.TryGetValue(klucz, out var kalendarz))
+            return kalendarz;
         return "#2D2D2D";
     }
 }

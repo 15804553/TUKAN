@@ -39,8 +39,17 @@ public sealed class SettingsController(AppServices services)
     public async Task<IReadOnlyList<KolorStanowiska>> GetKoloryAsync(CancellationToken ct = default) =>
         await services.Kolory.GetAllAsync(ct);
 
-    public async Task SaveKoloryAsync(IReadOnlyList<KolorStanowiska> kolory, CancellationToken ct = default) =>
-        await services.Kolory.SaveAsync(kolory, ct);
+    public async Task SaveKoloryAsync(IReadOnlyList<KolorStanowiska> kolory, CancellationToken ct = default)
+    {
+        // SaveAsync nadpisuje całą tabelę — zachowaj kolory kalendarza ustawiane przez DCA.
+        var existing = await services.Kolory.GetAllAsync(ct);
+        var calendarKeys = RoleKeys.KalendarzKolory;
+        var preserved = existing
+            .Where(k => calendarKeys.Contains(k.KluczRoli))
+            .Where(k => kolory.All(c => c.KluczRoli != k.KluczRoli));
+        var merged = kolory.Concat(preserved).ToList();
+        await services.Kolory.SaveAsync(merged, ct);
+    }
 
     public Task<int> GetStanZmianyAsync(int zmianaId, CancellationToken ct = default) =>
         services.Settings.GetStanZmianyAsync(zmianaId, ct);

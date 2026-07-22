@@ -7,6 +7,7 @@ namespace BOBER.App.ViewModels;
 public sealed class GrafikRowViewModel : INotifyPropertyChanged
 {
     private readonly Dictionary<int, string> _cells = new();
+    private readonly DayIndexedTexts _kalendarzNotes = new();
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -26,6 +27,9 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
     /// <summary>Kolor obramowania imienia (czerwony dla nurka, przezroczysty w pozostałych przypadkach).</summary>
     public Brush NameBorderBrush { get; set; } = Brushes.Transparent;
 
+    /// <summary>Notatki kalendarza DCA per dzień — binding: KalendarzNotes[15].</summary>
+    public DayIndexedTexts KalendarzNotes => _kalendarzNotes;
+
     /// <summary>Indekser dla kolumn dni DataGrid — binding: {Binding [1]}, {Binding [15]}, itd.</summary>
     public string this[int day]
     {
@@ -41,6 +45,27 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
     public string GetCell(int day) => this[day];
     public void ClearCell(int day) => this[day] = string.Empty;
 
+    public void SetKalendarzNote(int day, string value) => KalendarzNotes[day] = value;
+
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+}
+
+/// <summary>Indeksowane teksty dni do bindingu WPF (np. KalendarzNotes[3]).</summary>
+public sealed class DayIndexedTexts : INotifyPropertyChanged
+{
+    private readonly Dictionary<int, string> _cells = new();
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string this[int day]
+    {
+        get => _cells.TryGetValue(day, out var v) ? v : string.Empty;
+        set
+        {
+            _cells[day] = value ?? string.Empty;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs($"Item[{day}]"));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs($"[{day}]"));
+        }
+    }
 }

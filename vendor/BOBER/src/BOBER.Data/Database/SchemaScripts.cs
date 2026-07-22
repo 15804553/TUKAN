@@ -73,6 +73,26 @@ internal static class SchemaScripts
             Dzien SHORT NOT NULL,
             Tresc MEMO NOT NULL
         )
+        """,
+        """
+        CREATE TABLE KalendarzWpisy (
+            Id AUTOINCREMENT PRIMARY KEY,
+            Data DATETIME NOT NULL,
+            ZmianaId SHORT NOT NULL,
+            Tresc MEMO NOT NULL,
+            AutorLogin TEXT(100) NOT NULL,
+            DataUtworzenia DATETIME NOT NULL,
+            DataModyfikacji DATETIME NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE KalendarzOdczyty (
+            WpisId LONG NOT NULL,
+            ZmianaId SHORT NOT NULL,
+            Przeczytane YESNO NOT NULL,
+            PrzeczytanePrzez TEXT(100),
+            DataOdczytu DATETIME
+        )
         """
     ];
 }

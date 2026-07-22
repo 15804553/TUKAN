@@ -6,6 +6,7 @@ using BOBER.Services.Database;
 using BOBER.Services.Export;
 using BOBER.Services.Grafik;
 using BOBER.Services.GrafikNurkowy;
+using BOBER.Services.Kalendarz;
 using BOBER.Services.Personnel;
 using BOBER.Services.Settings;
 using BOBER.Services.Urlop;
@@ -29,6 +30,7 @@ public sealed class AppServices
         var grafikNotatkaRepository = new GrafikNotatkaRepository(boberFactory);
         var urlopPlanRepository = new UrlopPlanRepository(boberFactory);
         var grafikNurkowyRepository = new GrafikNurkowyRepository(boberFactory);
+        var kalendarzRepository = new KalendarzRepository(boberFactory);
         var kolejnoscRepository = new KolejnoscRepository(boberFactory);
         var koloryRepository = new KoloryRepository(boberFactory);
         var ustawieniaRepository = new UstawieniaRepository(boberFactory);
@@ -60,6 +62,7 @@ public sealed class AppServices
             Funkcjonariusze,
             Settings,
             new GrafikNurkowyExcelService());
+        Kalendarz = new KalendarzService(kalendarzRepository, koloryRepository, calendarEngine);
         Database = new DatabaseService(bootstrapper, ChomikOptions);
     }
 
@@ -76,5 +79,6 @@ public sealed class AppServices
     public ExportService Export { get; }
     public IUrlopPlanService UrlopPlan { get; }
     public IGrafikNurkowyService GrafikNurkowy { get; }
+    public IKalendarzService Kalendarz { get; }
     public DatabaseService Database { get; }
 }
