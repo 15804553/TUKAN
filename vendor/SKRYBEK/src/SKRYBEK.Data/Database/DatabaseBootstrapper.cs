@@ -21,7 +21,38 @@ public sealed class DatabaseBootstrapper
             CreateAccessDatabase(path);
 
         await EnsureTablesExistAsync();
+        await EnsureSchemaUpgradesAsync();
         await EnsureDefaultDataAsync();
+    }
+
+    private async Task EnsureSchemaUpgradesAsync()
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync();
+        await EnsureColumnAsync(conn, "Samochody", "CzySprawdzajPoziomNurkowy", "BIT");
+    }
+
+    private static async Task EnsureColumnAsync(
+        OleDbConnection conn,
+        string tableName,
+        string columnName,
+        string columnType)
+    {
+        try
+        {
+            await using var command = new OleDbCommand(
+                $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnType}",
+                conn);
+            await command.ExecuteNonQueryAsync();
+        }
+        catch (OleDbException ex) when (
+            ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("już istnieje", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)
+            || ex.Message.Contains("istnieje", StringComparison.OrdinalIgnoreCase))
+        {
+            // Kolumna już dodana.
+        }
     }
 
     private static void CreateAccessDatabase(string path)
@@ -99,12 +130,13 @@ public sealed class DatabaseBootstrapper
         foreach (var (nazwa, pozycje, typ, kolejnosc, aktywny) in domyslne)
         {
             await using var cmd = new OleDbCommand(
-                "INSERT INTO Samochody (Nazwa, LiczbaPozycji, Typ, Kolejnosc, CzyAktywny) VALUES (?, ?, ?, ?, ?)", conn);
+                "INSERT INTO Samochody (Nazwa, LiczbaPozycji, Typ, Kolejnosc, CzyAktywny, CzySprawdzajPoziomNurkowy) VALUES (?, ?, ?, ?, ?, ?)", conn);
             cmd.Parameters.AddWithValue("Nazwa", nazwa);
             cmd.Parameters.AddWithValue("LiczbaPozycji", pozycje);
             cmd.Parameters.AddWithValue("Typ", typ);
             cmd.Parameters.AddWithValue("Kolejnosc", kolejnosc);
             cmd.Parameters.AddWithValue("CzyAktywny", aktywny);
+            cmd.Parameters.AddWithValue("CzySprawdzajPoziomNurkowy", false);
             await cmd.ExecuteNonQueryAsync();
         }
     }

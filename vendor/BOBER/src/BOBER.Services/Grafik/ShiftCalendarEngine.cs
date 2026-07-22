@@ -91,6 +91,25 @@ public sealed class ShiftCalendarEngine(IUstawieniaRepository ustawienia)
     public async Task<int> GetWorkingShiftAsync(DateOnly date, CancellationToken cancellationToken = default)
     {
         await EnsureLoadedAsync(cancellationToken);
+        return ComputeWorkingShift(date);
+    }
+
+    /// <summary>Mapa dzień miesiąca → zmiana pełniąca służbę.</summary>
+    public async Task<IReadOnlyDictionary<int, int>> GetWorkingShiftsForMonthAsync(
+        int rok,
+        int miesiac,
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureLoadedAsync(cancellationToken);
+        var daysInMonth = DateTime.DaysInMonth(rok, miesiac);
+        var result = new Dictionary<int, int>(daysInMonth);
+        for (var day = 1; day <= daysInMonth; day++)
+            result[day] = ComputeWorkingShift(new DateOnly(rok, miesiac, day));
+        return result;
+    }
+
+    private int ComputeWorkingShift(DateOnly date)
+    {
         foreach (var zmiana in _offsets!.Keys)
         {
             if (ComputeIsWorkDay(zmiana, date))

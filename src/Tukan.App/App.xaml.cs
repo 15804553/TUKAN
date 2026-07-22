@@ -59,9 +59,11 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
+            var aceArch = Environment.Is64BitProcess ? "x64" : "x86 (32-bit)";
             MessageBox.Show(
                 $"Nie udało się przygotować baz danych.\n\n{ex.Message}\n\n" +
-                "Upewnij się, że zainstalowany jest Microsoft Access Database Engine (ACE) x64.",
+                $"Aplikacja działa jako proces {aceArch}. " +
+                $"Zainstaluj Microsoft Access Database Engine (ACE) w tej samej architekturze ({aceArch}).",
                 ApplicationTitle,
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);

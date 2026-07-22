@@ -3,6 +3,7 @@ using BOBER.App.Helpers;
 using BOBER.App.ViewModels;
 using BOBER.Core.Constants;
 using BOBER.Core.Models;
+using BOBER.Core.Rules;
 using BOBER.Services;
 
 namespace BOBER.App.Controllers;
@@ -80,11 +81,11 @@ public sealed class MainController(AppServices services)
             rows.Add(row);
         }
 
-        // Wiersz sumaryczny (Stan / Kierowcy / Nurkowie / Dowódcy — każda wartość w osobnym wierszu)
+        // Wiersz sumaryczny (Stan / Dowódcy / Nurkowie / Kierowcy / Poziom A/AB)
         var summaryRow = new GrafikRowViewModel
         {
             IsSummaryRow = true,
-            ImieNazwisko = "Wolne miejsca\nDowódcy\nNurkowie\nKierowcy",
+            ImieNazwisko = "Wolne miejsca\nDowódcy\nNurkowie\nKierowcy\nPoziom A/AB",
             RowBackground = new SolidColorBrush(Color.FromRgb(0xA8, 0x98, 0x68))
         };
 
@@ -251,11 +252,11 @@ public sealed class MainController(AppServices services)
         IEnumerable<GrafikRowViewModel> allRows,
         int dzien)
     {
-        var (stan, kierowcy, nurkowie, dowodcy) = ComputeSummary(allRows, dzien);
-        summaryRow.SetCell(dzien, $"{stan}\n{dowodcy}\n{nurkowie}\n{kierowcy}");
+        var (stan, kierowcy, nurkowie, dowodcy, poziom) = ComputeSummary(allRows, dzien);
+        summaryRow.SetCell(dzien, $"{stan}\n{dowodcy}\n{nurkowie}\n{kierowcy}\n{poziom}");
     }
 
-    private (int Stan, int Kierowcy, int Nurkowie, int Dowodcy) ComputeSummary(
+    private (int Stan, int Kierowcy, int Nurkowie, int Dowodcy, string Poziom) ComputeSummary(
         IEnumerable<GrafikRowViewModel> allRows,
         int dzien)
     {
@@ -277,7 +278,12 @@ public sealed class MainController(AppServices services)
         var nurkowie = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && RoleClassifier.IsNurek(f));
         var dowodcy = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && RoleClassifier.IsDowodca(f));
 
-        return (stan, kierowcy, nurkowie, dowodcy);
+        var obecni = obecniIds
+            .Where(id => funcLookup.ContainsKey(id))
+            .Select(id => funcLookup[id]);
+        var poziom = PoziomGotowosciNurkowejRules.Format(PoziomGotowosciNurkowejRules.Ocena(obecni));
+
+        return (stan, kierowcy, nurkowie, dowodcy, poziom);
     }
 
     private string GetKolorHex(string klucz, IReadOnlyDictionary<string, string> domyslne)

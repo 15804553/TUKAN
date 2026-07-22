@@ -16,6 +16,11 @@ public sealed class Samochod
     /// <summary>Dodatkowe kursy/uprawnienia ustawione przez DCA JRG — obowiązują wyłącznie na pozycjach 1.D i 2.K.</summary>
     public bool CzyWymagaKursow => WymaganeUprawnieniaIds.Count > 0;
 
+    /// <summary>
+    /// Gdy true — w rozkazie oceniany jest poziom gotowości nurkowej A/AB obsady pojazdu.
+    /// </summary>
+    public bool CzySprawdzajPoziomNurkowy { get; set; }
+
     /// <summary>IDs typów uprawnień z CHOMIK wymaganych na pozycjach 1.D lub 2.K (np. kurs drabin, kurs nurka).</summary>
     public List<int> WymaganeUprawnieniaIds { get; set; } = [];
 }

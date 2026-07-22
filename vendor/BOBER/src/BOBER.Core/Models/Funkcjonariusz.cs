@@ -1,3 +1,5 @@
+using BOBER.Core.Rules;
+
 namespace BOBER.Core.Models;
 
 public sealed class Funkcjonariusz
@@ -31,4 +33,7 @@ public sealed class Funkcjonariusz
 
     public bool MaUprawnieniaKPP =>
         NazwyUprawnien.Any(u => u.Contains("Kierownik prac podwodnych", StringComparison.OrdinalIgnoreCase));
+
+    public bool MaUprawnieniaObslugaLodzi =>
+        NazwyUprawnien.Any(PoziomGotowosciNurkowejRules.CzyEtykietaObslugiLodzi);
 }

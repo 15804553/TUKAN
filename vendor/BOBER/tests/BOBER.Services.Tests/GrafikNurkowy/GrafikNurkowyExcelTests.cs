@@ -17,6 +17,11 @@ public sealed class GrafikNurkowyMappingTests
     [InlineData("D", null)]
     [InlineData("WS", null)]
     [InlineData("Del", null)]
+    [InlineData("S", null)]
+    [InlineData("C", null)]
+    [InlineData("U/", "1")]
+    [InlineData("D/", "1")]
+    [InlineData("WS/", "1")]
     public void MapFromGrafikWpis_MapsOnlyWorkAndVacation(string? typ, string? expected)
     {
         Assert.Equal(expected, GrafikNurkowyConstants.MapFromGrafikWpis(typ));
@@ -158,12 +163,13 @@ public sealed class GrafikNurkowyExcelServiceTests
                 [nurkowie[0]],
                 nurkowie,
                 new Dictionary<(int, int), string?> { [(1, 3)] = "1", [(1, 6)] = "U" },
-                new HashSet<int> { 3, 6, 9 });
+                new HashSet<int> { 3, 6, 9 },
+                new Dictionary<int, int> { [1] = 2, [3] = 1 });
 
             using var workbook = new XLWorkbook(path);
             var ws = workbook.Worksheet(GrafikNurkowyConstants.BuildSheetName(8, 2026));
 
-            // Day 1 header = róż (zm. II), day 3 = żółty (zm. I)
+            // Day 1 = zm. II (róż), day 3 = zm. I (żółty) — wg mapy służb
             Assert.True(ColorsMatch(ws.Cell(2, 4).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana2));
             Assert.True(ColorsMatch(ws.Cell(2, 6).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana1));
 

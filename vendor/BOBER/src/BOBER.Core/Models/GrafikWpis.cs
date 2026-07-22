@@ -9,7 +9,7 @@ public sealed class GrafikWpis
     public int Miesiac { get; set; }
     public int Dzien { get; set; }
 
-    /// <summary>Kody nieobecności w pracy zmiany: D, WS, U, Del. Brak wpisu = w pracy.</summary>
+    /// <summary>Kody nieobecności w pracy zmiany: D, WS, U, Del, S, C (+ opcjonalnie Oddał „/”). Brak wpisu = w pracy.</summary>
     public string TypWpisu { get; set; } = string.Empty;
 
     /// <summary>Czy wpis pochodzi z automatycznego generowania (nie jest ręczny).</summary>

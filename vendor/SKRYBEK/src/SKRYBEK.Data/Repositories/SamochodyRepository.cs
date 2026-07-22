@@ -19,25 +19,37 @@ public sealed class SamochodyRepository
         var list = new List<Samochod>();
         await using var conn = _factory.Create();
         await conn.OpenAsync();
-        await using var cmd = new OleDbCommand(
-            "SELECT Id, Nazwa, LiczbaPozycji, Typ, Kolejnosc, CzyAktywny FROM Samochody ORDER BY Kolejnosc", conn);
+
+        var hasPoziomColumn = await ColumnExistsAsync(conn, "Samochody", "CzySprawdzajPoziomNurkowy");
+        var sql = hasPoziomColumn
+            ? "SELECT Id, Nazwa, LiczbaPozycji, Typ, Kolejnosc, CzyAktywny, CzySprawdzajPoziomNurkowy FROM Samochody ORDER BY Kolejnosc"
+            : "SELECT Id, Nazwa, LiczbaPozycji, Typ, Kolejnosc, CzyAktywny FROM Samochody ORDER BY Kolejnosc";
+
+        await using var cmd = new OleDbCommand(sql, conn);
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
         {
             list.Add(new Samochod
             {
-                Id            = r.GetIntSafe(0),
-                Nazwa         = r.GetStringSafe(1),
+                Id = r.GetIntSafe(0),
+                Nazwa = r.GetStringSafe(1),
                 LiczbaPozycji = r.GetIntSafe(2),
-                Typ           = (TypSamochodu)r.GetIntSafe(3),
-                Kolejnosc     = r.GetIntSafe(4),
-                CzyAktywny    = r.GetBoolSafe(5)
+                Typ = (TypSamochodu)r.GetIntSafe(3),
+                Kolejnosc = r.GetIntSafe(4),
+                CzyAktywny = r.GetBoolSafe(5),
+                CzySprawdzajPoziomNurkowy = hasPoziomColumn && r.GetBoolSafe(6)
             });
         }
         await r.CloseAsync();
 
         await AttachWymaganiaAsync(conn, list);
         return list;
+    }
+
+    private static async Task<bool> ColumnExistsAsync(OleDbConnection conn, string tableName, string columnName)
+    {
+        var schema = await conn.GetSchemaAsync("Columns", [null, null, tableName, columnName]);
+        return schema.Rows.Count > 0;
     }
 
     private static async Task AttachWymaganiaAsync(OleDbConnection conn, List<Samochod> list)
@@ -74,20 +86,26 @@ public sealed class SamochodyRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync();
 
+        var hasPoziomColumn = await ColumnExistsAsync(conn, "Samochody", "CzySprawdzajPoziomNurkowy");
+
         if (s.Id == 0)
         {
-            await using var cmd = new OleDbCommand(
-                "INSERT INTO Samochody (Nazwa, LiczbaPozycji, Typ, Kolejnosc, CzyAktywny) VALUES (?, ?, ?, ?, ?)", conn);
-            AddParams(cmd, s);
+            var sql = hasPoziomColumn
+                ? "INSERT INTO Samochody (Nazwa, LiczbaPozycji, Typ, Kolejnosc, CzyAktywny, CzySprawdzajPoziomNurkowy) VALUES (?, ?, ?, ?, ?, ?)"
+                : "INSERT INTO Samochody (Nazwa, LiczbaPozycji, Typ, Kolejnosc, CzyAktywny) VALUES (?, ?, ?, ?, ?)";
+            await using var cmd = new OleDbCommand(sql, conn);
+            AddParams(cmd, s, hasPoziomColumn);
             await cmd.ExecuteNonQueryAsync();
 
             s.Id = await ReadInsertedIdentityAsync(conn);
         }
         else
         {
-            await using var cmd = new OleDbCommand(
-                "UPDATE Samochody SET Nazwa=?, LiczbaPozycji=?, Typ=?, Kolejnosc=?, CzyAktywny=? WHERE Id=?", conn);
-            AddParams(cmd, s);
+            var sql = hasPoziomColumn
+                ? "UPDATE Samochody SET Nazwa=?, LiczbaPozycji=?, Typ=?, Kolejnosc=?, CzyAktywny=?, CzySprawdzajPoziomNurkowy=? WHERE Id=?"
+                : "UPDATE Samochody SET Nazwa=?, LiczbaPozycji=?, Typ=?, Kolejnosc=?, CzyAktywny=? WHERE Id=?";
+            await using var cmd = new OleDbCommand(sql, conn);
+            AddParams(cmd, s, hasPoziomColumn);
             cmd.Parameters.AddInteger(s.Id);
             await cmd.ExecuteNonQueryAsync();
         }
@@ -161,12 +179,14 @@ public sealed class SamochodyRepository
         return Convert.ToInt32(Convert.ToDecimal(scalar));
     }
 
-    private static void AddParams(OleDbCommand cmd, Samochod s)
+    private static void AddParams(OleDbCommand cmd, Samochod s, bool includePoziomNurkowy)
     {
         cmd.Parameters.AddWithValue("Nazwa", s.Nazwa);
         cmd.Parameters.AddWithValue("LiczbaPozycji", s.LiczbaPozycji);
         cmd.Parameters.AddWithValue("Typ", (int)s.Typ);
         cmd.Parameters.AddWithValue("Kolejnosc", s.Kolejnosc);
         cmd.Parameters.AddWithValue("CzyAktywny", s.CzyAktywny);
+        if (includePoziomNurkowy)
+            cmd.Parameters.AddWithValue("CzySprawdzajPoziomNurkowy", s.CzySprawdzajPoziomNurkowy);
     }
 }

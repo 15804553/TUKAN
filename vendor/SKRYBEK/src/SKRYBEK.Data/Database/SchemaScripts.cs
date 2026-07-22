@@ -21,7 +21,8 @@ internal static class SchemaScripts
             LiczbaPozycji SHORT NOT NULL,
             Typ SHORT NOT NULL,
             Kolejnosc SHORT NOT NULL,
-            CzyAktywny BIT NOT NULL
+            CzyAktywny BIT NOT NULL,
+            CzySprawdzajPoziomNurkowy BIT NOT NULL
         )
         """,
         """

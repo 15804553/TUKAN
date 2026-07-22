@@ -275,6 +275,8 @@ public sealed class SamochodViewModel : ObservableObject
     public bool CzyPokazujIkoneWymagan => Samochod.LiczbaPozycji >= PozycjaSamochoduRules.PozycjaDowodca;
     public bool CzyWymaganiaSpelnione { get; private set; }
     public string WymaganeKursyTooltip { get; private set; } = string.Empty;
+    public string PoziomNurkowyTekst { get; private set; } = string.Empty;
+    public bool CzyPokazujPoziomNurkowy => Samochod.CzySprawdzajPoziomNurkowy;
 
     public Brush WymaganeKursyKolor => CzyWymaganiaSpelnione
         ? (Brush)Application.Current.FindResource("OkBrush")
@@ -314,10 +316,24 @@ public sealed class SamochodViewModel : ObservableObject
         WymaganeKursyTooltip = PozycjaSamochoduRules.BudujTooltipWymaganPojazdu(
             Samochod, pozycje, _editor.NazwaTypuUprawnienia);
 
+        if (Samochod.CzySprawdzajPoziomNurkowy)
+        {
+            var poziom = PozycjaSamochoduRules.OcenaPoziomuNurkowego(pozycje);
+            PoziomNurkowyTekst = poziom == PoziomGotowosciNurkowej.Brak
+                ? "—"
+                : PoziomGotowosciNurkowejRules.Format(poziom);
+        }
+        else
+        {
+            PoziomNurkowyTekst = string.Empty;
+        }
+
         OnPropertyChanged(nameof(CzyPokazujIkoneWymagan));
         OnPropertyChanged(nameof(CzyWymaganiaSpelnione));
         OnPropertyChanged(nameof(WymaganeKursyTooltip));
         OnPropertyChanged(nameof(WymaganeKursyKolor));
+        OnPropertyChanged(nameof(PoziomNurkowyTekst));
+        OnPropertyChanged(nameof(CzyPokazujPoziomNurkowy));
     }
 
     public IEnumerable<PozycjaSamochodu> GetModele()

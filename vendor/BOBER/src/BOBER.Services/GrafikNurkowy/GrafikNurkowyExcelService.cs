@@ -16,7 +16,8 @@ public sealed class GrafikNurkowyExcelService
         IReadOnlyList<Funkcjonariusz> nurkowieZmiany,
         IReadOnlyList<Funkcjonariusz> wszyscyNurkowie,
         IReadOnlyDictionary<(int FunkcjonariuszId, int Dzien), string?> wartosciDni,
-        IReadOnlyCollection<int> workDays)
+        IReadOnlyCollection<int> workDays,
+        IReadOnlyDictionary<int, int>? dzienDoZmiany = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
@@ -36,7 +37,7 @@ public sealed class GrafikNurkowyExcelService
         UpdateShiftRows(ws, rok, miesiac, zmianaId, nurkowieZmiany, wartosciDni, workDays);
         RemoveBlankRowsBetweenDataAndSummary(ws);
         RecalculateSummary(ws, rok, miesiac);
-        GrafikNurkowyExcelFormatter.Apply(ws, rok, miesiac, wszyscyNurkowie);
+        GrafikNurkowyExcelFormatter.Apply(ws, rok, miesiac, wszyscyNurkowie, dzienDoZmiany);
 
         workbook.SaveAs(filePath);
     }

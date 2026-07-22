@@ -396,16 +396,30 @@
                                                            FontSize="12"
                                                            Foreground="White"
                                                            VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="1"
-                                                           Text="ⓘ"
-                                                           FontSize="11"
-                                                           FontWeight="Bold"
-                                                           Foreground="{Binding WymaganeKursyKolor}"
-                                                           Margin="6,0,0,0"
-                                                           VerticalAlignment="Center"
-                                                           Cursor="Help"
-                                                           ToolTip="{Binding WymaganeKursyTooltip}"
-                                                           Visibility="{Binding CzyPokazujIkoneWymagan, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                <Border Grid.Column="1"
+                                                        Background="#F7F9FA"
+                                                        CornerRadius="8"
+                                                        Padding="6,1"
+                                                        Margin="8,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        Cursor="Help"
+                                                        ToolTip="{Binding WymaganeKursyTooltip}"
+                                                        Visibility="{Binding CzyPokazujIkoneWymagan, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="ⓘ"
+                                                                   FontSize="12"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="{Binding WymaganeKursyKolor}"
+                                                                   VerticalAlignment="Center" />
+                                                        <TextBlock Text="{Binding PoziomNurkowyTekst}"
+                                                                   FontSize="11"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="{Binding WymaganeKursyKolor}"
+                                                                   Margin="4,0,0,0"
+                                                                   VerticalAlignment="Center"
+                                                                   Visibility="{Binding CzyPokazujPoziomNurkowy, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                    </StackPanel>
+                                                </Border>
                                             </Grid>
                                         </Border>
                                         <!-- Pozycje -->

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Media;
 using BOBER.App.Controllers;
@@ -137,8 +138,9 @@ public partial class GrafikNurkowyView : UserControl
             var rows = await _controller.LoadPreviewAsync(_year, _month);
             var status = await _controller.GetZatwierdzenieAsync(_year, _month);
             var exportPath = await _controller.GetExportPathAsync();
+            var dzienDoZmiany = await _controller.GetWorkingShiftsForMonthAsync(_year, _month);
 
-            BuildColumns();
+            BuildColumns(dzienDoZmiany);
             PreviewGrid.ItemsSource = rows.Select(r => new PreviewRow(r)).ToList();
 
             var locked = status?.Zatwierdzony == true;
@@ -179,7 +181,7 @@ public partial class GrafikNurkowyView : UserControl
         }
     }
 
-    private void BuildColumns()
+    private void BuildColumns(IReadOnlyDictionary<int, int> dzienDoZmiany)
     {
         PreviewGrid.Columns.Clear();
         var zmianaCellStyle = CreateZmianaCellStyle();
@@ -201,13 +203,16 @@ public partial class GrafikNurkowyView : UserControl
 
         var days = DateTime.DaysInMonth(_year, _month);
         var whiteDayCellStyle = CreateWhiteDayCellStyle();
+        var baseHeaderStyle = TryFindResource("BoberColumnHeader") as Style
+            ?? PreviewGrid.ColumnHeaderStyle;
         for (var day = 1; day <= days; day++)
         {
             var d = day;
+            var zmianaId = dzienDoZmiany.TryGetValue(d, out var z) ? z : 0;
             PreviewGrid.Columns.Add(new DataGridTextColumn
             {
                 Header = d.ToString(),
-                HeaderTemplate = CreateDayHeaderTemplate(d),
+                HeaderStyle = CreateDayHeaderStyle(baseHeaderStyle, BrushFromHex(GrafikNurkowyConstants.ColorForDayHeader(zmianaId))),
                 Binding = new Binding($"Day{d}"),
                 Width = new DataGridLength(32),
                 ElementStyle = CreateCenteredStyle(),
@@ -216,23 +221,44 @@ public partial class GrafikNurkowyView : UserControl
         }
     }
 
-    private static DataTemplate CreateDayHeaderTemplate(int day)
+    private static Style CreateDayHeaderStyle(Style? basedOn, Brush background)
     {
-        var template = new DataTemplate();
+        var style = basedOn is null
+            ? new Style(typeof(DataGridColumnHeader))
+            : new Style(typeof(DataGridColumnHeader), basedOn);
+        style.Setters.Add(new Setter(Control.BackgroundProperty, background));
+        style.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.Black));
+        style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Bold));
+        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
+        style.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
+        style.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        style.Setters.Add(new Setter(Control.TemplateProperty, CreateFilledDayHeaderTemplate()));
+        return style;
+    }
+
+    private static ControlTemplate CreateFilledDayHeaderTemplate()
+    {
+        var template = new ControlTemplate(typeof(DataGridColumnHeader));
         var borderFactory = new FrameworkElementFactory(typeof(Border));
-        borderFactory.SetValue(Border.BackgroundProperty, BrushFromHex(GrafikNurkowyConstants.ColorForDayHeader(day)));
-        borderFactory.SetValue(Border.PaddingProperty, new Thickness(2, 4, 2, 4));
-        borderFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
-        borderFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Stretch);
+        borderFactory.SetBinding(
+            Border.BackgroundProperty,
+            new Binding(nameof(Control.Background)) { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+        borderFactory.SetBinding(
+            Border.BorderBrushProperty,
+            new Binding(nameof(Control.BorderBrush)) { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+        borderFactory.SetBinding(
+            Border.BorderThicknessProperty,
+            new Binding(nameof(Control.BorderThickness)) { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+        borderFactory.SetValue(FrameworkElement.SnapsToDevicePixelsProperty, true);
 
-        var textFactory = new FrameworkElementFactory(typeof(TextBlock));
-        textFactory.SetValue(TextBlock.TextProperty, day.ToString());
-        textFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
-        textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
-        textFactory.SetValue(TextBlock.ForegroundProperty, Brushes.Black);
+        var presenterFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+        presenterFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        presenterFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        presenterFactory.SetBinding(
+            FrameworkElement.MarginProperty,
+            new Binding(nameof(Control.Padding)) { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+        borderFactory.AppendChild(presenterFactory);
 
-        borderFactory.AppendChild(textFactory);
         template.VisualTree = borderFactory;
         return template;
     }

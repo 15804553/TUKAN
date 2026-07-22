@@ -116,6 +116,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         samochod.WymaganeUprawnieniaIds.Clear();
         foreach (var typId in Wybranysamochod.WymaganeUprawnieniaIds)
             samochod.WymaganeUprawnieniaIds.Add(typId);
+        samochod.CzySprawdzajPoziomNurkowy = Wybranysamochod.CzySprawdzajPoziomNurkowy;
     }
 
     [RelayCommand]

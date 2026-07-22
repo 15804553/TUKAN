@@ -150,6 +150,12 @@
                                            Foreground="{StaticResource ForegroundBrush}"
                                            TextWrapping="Wrap"
                                            Margin="0,0,0,8" />
+                                <CheckBox Content="Sprawdzaj poziom A/AB"
+                                          IsChecked="{Binding Wybranysamochod.CzySprawdzajPoziomNurkowy, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding CanEditPojazdy}"
+                                          Foreground="{StaticResource ForegroundBrush}"
+                                          Margin="0,0,0,10"
+                                          ToolTip="Gdy zaznaczone, ikona w rozkazie dziennym ocenia obsadę pojazdu pod kątem poziomu gotowości nurkowej A/AB." />
                                 <TextBlock Text="Zaznacz dodatkowe uprawnienia, kursy lub szkolenia wymagane na pozycjach 1.D lub 2.K tego pojazdu (nie dotyczą pozycji 3+). Po zmianie kliknij „Zapisz zmiany” na dole okna."
                                            FontSize="11"
                                            Foreground="{StaticResource ForegroundMutedBrush}"

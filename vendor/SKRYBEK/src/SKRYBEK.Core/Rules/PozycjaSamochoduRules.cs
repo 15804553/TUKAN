@@ -93,7 +93,8 @@ public static class PozycjaSamochoduRules
         samochod.WymaganeUprawnieniaIds.All(id => osoby1D2K.Any(o => o.IdUprawnien.Contains(id)));
 
     /// <summary>
-    /// Pełna ocena wymagań pojazdu: obowiązkowe 1.D/2.K oraz dodatkowe kursy DCA (wyłącznie 1.D/2.K).
+    /// Pełna ocena wymagań pojazdu: obowiązkowe 1.D/2.K, dodatkowe kursy DCA
+    /// oraz (opcjonalnie) poziom gotowości nurkowej ≥ A.
     /// </summary>
     public static bool CzySpelniaWymaganiaPojazdu(
         IEnumerable<(int Pozycja, Funkcjonariusz? Osoba)> pozycje,
@@ -106,8 +107,23 @@ public static class PozycjaSamochoduRules
 
         return CzyPozycja1DSpelniona(dowodca, samochod.LiczbaPozycji)
             && CzyPozycja2KSpelniona(kierowca, samochod.LiczbaPozycji)
-            && CzyDodatkoweWymaganiaPojazduSpelnione(osoby1D2K, samochod);
+            && CzyDodatkoweWymaganiaPojazduSpelnione(osoby1D2K, samochod)
+            && CzyPoziomNurkowySpelniony(lista, samochod);
     }
+
+    public static IEnumerable<Funkcjonariusz> OsobyNaWszystkichPozycjach(
+        IEnumerable<(int Pozycja, Funkcjonariusz? Osoba)> pozycje) =>
+        pozycje.Where(p => p.Osoba is not null).Select(p => p.Osoba!);
+
+    public static PoziomGotowosciNurkowej OcenaPoziomuNurkowego(
+        IEnumerable<(int Pozycja, Funkcjonariusz? Osoba)> pozycje) =>
+        PoziomGotowosciNurkowejRules.Ocena(OsobyNaWszystkichPozycjach(pozycje));
+
+    public static bool CzyPoziomNurkowySpelniony(
+        IEnumerable<(int Pozycja, Funkcjonariusz? Osoba)> pozycje,
+        Samochod samochod) =>
+        !samochod.CzySprawdzajPoziomNurkowy
+        || OcenaPoziomuNurkowego(pozycje) >= PoziomGotowosciNurkowej.A;
 
     public static IEnumerable<int> BrakujaceDodatkoweWymaganiaPojazdu(
         IEnumerable<Funkcjonariusz> osoby1D2K,
@@ -170,6 +186,26 @@ public static class PozycjaSamochoduRules
                 var ma = osoby1D2K.Any(o => o.IdUprawnien.Contains(id));
                 linie.Add(ma ? $"✓ {nazwa}" : $"✗ {nazwa}");
             }
+        }
+
+        if (samochod.CzySprawdzajPoziomNurkowy)
+        {
+            var poziom = OcenaPoziomuNurkowego(lista);
+            var osoby = OsobyNaWszystkichPozycjach(lista).ToList();
+            var nurkow = osoby.Count(o => o.MaUprawnieniaNumek);
+            var kpp = osoby.Count(o => o.MaUprawnieniaKPP);
+            var lodzi = osoby.Count(o => o.MaUprawnieniaObslugaLodzi);
+
+            linie.Add(string.Empty);
+            linie.Add("Poziom gotowości nurkowej (cała obsada pojazdu):");
+            linie.Add(poziom >= PoziomGotowosciNurkowej.A
+                ? "✓ Poziom A — min. 2× mł.nurek/nurek + osobna obsługa łodzi"
+                : "✗ Poziom A — min. 2× mł.nurek/nurek + osobna obsługa łodzi");
+            linie.Add(poziom >= PoziomGotowosciNurkowej.AB
+                ? "✓ Poziom AB — + KPP (osobny slot) + obsługa łodzi"
+                : "✗ Poziom AB — + KPP (osobny slot) + obsługa łodzi");
+            linie.Add($"Aktualnie: nurkowie {nurkow}, KPP {kpp}, łódź {lodzi}.");
+            linie.Add($"Spełniony poziom: {PoziomGotowosciNurkowejRules.Format(poziom)}");
         }
 
         linie.Add(string.Empty);

@@ -91,6 +91,9 @@ public static class GrafikGridBuilder
         }
     }
 
+    private const double SummaryLineFontSize = 12.0;
+    private const double SummaryLineHeight = 15.0;
+
     private static DataTemplate CreateNameCellTemplate()
     {
         var template = new DataTemplate();
@@ -130,6 +133,18 @@ public static class GrafikGridBuilder
         };
         nurekFg.Setters.Add(new Setter(TextBlock.ForegroundProperty, NormalDayFg));
         textStyle.Triggers.Add(nurekFg);
+
+        var summaryText = new DataTrigger
+        {
+            Binding = new Binding(nameof(GrafikRowViewModel.IsSummaryRow)),
+            Value = true
+        };
+        summaryText.Setters.Add(new Setter(TextBlock.FontSizeProperty, SummaryLineFontSize));
+        summaryText.Setters.Add(new Setter(TextBlock.LineHeightProperty, SummaryLineHeight));
+        summaryText.Setters.Add(new Setter(TextBlock.LineStackingStrategyProperty, LineStackingStrategy.BlockLineHeight));
+        summaryText.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top));
+        summaryText.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(2, 0, 2, 0)));
+        textStyle.Triggers.Add(summaryText);
         textFactory.SetValue(FrameworkElement.StyleProperty, textStyle);
 
         borderFactory.AppendChild(textFactory);
@@ -163,6 +178,9 @@ public static class GrafikGridBuilder
         return template;
     }
 
+    private static readonly SolidColorBrush SelectionBorderBrush =
+        new(Color.FromRgb(0x1A, 0x16, 0x0A));
+
     private static DataTemplate CreateDayCellTemplate(int day, GrafikCellColors colors)
     {
         var template = new DataTemplate();
@@ -173,6 +191,10 @@ public static class GrafikGridBuilder
         var normalBorderFactory = CreateNormalCellBorder(day, colors);
         var normalStyle = new Style(typeof(Border));
         normalStyle.Setters.Add(new Setter(FrameworkElement.VisibilityProperty, Visibility.Visible));
+        normalStyle.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(0)));
+        normalStyle.Setters.Add(new Setter(Border.BorderBrushProperty, SelectionBorderBrush));
+        normalStyle.Setters.Add(new Setter(Border.PaddingProperty, new Thickness(0)));
+
         var hideNormal = new DataTrigger
         {
             Binding = new Binding(nameof(GrafikRowViewModel.IsSummaryRow)),
@@ -180,6 +202,21 @@ public static class GrafikGridBuilder
         };
         hideNormal.Setters.Add(new Setter(FrameworkElement.VisibilityProperty, Visibility.Collapsed));
         normalStyle.Triggers.Add(hideNormal);
+
+        // Widoczne zaznaczenie także na żółtym WS (tło wpisu zasłania AccentBrush komórki).
+        var selected = new DataTrigger
+        {
+            Binding = new Binding(nameof(DataGridCell.IsSelected))
+            {
+                RelativeSource = new RelativeSource(
+                    RelativeSourceMode.FindAncestor, typeof(DataGridCell), 1)
+            },
+            Value = true
+        };
+        selected.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(2.5)));
+        selected.Setters.Add(new Setter(Border.PaddingProperty, new Thickness(0)));
+        normalStyle.Triggers.Add(selected);
+
         normalBorderFactory.SetValue(FrameworkElement.StyleProperty, normalStyle);
         rootFactory.AppendChild(normalBorderFactory);
 
@@ -200,9 +237,11 @@ public static class GrafikGridBuilder
             Converter = new WpisTloConverter(colors)
         });
 
+        var contentGrid = new FrameworkElementFactory(typeof(Grid));
+
         var textFactory = new FrameworkElementFactory(typeof(TextBlock));
         textFactory.SetBinding(TextBlock.TextProperty,
-            new Binding($"[{day}]") { Converter = WsCellTextConverter.Instance });
+            new Binding($"[{day}]") { Converter = WpisTekstConverter.Instance });
         textFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
         textFactory.SetValue(TextBlock.FontSizeProperty, 15.0);
         textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
@@ -211,9 +250,32 @@ public static class GrafikGridBuilder
 
         var textStyle = new Style(typeof(TextBlock));
         textStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, NormalDayFg));
+        var oddalStrike = new DataTrigger
+        {
+            Binding = new Binding($"[{day}]") { Converter = OddalFlagConverter.Instance },
+            Value = true
+        };
+        oddalStrike.Setters.Add(new Setter(TextBlock.TextDecorationsProperty, TextDecorations.Strikethrough));
+        oddalStrike.Setters.Add(new Setter(TextBlock.FontSizeProperty, 16.0));
+        textStyle.Triggers.Add(oddalStrike);
         textFactory.SetValue(FrameworkElement.StyleProperty, textStyle);
+        contentGrid.AppendChild(textFactory);
 
-        borderFactory.AppendChild(textFactory);
+        // Znaczek „.” / „?” — grubszy, ale nadal mniejszy niż główne litery U/D/S.
+        var markFactory = new FrameworkElementFactory(typeof(TextBlock));
+        markFactory.SetBinding(TextBlock.TextProperty,
+            new Binding($"[{day}]") { Converter = WpisZnaczekConverter.Instance });
+        markFactory.SetValue(TextBlock.FontSizeProperty, 14.0);
+        markFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.ExtraBold);
+        markFactory.SetValue(TextBlock.ForegroundProperty, NormalDayFg);
+        markFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Right);
+        markFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Top);
+        markFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 2, 0));
+        markFactory.SetBinding(UIElement.VisibilityProperty,
+            new Binding($"[{day}]") { Converter = ZnaczekVisibilityConverter.Instance });
+        contentGrid.AppendChild(markFactory);
+
+        borderFactory.AppendChild(contentGrid);
         return borderFactory;
     }
 
@@ -227,17 +289,20 @@ public static class GrafikGridBuilder
         var panelFactory = new FrameworkElementFactory(typeof(StackPanel));
         panelFactory.SetValue(StackPanel.OrientationProperty, Orientation.Vertical);
         panelFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
-        panelFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-        panelFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2, 1, 2, 1));
+        panelFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top);
+        panelFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2, 2, 2, 1));
 
         var textFactory = new FrameworkElementFactory(typeof(TextBlock));
         textFactory.SetBinding(TextBlock.TextProperty, new Binding($"[{day}]"));
         textFactory.SetValue(TextBlock.ForegroundProperty, NormalDayFg);
         textFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
-        textFactory.SetValue(TextBlock.FontSizeProperty, 13.0);
+        textFactory.SetValue(TextBlock.FontSizeProperty, SummaryLineFontSize);
+        textFactory.SetValue(TextBlock.LineHeightProperty, SummaryLineHeight);
+        textFactory.SetValue(TextBlock.LineStackingStrategyProperty, LineStackingStrategy.BlockLineHeight);
         textFactory.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-        textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+        textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Top);
+        textFactory.SetValue(TextBlock.PaddingProperty, new Thickness(0));
         panelFactory.AppendChild(textFactory);
 
         borderFactory.AppendChild(panelFactory);
@@ -260,25 +325,70 @@ public static class GrafikGridBuilder
     {
         private static readonly SolidColorBrush Transparent = new(Colors.Transparent);
 
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-            value?.ToString() switch
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var bazowy = GrafikWpisTypy.BazowyKod(value?.ToString());
+            return bazowy switch
             {
-                "D" => colors.DyzurTlo,
-                "WS" => colors.WsTlo,
-                "Del" => colors.DyzurTlo,
+                GrafikWpisTypy.Dyzur => colors.DyzurTlo,
+                GrafikWpisTypy.WolnaSluzba => colors.WsTlo,
+                GrafikWpisTypy.Delegacja => colors.DyzurTlo,
                 _ => Transparent
             };
+        }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
             throw new NotSupportedException();
     }
 
-    private sealed class WsCellTextConverter : IValueConverter
+    private sealed class WpisTekstConverter : IValueConverter
     {
-        public static readonly WsCellTextConverter Instance = new();
+        public static readonly WpisTekstConverter Instance = new();
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-            value?.ToString() == "WS" ? string.Empty : value ?? string.Empty;
+            GrafikWpisTypy.TekstGlowny(value?.ToString());
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class WpisZnaczekConverter : IValueConverter
+    {
+        public static readonly WpisZnaczekConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            GrafikWpisTypy.TekstZnaczka(value?.ToString());
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class ZnaczekVisibilityConverter : IValueConverter
+    {
+        public static readonly ZnaczekVisibilityConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            string.IsNullOrEmpty(GrafikWpisTypy.TekstZnaczka(value?.ToString()))
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class OddalFlagConverter : IValueConverter
+    {
+        public static readonly OddalFlagConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var typ = value?.ToString();
+            if (!GrafikWpisTypy.MaOddal(typ))
+                return false;
+
+            var bazowy = GrafikWpisTypy.BazowyKod(typ);
+            return !bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase);
+        }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
             throw new NotSupportedException();

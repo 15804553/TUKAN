@@ -38,8 +38,8 @@
     <Color x:Key="DyzurColor">#2A5A8C</Color>
     <Color x:Key="WolnaSluzbzColor">#2E6A3A</Color>
     <Color x:Key="UrlopColor">#6A3A1A</Color>
-    <Color x:Key="AlertColor">#FF6B6B</Color>
-    <Color x:Key="OkColor">#6BCB77</Color>
+    <Color x:Key="AlertColor">#C0392B</Color>
+    <Color x:Key="OkColor">#1E8449</Color>
 
     <!-- Obramowania pojazdów w podziale bojowym -->
     <Color x:Key="SamochodPodstawowyBorderColor">#4A7AB0</Color>

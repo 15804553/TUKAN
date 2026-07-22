@@ -12,7 +12,8 @@ internal static class GrafikNurkowyExcelFormatter
         IXLWorksheet ws,
         int rok,
         int miesiac,
-        IReadOnlyList<Funkcjonariusz> wszyscyNurkowie)
+        IReadOnlyList<Funkcjonariusz> wszyscyNurkowie,
+        IReadOnlyDictionary<int, int>? dzienDoZmiany = null)
     {
         RemoveObsoleteSgrwnColumn(ws);
 
@@ -27,8 +28,8 @@ internal static class GrafikNurkowyExcelFormatter
             .GroupBy(f => UrlopNameMatcher.Normalize(UrlopNameMatcher.ToExcelFormat(f.Imie, f.Nazwisko)))
             .ToDictionary(g => g.Key, g => g.First().NumerZmiany, StringComparer.Ordinal);
 
-        StyleTitle(ws, lastDayCol);
-        StyleHeaderRow(ws, daysInMonth);
+        StyleTitle(ws, lastDayCol, miesiac, rok);
+        StyleHeaderRow(ws, daysInMonth, dzienDoZmiany);
         StyleUnitColumn(ws, lastDataRow, summaryRow);
         StylePersonRows(ws, lastDataRow, daysInMonth, nameToZmiana);
         StyleSummaryRow(ws, summaryRow, daysInMonth);
@@ -135,7 +136,7 @@ internal static class GrafikNurkowyExcelFormatter
         return -1;
     }
 
-    private static void StyleTitle(IXLWorksheet ws, int lastDayCol)
+    private static void StyleTitle(IXLWorksheet ws, int lastDayCol, int miesiac, int rok)
     {
         var titleCell = ws.Cell(GrafikNurkowyConstants.TitleRow, GrafikNurkowyConstants.ColJednostkaPsp);
         var titleRange = ws.Range(
@@ -147,6 +148,7 @@ internal static class GrafikNurkowyExcelFormatter
         if (!titleCell.IsMerged())
             titleRange.Merge();
 
+        titleCell.Value = GrafikNurkowyConstants.BuildTitle(miesiac, rok);
         titleRange.Style.Font.Bold = true;
         titleRange.Style.Font.FontSize = 18;
         titleRange.Style.Font.FontColor = XLColor.Black;
@@ -155,7 +157,10 @@ internal static class GrafikNurkowyExcelFormatter
         titleRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Bottom;
     }
 
-    private static void StyleHeaderRow(IXLWorksheet ws, int daysInMonth)
+    private static void StyleHeaderRow(
+        IXLWorksheet ws,
+        int daysInMonth,
+        IReadOnlyDictionary<int, int>? dzienDoZmiany)
     {
         // Bez etykiety „Jednostka PSP” w A2 — zostaje tylko scalona kolumna jednostki w danych.
         ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.ColJednostkaPsp).Clear(XLClearOptions.Contents);
@@ -168,19 +173,16 @@ internal static class GrafikNurkowyExcelFormatter
         headerLabel.Style.Font.Bold = true;
         headerLabel.Style.Font.FontSize = 11;
         headerLabel.Style.Fill.BackgroundColor = XLColor.FromHtml(GrafikNurkowyConstants.ColorBiale);
-        headerLabel.Style.Alignment.Vertical = XLAlignmentVerticalValues.Bottom;
-
-        ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.ColImieNazwisko)
-            .Style.Alignment.Horizontal = XLAlignmentHorizontalValues.General;
-        ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.ColFunkcja)
-            .Style.Alignment.Horizontal = XLAlignmentHorizontalValues.General;
+        headerLabel.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        headerLabel.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
 
         for (var day = 1; day <= daysInMonth; day++)
         {
             var cell = ws.Cell(GrafikNurkowyConstants.HeaderRow, GrafikNurkowyConstants.FirstDayCol + day - 1);
             cell.Style.Font.Bold = true;
             cell.Style.Font.FontSize = 12;
-            cell.Style.Fill.BackgroundColor = XLColor.FromHtml(GrafikNurkowyConstants.ColorForDayHeader(day));
+            var zmianaId = dzienDoZmiany is not null && dzienDoZmiany.TryGetValue(day, out var z) ? z : 0;
+            cell.Style.Fill.BackgroundColor = XLColor.FromHtml(GrafikNurkowyConstants.ColorForDayHeader(zmianaId));
             cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
             cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Bottom;
             ApplyThinBorder(cell);
@@ -276,6 +278,8 @@ internal static class GrafikNurkowyExcelFormatter
             GrafikNurkowyConstants.ColImieNazwisko,
             summaryRow,
             GrafikNurkowyConstants.ColFunkcja);
+        if (!labelRange.FirstCell().IsMerged())
+            labelRange.Merge();
         labelRange.Style.Font.Bold = true;
         labelRange.Style.Font.FontSize = 16;
         labelRange.Style.Font.FontColor = XLColor.Black;
@@ -300,22 +304,56 @@ internal static class GrafikNurkowyExcelFormatter
     private static void StyleLegend(IXLWorksheet ws, int summaryRow)
     {
         var legendRow = summaryRow + 2;
+        ClearLegendRow(ws, legendRow);
 
-        StyleLegendSwatch(ws.Cell(legendRow, 12), GrafikNurkowyConstants.ColorZmiana1);
-        ws.Cell(legendRow, 13).Value = "- zm. I";
-        StyleLegendLabel(ws.Cell(legendRow, 13));
+        // Wąskie kolumny dni — każdy wpis: kratka + scalony opis, z odstępem między wpisami.
+        PlaceLegendEntry(ws, legendRow, swatchCol: 4, labelCols: 3,
+            GrafikNurkowyConstants.ColorZmiana1, "- zm. I");
+        PlaceLegendEntry(ws, legendRow, swatchCol: 9, labelCols: 3,
+            GrafikNurkowyConstants.ColorZmiana2, "- zm. II");
+        PlaceLegendEntry(ws, legendRow, swatchCol: 14, labelCols: 3,
+            GrafikNurkowyConstants.ColorZmiana3, "- zm. III");
+        PlaceLegendEntry(ws, legendRow, swatchCol: 19, labelCols: 8,
+            GrafikNurkowyConstants.ColorBrakGotowosci, "- BRAK DEKLAROWANEGO POZIOMU GOTOWOŚCI");
 
-        StyleLegendSwatch(ws.Cell(legendRow, 14), GrafikNurkowyConstants.ColorZmiana2);
-        ws.Cell(legendRow, 15).Value = "- zm. II";
-        StyleLegendLabel(ws.Cell(legendRow, 15));
+        ws.Row(legendRow).Height = 18;
+    }
 
-        StyleLegendSwatch(ws.Cell(legendRow, 16), GrafikNurkowyConstants.ColorZmiana3);
-        ws.Cell(legendRow, 17).Value = "- zm. III";
-        StyleLegendLabel(ws.Cell(legendRow, 17));
+    private static void ClearLegendRow(IXLWorksheet ws, int legendRow)
+    {
+        var lastCol = GrafikNurkowyConstants.FirstDayCol + 30;
+        var merges = ws.MergedRanges
+            .Where(r => r.FirstRow().RowNumber() <= legendRow && r.LastRow().RowNumber() >= legendRow)
+            .ToList();
+        foreach (var merge in merges)
+            merge.Unmerge();
 
-        StyleLegendSwatch(ws.Cell(legendRow, 19), GrafikNurkowyConstants.ColorBrakGotowosci);
-        ws.Cell(legendRow, 20).Value = "- BRAK DEKLAROWANEGO POZIOMU GOTOWOŚCI";
-        StyleLegendLabel(ws.Cell(legendRow, 20));
+        for (var col = 1; col <= lastCol; col++)
+        {
+            var cell = ws.Cell(legendRow, col);
+            cell.Clear();
+            cell.Style.Fill.BackgroundColor = XLColor.NoColor;
+            cell.Style.Border.SetOutsideBorder(XLBorderStyleValues.None);
+        }
+    }
+
+    private static void PlaceLegendEntry(
+        IXLWorksheet ws,
+        int row,
+        int swatchCol,
+        int labelCols,
+        string colorHex,
+        string label)
+    {
+        StyleLegendSwatch(ws.Cell(row, swatchCol), colorHex);
+
+        var labelStart = swatchCol + 1;
+        var labelEnd = labelStart + labelCols - 1;
+        var labelRange = ws.Range(row, labelStart, row, labelEnd);
+        if (labelCols > 1)
+            labelRange.Merge();
+        labelRange.FirstCell().Value = label;
+        StyleLegendLabel(labelRange);
     }
 
     private static void StyleLegendSwatch(IXLCell cell, string colorHex)
@@ -324,12 +362,14 @@ internal static class GrafikNurkowyExcelFormatter
         ApplyThinBorder(cell);
     }
 
-    private static void StyleLegendLabel(IXLCell cell)
+    private static void StyleLegendLabel(IXLRange range)
     {
-        cell.Style.Font.FontSize = 11;
-        cell.Style.Font.FontColor = XLColor.Black;
-        cell.Style.Fill.BackgroundColor = XLColor.FromHtml(GrafikNurkowyConstants.ColorBiale);
-        cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        range.Style.Font.FontSize = 11;
+        range.Style.Font.FontColor = XLColor.Black;
+        range.Style.Fill.BackgroundColor = XLColor.FromHtml(GrafikNurkowyConstants.ColorBiale);
+        range.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+        range.Style.Alignment.Indent = 1;
     }
 
     private static void ApplyColumnWidths(IXLWorksheet ws)

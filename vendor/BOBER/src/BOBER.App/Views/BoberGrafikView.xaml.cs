@@ -10,6 +10,7 @@ using BOBER.App.Helpers;
 using BOBER.App.Logging;
 using BOBER.App.ViewModels;
 using BOBER.App.Views.Chrome;
+using BOBER.Core.Constants;
 
 namespace BOBER.App.Views;
 
@@ -189,7 +190,7 @@ public partial class BoberGrafikView : UserControl
             var nurkowyBtn = new Button
             {
                 Content = $"Generuj / aktualizuj grafik nurkowy — {MonthNames[month]}",
-                Style = (Style)FindResource("PrimaryButton"),
+                Style = (Style)FindResource("SecondaryButton"),
                 Margin = new Thickness(0, 0, 8, 0),
                 Tag = month
             };
@@ -307,13 +308,41 @@ public partial class BoberGrafikView : UserControl
         }
 
         var (vm, month, day) = _selectedCell.Value;
+        if (sender is not DataGrid dataGrid)
+        {
+            return;
+        }
+
+        if (e.Key == Key.O)
+        {
+            e.Handled = true;
+            await ApplyOddalAsync(dataGrid, vm, month, day);
+            return;
+        }
+
+        if (e.Key is Key.OemPeriod or Key.Decimal)
+        {
+            e.Handled = true;
+            await ApplyKropkaAsync(dataGrid, vm, month, day);
+            return;
+        }
+
+        // „/” — znaczek „?” (potrzebuje wolne); na klawiaturze PL/US: Oem2 / OemQuestion / Divide
+        if (e.Key is Key.Oem2 or Key.OemQuestion or Key.Divide)
+        {
+            e.Handled = true;
+            await ApplyPytajnikAsync(dataGrid, vm, month, day);
+            return;
+        }
 
         var typWpisu = e.Key switch
         {
-            Key.D => "D",
-            Key.W => "WS",
-            Key.U => "U",
-            Key.E => "Del",
+            Key.D => GrafikWpisTypy.Dyzur,
+            Key.W => GrafikWpisTypy.WolnaSluzba,
+            Key.U => GrafikWpisTypy.Urlop,
+            Key.E => GrafikWpisTypy.Delegacja,
+            Key.S => GrafikWpisTypy.Szkolenie,
+            Key.C => GrafikWpisTypy.Chory,
             Key.Space => "",
             _ => null
         };
@@ -323,31 +352,7 @@ public partial class BoberGrafikView : UserControl
         }
 
         e.Handled = true;
-        if (sender is not DataGrid dataGrid)
-        {
-            return;
-        }
-
-        try
-        {
-            if (string.IsNullOrEmpty(typWpisu))
-            {
-                await _controller.ClearWpisAsync(vm.FunkcjonariuszId!.Value, _year, month, day);
-                vm.ClearCell(day);
-            }
-            else
-            {
-                await _controller.SetWpisAsync(vm.FunkcjonariuszId!.Value, _year, month, day, typWpisu);
-                vm.SetCell(day, typWpisu);
-            }
-
-            dataGrid.Items.Refresh();
-            await RefreshSummaryRowAsync(dataGrid, month);
-        }
-        catch (Exception ex)
-        {
-            UiErrorReporter.Show(OwnerWindow, ex, "Błąd zapisu wpisu grafiku");
-        }
+        await ApplyWpisAsync(dataGrid, vm, month, day, typWpisu);
     }
 
     private void OnDataGridLoadingRow(object? sender, DataGridRowEventArgs e)
@@ -359,6 +364,7 @@ public partial class BoberGrafikView : UserControl
             {
                 e.Row.FontWeight = FontWeights.SemiBold;
                 e.Row.Foreground = new SolidColorBrush(Color.FromRgb(0x2C, 0x28, 0x18));
+                e.Row.MinHeight = 88;
             }
             else
             {
@@ -416,21 +422,27 @@ public partial class BoberGrafikView : UserControl
             Template = CreateContextMenuTemplate()
         };
 
-        var menuItems = new[]
+        var menuItems = new (string Label, string Akcja, string Gesture)[]
         {
-            ("D — Dyżur", "D"),
-            ("WS — Wolna służba", "WS"),
-            ("U — Urlop", "U"),
-            ("Del — Delegacja", "Del"),
-            ("— Wyczyść", "")
+            ("D — Dyżur", GrafikWpisTypy.Dyzur, "D"),
+            ("WS — Wolna służba", GrafikWpisTypy.WolnaSluzba, "W"),
+            ("U — Urlop", GrafikWpisTypy.Urlop, "U"),
+            ("Del — Delegacja", GrafikWpisTypy.Delegacja, "E"),
+            ("S — Szkolenie", GrafikWpisTypy.Szkolenie, "S"),
+            ("C — Chory", GrafikWpisTypy.Chory, "C"),
+            ("O — Oddaje", "ODDAJE", "O"),
+            (". — Osoba chętna oddać", "KROPKA", "."),
+            ("? — Osoba potrzebuje wolne", "PYTAJNIK", "/"),
+            ("— Wyczyść", "", "Spacja")
         };
 
-        foreach (var (label, wpis) in menuItems)
+        foreach (var (label, akcja, gesture) in menuItems)
         {
             var item = new MenuItem
             {
                 Header = label,
-                Tag = (vm.FunkcjonariuszId!.Value, month, day, wpis),
+                InputGestureText = gesture,
+                Tag = (vm.FunkcjonariuszId!.Value, month, day, akcja),
                 Background = darkBg,
                 Foreground = lightFg,
                 FontSize = 14,
@@ -452,7 +464,7 @@ public partial class BoberGrafikView : UserControl
             return;
         }
 
-        var (fid, month, day, typWpisu) = ((int, int, int, string))item.Tag;
+        var (fid, month, day, akcja) = ((int, int, int, string))item.Tag;
 
         var dataGrid = FindMonthGrid(month);
         if (dataGrid?.ItemsSource is not IEnumerable<GrafikRowViewModel> rows)
@@ -466,16 +478,101 @@ public partial class BoberGrafikView : UserControl
             return;
         }
 
+        switch (akcja)
+        {
+            case "ODDAJE":
+                await ApplyOddalAsync(dataGrid, vm, month, day);
+                return;
+            case "KROPKA":
+                await ApplyKropkaAsync(dataGrid, vm, month, day);
+                return;
+            case "PYTAJNIK":
+                await ApplyPytajnikAsync(dataGrid, vm, month, day);
+                return;
+            default:
+                await ApplyWpisAsync(dataGrid, vm, month, day, akcja);
+                return;
+        }
+    }
+
+    private async Task ApplyOddalAsync(DataGrid dataGrid, GrafikRowViewModel vm, int month, int day)
+    {
+        if (_controller is null || !vm.FunkcjonariuszId.HasValue)
+            return;
+
+        var biezacy = vm.GetCell(day);
+        if (GrafikWpisTypy.NieMoznaOddacBoZakazanyTyp(biezacy))
+        {
+            BoberMessageBox.Show(
+                OwnerWindow,
+                "Tej służby nie można oddać.\nOznaczenia S (szkolenie), C (chory) i Del (delegacja) nie podlegają oddaniu.",
+                "Oddaje");
+            return;
+        }
+
+        var nowy = GrafikWpisTypy.PrzelaczOddal(biezacy);
+        if (nowy is null)
+            return;
+
+        await ApplyWpisAsync(dataGrid, vm, month, day, nowy);
+    }
+
+    private async Task ApplyKropkaAsync(DataGrid dataGrid, GrafikRowViewModel vm, int month, int day)
+    {
+        if (_controller is null || !vm.FunkcjonariuszId.HasValue)
+            return;
+
+        var nowy = GrafikWpisTypy.PrzelaczKropke(vm.GetCell(day));
+        if (nowy is null)
+        {
+            BoberMessageBox.Show(
+                OwnerWindow,
+                "Znak „.” (osoba chętna oddać) można ustawić tylko przy oznaczeniu U (urlop) lub WS (wolna służba).",
+                "Grafik");
+            return;
+        }
+
+        await ApplyWpisAsync(dataGrid, vm, month, day, nowy);
+    }
+
+    private async Task ApplyPytajnikAsync(DataGrid dataGrid, GrafikRowViewModel vm, int month, int day)
+    {
+        if (_controller is null || !vm.FunkcjonariuszId.HasValue)
+            return;
+
+        var nowy = GrafikWpisTypy.PrzelaczPytajnik(vm.GetCell(day));
+        if (nowy is null)
+        {
+            BoberMessageBox.Show(
+                OwnerWindow,
+                "Znak „?” (osoba potrzebuje wolne) można ustawić tylko gdy osoba jest w pracy (pusta komórka).",
+                "Grafik");
+            return;
+        }
+
+        await ApplyWpisAsync(dataGrid, vm, month, day, nowy);
+    }
+
+    private async Task ApplyWpisAsync(
+        DataGrid dataGrid,
+        GrafikRowViewModel vm,
+        int month,
+        int day,
+        string typWpisu)
+    {
+        if (_controller is null || !vm.FunkcjonariuszId.HasValue)
+            return;
+
         try
         {
             if (string.IsNullOrEmpty(typWpisu))
             {
-                await _controller.ClearWpisAsync(fid, _year, month, day);
+                await _controller.ClearWpisAsync(vm.FunkcjonariuszId.Value, _year, month, day);
                 vm.ClearCell(day);
             }
             else
             {
-                await _controller.SetWpisAsync(fid, _year, month, day, typWpisu);
+                await _controller.SetWpisAsync(vm.FunkcjonariuszId.Value, _year, month, day, typWpisu);
                 vm.SetCell(day, typWpisu);
             }
 
@@ -704,15 +801,33 @@ public partial class BoberGrafikView : UserControl
 
         var borderFactory = new FrameworkElementFactory(typeof(Border));
         borderFactory.Name = "Bd";
-        borderFactory.SetValue(Border.PaddingProperty, new Thickness(14, 6, 18, 6));
+        borderFactory.SetValue(Border.PaddingProperty, new Thickness(14, 6, 14, 6));
         borderFactory.SetBinding(Border.BackgroundProperty,
             new Binding("Background") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+
+        var dockFactory = new FrameworkElementFactory(typeof(DockPanel));
+        dockFactory.SetValue(DockPanel.LastChildFillProperty, true);
+
+        var gestureText = new FrameworkElementFactory(typeof(TextBlock));
+        gestureText.SetBinding(TextBlock.TextProperty,
+            new Binding(nameof(MenuItem.InputGestureText))
+            {
+                RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent)
+            });
+        gestureText.SetValue(DockPanel.DockProperty, Dock.Right);
+        gestureText.SetValue(TextBlock.MarginProperty, new Thickness(24, 0, 0, 0));
+        gestureText.SetValue(TextBlock.OpacityProperty, 0.65);
+        gestureText.SetValue(TextBlock.FontSizeProperty, 12.0);
+        gestureText.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        dockFactory.AppendChild(gestureText);
 
         var headerPresenter = new FrameworkElementFactory(typeof(ContentPresenter));
         headerPresenter.SetValue(ContentPresenter.ContentSourceProperty, "Header");
         headerPresenter.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
         headerPresenter.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-        borderFactory.AppendChild(headerPresenter);
+        dockFactory.AppendChild(headerPresenter);
+
+        borderFactory.AppendChild(dockFactory);
 
         template.VisualTree = borderFactory;
 

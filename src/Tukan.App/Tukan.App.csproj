@@ -11,8 +11,18 @@
     <Product>TUKAN</Product>
     <ApplicationTitle>TUKAN</ApplicationTitle>
     <Version>1.0.0</Version>
-    <Platforms>x64</Platforms>
+    <ApplicationIcon>Assets\tukan.ico</ApplicationIcon>
+    <!-- Architektura musi odpowiadać zainstalowanemu ACE (x86 = ACE32, x64 = ACE64). -->
+    <Platforms>x86;x64</Platforms>
+    <RuntimeIdentifiers>win-x86;win-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)' == 'x64'">
     <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)' != 'x64'">
+    <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -28,6 +38,11 @@
   <ItemGroup>
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\tukan.ico" />
+    <Resource Include="Assets\tukan.png" />
   </ItemGroup>
 
 </Project>

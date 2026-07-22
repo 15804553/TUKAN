@@ -80,7 +80,8 @@ public sealed class GrafikNurkowyService(
             nurkowieZmiany,
             wszyscyNurkowie,
             wartosci,
-            workDays);
+            workDays,
+            await calendar.GetWorkingShiftsForMonthAsync(rok, miesiac, cancellationToken));
 
         return new GrafikNurkowySyncResult
         {

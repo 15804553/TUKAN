@@ -1,6 +1,7 @@
 using ClosedXML.Excel;
 using BOBER.Core.Constants;
 using BOBER.Core.Models;
+using BOBER.Core.Rules;
 using System.Linq;
 
 namespace BOBER.Services.Export;
@@ -158,17 +159,26 @@ public sealed class ExportService
 
                 if (!wpisyLookup.TryGetValue((f.Id, day), out var wpis)) continue;
 
-                if (wpis == "WS")
+                var bazowy = GrafikWpisTypy.BazowyKod(wpis);
+
+                if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase))
                 {
                     cell.Style.Fill.BackgroundColor = nieobecnoscBg;
+                    cell.Value = GrafikWpisTypy.TekstWyswietlany(wpis);
                     continue;
                 }
 
-                cell.Value = wpis;
-                cell.Style.Fill.BackgroundColor = wpis switch
+                if (bazowy == GrafikWpisTypy.PotrzebujeWolne)
                 {
-                    "D" => nieobecnoscBg,
-                    "Del" => nieobecnoscBg,
+                    cell.Value = GrafikWpisTypy.PotrzebujeWolne;
+                    continue;
+                }
+
+                cell.Value = GrafikWpisTypy.TekstWyswietlany(wpis);
+                cell.Style.Fill.BackgroundColor = bazowy switch
+                {
+                    GrafikWpisTypy.Dyzur => nieobecnoscBg,
+                    GrafikWpisTypy.Delegacja => nieobecnoscBg,
                     _ => rowBg
                 };
                 cell.Style.Font.FontColor = appText;
@@ -176,9 +186,9 @@ public sealed class ExportService
         }
 
         int sumBase = funkcjonariusze.Count + 3;
-        var sumLabels = new[] { "Wolne miejsca", "Dowódcy", "Nurkowie", "Kierowcy" };
+        var sumLabels = new[] { "Wolne miejsca", "Dowódcy", "Nurkowie", "Kierowcy", "Poziom A/AB" };
 
-        for (int s = 0; s < 4; s++)
+        for (int s = 0; s < sumLabels.Length; s++)
         {
             var row = sumBase + s;
             for (int col = 1; col <= lastCol; col++)
@@ -208,14 +218,19 @@ public sealed class ExportService
             int kierowcy = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && f.MaUprawnieniaKierowca);
             int nurkowie = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && RoleClassifier.IsNurek(f));
             int dowodcy = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && RoleClassifier.IsDowodca(f));
+            var obecni = obecniIds
+                .Where(id => funcLookup.ContainsKey(id))
+                .Select(id => funcLookup[id]);
+            var poziom = PoziomGotowosciNurkowejRules.Format(PoziomGotowosciNurkowejRules.Ocena(obecni));
 
             SetSummaryCell(ws.Cell(sumBase, col), wolne, bandBg, bandFg);
             SetSummaryCell(ws.Cell(sumBase + 1, col), dowodcy, bandBg, bandFg);
             SetSummaryCell(ws.Cell(sumBase + 2, col), nurkowie, bandBg, bandFg);
             SetSummaryCell(ws.Cell(sumBase + 3, col), kierowcy, bandBg, bandFg);
+            SetSummaryCell(ws.Cell(sumBase + 4, col), poziom, bandBg, bandFg);
         }
 
-        int lastRow = sumBase + 3;
+        int lastRow = sumBase + sumLabels.Length - 1;
         var dataRange = ws.Range(1, 1, lastRow, lastCol);
         dataRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
         dataRange.Style.Border.InsideBorderColor = gridLineColor;
@@ -253,6 +268,17 @@ public sealed class ExportService
     private static void SetSummaryCell(IXLCell cell, int value, XLColor bg, XLColor fg)
     {
         cell.Value = value;
+        StyleSummaryValue(cell, bg, fg);
+    }
+
+    private static void SetSummaryCell(IXLCell cell, string value, XLColor bg, XLColor fg)
+    {
+        cell.Value = value;
+        StyleSummaryValue(cell, bg, fg);
+    }
+
+    private static void StyleSummaryValue(IXLCell cell, XLColor bg, XLColor fg)
+    {
         cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         cell.Style.Fill.BackgroundColor = bg;
         cell.Style.Font.FontColor = fg;

@@ -1,4 +1,5 @@
 using SKRYBEK.Core.Chomik;
+using SKRYBEK.Core.Rules;
 
 namespace SKRYBEK.Core.Models;
 
@@ -38,6 +39,9 @@ public sealed class Funkcjonariusz
 
     public bool MaUprawnieniaKPP =>
         IdUprawnien.Contains(ChomikSlowniki.UprawnienieKPP);
+
+    public bool MaUprawnieniaObslugaLodzi =>
+        NazwyUprawnien.Any(PoziomGotowosciNurkowejRules.CzyEtykietaObslugiLodzi);
 
     /// <summary>Miejsce 1.D — stanowisko z CHOMIK.</summary>
     public bool CzyMozeNaMiejsce1DPojazdu =>

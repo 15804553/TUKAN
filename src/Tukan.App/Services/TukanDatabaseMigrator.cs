@@ -12,6 +12,19 @@ namespace Tukan.App.Services;
 public static class TukanDatabaseMigrator
 {
     private const long LikelyEmptyDatabaseBytes = 320_000;
+    private static readonly HashSet<string> IgnoredDirectoryNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".git",
+        ".vs",
+        "obj",
+        "node_modules",
+        "Config.Msi",
+        "System Volume Information",
+        "$Recycle.Bin",
+        "Windows",
+        "Program Files",
+        "Program Files (x86)"
+    };
 
     public sealed record MigrationEntry(string FileName, string SourcePath, string TargetPath);
 
@@ -457,21 +470,7 @@ public static class TukanDatabaseMigrator
                 continue;
             }
 
-            IEnumerable<string> matches;
-            try
-            {
-                matches = Directory.EnumerateFiles(root, fileName, SearchOption.AllDirectories);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                continue;
-            }
-            catch (DirectoryNotFoundException)
-            {
-                continue;
-            }
-
-            foreach (var match in matches)
+            foreach (var match in SafeEnumerateFiles(root, fileName))
             {
                 if (match.Contains("\\obj\\", StringComparison.OrdinalIgnoreCase)
                     || match.Contains("\\.git\\", StringComparison.OrdinalIgnoreCase))
@@ -482,6 +481,76 @@ public static class TukanDatabaseMigrator
                 yield return match;
             }
         }
+    }
+
+    private static IEnumerable<string> SafeEnumerateFiles(string root, string fileName)
+    {
+        var pending = new Stack<string>();
+        pending.Push(root);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+            if (ShouldSkipDirectory(current))
+            {
+                continue;
+            }
+
+            IEnumerable<string> files;
+            try
+            {
+                files = Directory.EnumerateFiles(current, fileName, SearchOption.TopDirectoryOnly);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                continue;
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+
+            foreach (var file in files)
+            {
+                yield return file;
+            }
+
+            IEnumerable<string> directories;
+            try
+            {
+                directories = Directory.EnumerateDirectories(current, "*", SearchOption.TopDirectoryOnly);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                continue;
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+
+            foreach (var directory in directories)
+            {
+                if (!ShouldSkipDirectory(directory))
+                {
+                    pending.Push(directory);
+                }
+            }
+        }
+    }
+
+    private static bool ShouldSkipDirectory(string path)
+    {
+        var directoryName = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        return IgnoredDirectoryNames.Contains(directoryName);
     }
 
     private static void AddCandidate(HashSet<string> seen, string? path)

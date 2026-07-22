@@ -47,15 +47,10 @@ public static class GrafikNurkowyConstants
         $"{MonthNames[miesiac]} {rok}";
 
     public static string BuildTitle(int miesiac, int rok) =>
-        $"Grafik dyżurów nurków SGRWN \"Małopolska\" na miesiąc {MonthNames[miesiac]} {rok} r.";
+        $"Grafik dyżuru nurków SGRW-N Kraków na miesiąc {MonthNames[miesiac]} {rok}";
 
-    /// <summary>Kolor nagłówka dnia jak we wzorcu: 1=róż, 2=niebieski, 3=żółty, potem cykl.</summary>
-    public static string ColorForDayHeader(int day) => ((day - 1) % 3) switch
-    {
-        0 => ColorZmiana2,
-        1 => ColorZmiana3,
-        _ => ColorZmiana1
-    };
+    /// <summary>Kolor nagłówka dnia wg zmiany pełniącej służbę tego dnia.</summary>
+    public static string ColorForDayHeader(int zmianaId) => ColorForZmiana(zmianaId);
 
     /// <summary>Kolor tła wiersza osoby wg numeru zmiany (legenda zm. I/II/III).</summary>
     public static string ColorForZmiana(int zmianaId) => zmianaId switch
@@ -86,14 +81,22 @@ public static class GrafikNurkowyConstants
 
     /// <summary>
     /// Mapuje wpis z grafiku służb na wartość w grafiku nurkowym.
-    /// Pusta komórka = w pracy → „1”; urlop → „U”; pozostałe statusy → brak wartości.
+    /// Pusta komórka / „?” / Oddaje → „1”; urlop (także U.) → „U”;
+    /// pozostałe statusy → brak wartości.
     /// </summary>
     public static string? MapFromGrafikWpis(string? typWpisu)
     {
         if (string.IsNullOrWhiteSpace(typWpisu))
             return WartoscWPracy;
 
-        if (typWpisu.Trim().Equals(GrafikWpisTypy.Urlop, StringComparison.OrdinalIgnoreCase))
+        if (GrafikWpisTypy.MaPytajnik(typWpisu))
+            return WartoscWPracy;
+
+        if (GrafikWpisTypy.MaOddal(typWpisu) && GrafikWpisTypy.MoznaOddac(typWpisu))
+            return WartoscWPracy;
+
+        var bazowy = GrafikWpisTypy.BazowyKod(typWpisu);
+        if (bazowy.Equals(GrafikWpisTypy.Urlop, StringComparison.OrdinalIgnoreCase))
             return WartoscUrlop;
 
         return null;

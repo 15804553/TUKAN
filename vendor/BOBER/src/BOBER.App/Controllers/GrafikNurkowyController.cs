@@ -47,4 +47,10 @@ public sealed class GrafikNurkowyController(AppServices services)
         int miesiac,
         CancellationToken cancellationToken = default) =>
         services.GrafikNurkowy.ResolveFilePathAsync(rok, miesiac, cancellationToken);
+
+    public Task<IReadOnlyDictionary<int, int>> GetWorkingShiftsForMonthAsync(
+        int rok,
+        int miesiac,
+        CancellationToken cancellationToken = default) =>
+        services.Calendar.GetWorkingShiftsForMonthAsync(rok, miesiac, cancellationToken);
 }

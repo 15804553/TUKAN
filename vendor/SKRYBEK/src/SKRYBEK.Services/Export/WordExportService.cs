@@ -12,7 +12,7 @@ public sealed class WordExportService
     public string ExportRozkaz(RozkazDzienny rozkaz, List<Samochod> samochody, string nrJrg, string outputDir)
     {
         Directory.CreateDirectory(outputDir);
-        var fileName = $"Rozkaz_{rozkaz.NumerRozkazu}_{rozkaz.Rok}_{rozkaz.Data:yyyyMMdd}.docx";
+        var fileName = $"{rozkaz.NumerRozkazu}_{rozkaz.Rok}.docx";
         var path = Path.Combine(outputDir, fileName);
 
         using var doc = WordprocessingDocument.Create(path, WordprocessingDocumentType.Document);
@@ -41,11 +41,13 @@ public sealed class WordExportService
         AddSectionTitle(body, "3)   ZAJĘCIA");
         AddZajecia(body, rozkaz.Zajecia);
 
-        // 4) NIEOBECNI W SŁUŻBIE
+        // 4) NIEOBECNI W SŁUŻBIE — od nowej strony
+        body.AppendChild(new Paragraph(new Run(new Break { Type = BreakValues.Page })));
         AddSectionTitle(body, "4)   NIEOBECNI W SŁUŻBIE");
         AddNieobecniTable(body, rozkaz.Nieobecni);
 
         // 5) UWAGI
+        body.AppendChild(EmptyParagraph());
         AddSectionTitle(body, "5)   UWAGI");
         AddUwagi(body, rozkaz.Uwagi);
 
@@ -85,28 +87,40 @@ public sealed class WordExportService
             alignment: JustificationValues.Right,
             fontSize: 20));
 
-        // Boldowy tytuł
+        // Odstęp przed tytułem
+        body.AppendChild(MakeParagraph(string.Empty, bold: true, fontSize: 32, alignment: JustificationValues.Center));
+        body.AppendChild(MakeParagraph(string.Empty, bold: true, fontSize: 32, alignment: JustificationValues.Center));
+
         body.AppendChild(MakeParagraph(
             $"ROZKAZ DZIENNY NR {rozkaz.NumerFormatowany}",
             bold: true,
-            fontSize: 24));
+            fontSize: 28,
+            alignment: JustificationValues.Center));
 
         body.AppendChild(MakeParagraph(
             $"Dowódcy Jednostki Ratowniczo Gaśniczej Nr {nrJrg}",
             bold: true,
-            fontSize: 20));
+            fontSize: 28,
+            alignment: JustificationValues.Center));
 
         body.AppendChild(MakeParagraph(
             $"na dzień {rozkaz.Data.ToString("dd.MM.yyyy")}",
-            fontSize: 20));
+            fontSize: 28,
+            alignment: JustificationValues.Center));
 
         body.AppendChild(EmptyParagraph());
+        body.AppendChild(MakeParagraph(string.Empty, alignment: JustificationValues.Center));
     }
 
     // ── Sekcja SŁUŻBA ─────────────────────────────────────────────────────────
 
     private static void AddSluzbaTable(Body body, List<PozycjaSluzby> sluzba)
     {
+        // Układ jak we wzorcu: stanowisko | odstęp | odstęp | - | osoba
+        const int colStanowisko = 3783;
+        const int colSpacer = 377;
+        const int colOsoba = 3783;
+
         var table = CreateBorderlessTable();
         var allPos = Enum.GetValues<StanowiskoSluzby>().Cast<StanowiskoSluzby>().ToList();
 
@@ -118,15 +132,16 @@ public sealed class WordExportService
             var row = new TableRow();
             row.AppendChild(MakeCell(
                 new PozycjaSluzby { Stanowisko = stanowisko }.NazwaStanowiska,
-                width: 4000));
-            row.AppendChild(MakeCell("-", width: 400, center: true));
-            row.AppendChild(MakeCell(osoba, width: 4000));
-            row.AppendChild(MakeCell(string.Empty, width: 1000));
+                width: colStanowisko));
+            row.AppendChild(MakeCell(string.Empty, width: colSpacer, center: true));
+            row.AppendChild(MakeCell(string.Empty, width: colSpacer, center: true));
+            row.AppendChild(MakeCell("-", width: colSpacer, center: true));
+            row.AppendChild(MakeCell(osoba, width: colOsoba));
             table.AppendChild(row);
         }
 
         body.AppendChild(table);
-        body.AppendChild(EmptyParagraph());
+        body.AppendChild(MakeParagraph(string.Empty, fontSize: 28));
     }
 
     // ── Podział bojowy ────────────────────────────────────────────────────────
@@ -156,7 +171,8 @@ public sealed class WordExportService
                     var wpis = podział.FirstOrDefault(p => p.SamochodId == sam.Id && p.Pozycja == poz);
                     row.AppendChild(MakeCell(
                         wpis?.Nazwisko ?? string.Empty,
-                        width: 3100));
+                        width: 3100,
+                        center: true));
                 }
                 table.AppendChild(row);
             }
@@ -183,7 +199,7 @@ public sealed class WordExportService
                 {
                     var sam  = dodatkowe[i];
                     var wpis = podział.FirstOrDefault(p => p.SamochodId == sam.Id && p.Pozycja == poz);
-                    row.AppendChild(MakeCell(wpis?.Nazwisko ?? string.Empty, width: 3100));
+                    row.AppendChild(MakeCell(wpis?.Nazwisko ?? string.Empty, width: 3100, center: true));
                 }
                 table.AppendChild(row);
             }
@@ -217,7 +233,6 @@ public sealed class WordExportService
         body.AppendChild(MakeParagraph(
             string.IsNullOrWhiteSpace(zajecia) ? "............................................................................" : zajecia,
             fontSize: 20));
-        body.AppendChild(MakeParagraph("............................................................................", fontSize: 20));
         body.AppendChild(EmptyParagraph());
     }
 
@@ -247,10 +262,10 @@ public sealed class WordExportService
         for (int i = 0; i < maxRows; i++)
         {
             var row = new TableRow();
-            row.AppendChild(MakeCell(FormatNieobecny(urlopy, i), width: 3000));
-            row.AppendChild(MakeCell(FormatNieobecny(wolny, i), width: 3000));
-            row.AppendChild(MakeCell(FormatNieobecny(chorzy, i), width: 2000));
-            row.AppendChild(MakeCell(FormatNieobecny(delegowani, i), width: 2000));
+            row.AppendChild(MakeCell(FormatNieobecny(urlopy, i), width: 3000, center: true));
+            row.AppendChild(MakeCell(FormatNieobecny(wolny, i), width: 3000, center: true));
+            row.AppendChild(MakeCell(FormatNieobecny(chorzy, i), width: 2000, center: true));
+            row.AppendChild(MakeCell(FormatNieobecny(delegowani, i), width: 2000, center: true));
             table.AppendChild(row);
         }
         body.AppendChild(table);
@@ -280,16 +295,18 @@ public sealed class WordExportService
     }
 
     private static string FormatNieobecny(List<NieobecnyWSluzbie> lista, int idx)
-        => idx < lista.Count ? $"{idx + 1}.  {lista[idx].Nazwisko}" : $"{idx + 1}.  .....................................";
+        => idx < lista.Count ? $" {lista[idx].Nazwisko}" : string.Empty;
 
     // ── Uwagi ─────────────────────────────────────────────────────────────────
 
     private static void AddUwagi(Body body, string uwagi)
     {
-        var text = string.IsNullOrWhiteSpace(uwagi) ? string.Empty : uwagi;
-        body.AppendChild(MakeParagraph(text, fontSize: 20));
-        body.AppendChild(MakeParagraph("............................................................................", fontSize: 20));
-        body.AppendChild(MakeParagraph("............................................................................", fontSize: 20));
+        body.AppendChild(EmptyParagraph());
+        if (!string.IsNullOrWhiteSpace(uwagi))
+            body.AppendChild(MakeParagraph(uwagi, fontSize: 20));
+        body.AppendChild(MakeParagraph(
+            new string('.', 180),
+            fontSize: 20));
         body.AppendChild(EmptyParagraph());
     }
 
@@ -297,11 +314,16 @@ public sealed class WordExportService
 
     private static void AddFooter(Body body, string nrJrg)
     {
+        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Right));
+        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Right));
+        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Right));
         body.AppendChild(MakeParagraph(
             $"Rozkaz podpisał D-ca JRG-{nrJrg}",
             alignment: JustificationValues.Right,
             bold: true,
             fontSize: 20));
+        body.AppendChild(MakeParagraph(string.Empty, alignment: JustificationValues.Right));
+        body.AppendChild(MakeParagraph(string.Empty, alignment: JustificationValues.Right));
         body.AppendChild(MakeParagraph(
             "................................",
             alignment: JustificationValues.Right,
