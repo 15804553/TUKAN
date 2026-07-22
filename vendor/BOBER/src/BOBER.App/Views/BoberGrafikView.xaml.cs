@@ -278,7 +278,7 @@ public partial class BoberGrafikView : UserControl
 
         var hasInvalid = e.AddedCells.Any(c =>
             c.Column.DisplayIndex == 0 ||
-            (c.Item is GrafikRowViewModel vm && (vm.IsSummaryRow || !vm.FunkcjonariuszId.HasValue)));
+            (c.Item is GrafikRowViewModel vm && (vm.IsSummaryRow || vm.IsNotesRow || !vm.FunkcjonariuszId.HasValue)));
 
         if (hasInvalid)
         {
@@ -366,6 +366,14 @@ public partial class BoberGrafikView : UserControl
                 e.Row.Foreground = new SolidColorBrush(Color.FromRgb(0x2C, 0x28, 0x18));
                 e.Row.MinHeight = 88;
             }
+            else if (row.IsNotesRow)
+            {
+                e.Row.MinHeight = 28;
+                e.Row.Height = 28;
+                e.Row.Background = new SolidColorBrush(Color.FromRgb(0x3A, 0x42, 0x38));
+                e.Row.IsHitTestVisible = true;
+                e.Row.Focusable = false;
+            }
             else
             {
                 e.Row.Foreground = row.RowForeground;
@@ -393,7 +401,7 @@ public partial class BoberGrafikView : UserControl
         }
 
         var row = FindVisualParent<DataGridRow>(cell);
-        if (row?.Item is not GrafikRowViewModel vm || vm.IsSummaryRow || !vm.FunkcjonariuszId.HasValue)
+        if (row?.Item is not GrafikRowViewModel vm || vm.IsSummaryRow || vm.IsNotesRow || !vm.FunkcjonariuszId.HasValue)
         {
             return;
         }
@@ -433,11 +441,21 @@ public partial class BoberGrafikView : UserControl
             ("O — Oddaje", "ODDAJE", "O"),
             (". — Osoba chętna oddać", "KROPKA", "."),
             ("? — Osoba potrzebuje wolne", "PYTAJNIK", "/"),
-            ("— Wyczyść", "", "Spacja")
+            ("— Wyczyść", "", "Spacja"),
+            ("Notatka", "NOTATKA", "")
         };
 
         foreach (var (label, akcja, gesture) in menuItems)
         {
+            if (akcja == "NOTATKA")
+            {
+                menu.Items.Add(new Separator
+                {
+                    Margin = new Thickness(4, 4, 4, 4),
+                    Background = new SolidColorBrush(Color.FromRgb(0xA8, 0x98, 0x68))
+                });
+            }
+
             var item = new MenuItem
             {
                 Header = label,
@@ -489,9 +507,44 @@ public partial class BoberGrafikView : UserControl
             case "PYTAJNIK":
                 await ApplyPytajnikAsync(dataGrid, vm, month, day);
                 return;
+            case "NOTATKA":
+                await EditNotatkaAsync(dataGrid, month, day);
+                return;
             default:
                 await ApplyWpisAsync(dataGrid, vm, month, day, akcja);
                 return;
+        }
+    }
+
+    private async Task EditNotatkaAsync(DataGrid dataGrid, int month, int day)
+    {
+        if (_controller is null || dataGrid.ItemsSource is not IEnumerable<GrafikRowViewModel> rows)
+            return;
+
+        var notesRow = rows.FirstOrDefault(r => r.IsNotesRow);
+        if (notesRow is null)
+            return;
+
+        var dialog = new GrafikNotatkaDialog
+        {
+            Owner = OwnerWindow,
+            NoteText = notesRow.GetCell(day)
+        };
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            var tresc = dialog.NoteText;
+            await _controller.SetNotatkaAsync(_year, month, day, tresc);
+            _controller.UpdateNotesRowCell(notesRow, day, tresc);
+            dataGrid.Items.Refresh();
+            dataGrid.ScrollIntoView(notesRow);
+        }
+        catch (Exception ex)
+        {
+            UiErrorReporter.Show(OwnerWindow, ex, "Nie udało się zapisać notatki.");
         }
     }
 

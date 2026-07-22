@@ -26,6 +26,7 @@ public sealed class AppServices
 
         var authRepository = new AuthRepository(boberFactory);
         var grafikRepository = new GrafikRepository(boberFactory);
+        var grafikNotatkaRepository = new GrafikNotatkaRepository(boberFactory);
         var urlopPlanRepository = new UrlopPlanRepository(boberFactory);
         var grafikNurkowyRepository = new GrafikNurkowyRepository(boberFactory);
         var kolejnoscRepository = new KolejnoscRepository(boberFactory);
@@ -40,7 +41,7 @@ public sealed class AppServices
         Kolejnosc = kolejnoscRepository;
 
         var calendarEngine = new ShiftCalendarEngine(ustawieniaRepository);
-        Grafik = new GrafikService(grafikRepository);
+        Grafik = new GrafikService(grafikRepository, grafikNotatkaRepository);
         Calendar = calendarEngine;
         Funkcjonariusze = new FunkcjonariuszService(chomikRepository, kolejnoscRepository);
         Export = new ExportService();

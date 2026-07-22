@@ -10,4 +10,8 @@ public interface IGrafikService
     Task ClearWpisAsync(int funkcjonariuszId, int rok, int miesiac, int dzien, CancellationToken cancellationToken = default);
     Task ClearHalfYearAsync(int zmianaId, int rok, int polrocze, CancellationToken cancellationToken = default);
     Task GenerateBaseScheduleAsync(int zmianaId, int rok, IReadOnlyList<int> funkcjonariuszIds, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<GrafikNotatka>> GetNotatkiMonthAsync(int zmianaId, int rok, int miesiac, CancellationToken cancellationToken = default);
+    Task SetNotatkaAsync(int zmianaId, int rok, int miesiac, int dzien, string tresc, CancellationToken cancellationToken = default);
+    Task ClearNotatkaAsync(int zmianaId, int rok, int miesiac, int dzien, CancellationToken cancellationToken = default);
 }

@@ -4,7 +4,9 @@ using BOBER.Data.Repositories;
 namespace BOBER.Services.Grafik;
 
 /// <summary>Odczyt i zapis wpisów grafiku w BoberDatabase; podsumowania liczy UI (MainController).</summary>
-public sealed class GrafikService(IGrafikRepository grafikRepository) : IGrafikService
+public sealed class GrafikService(
+    IGrafikRepository grafikRepository,
+    IGrafikNotatkaRepository notatkaRepository) : IGrafikService
 {
     public Task<IReadOnlyList<GrafikWpis>> GetMonthAsync(
         int zmianaId,
@@ -68,4 +70,35 @@ public sealed class GrafikService(IGrafikRepository grafikRepository) : IGrafikS
         cancellationToken.ThrowIfCancellationRequested();
         return Task.CompletedTask;
     }
+
+    public Task<IReadOnlyList<GrafikNotatka>> GetNotatkiMonthAsync(
+        int zmianaId,
+        int rok,
+        int miesiac,
+        CancellationToken cancellationToken = default) =>
+        notatkaRepository.GetByZmianaAndMonthAsync(zmianaId, rok, miesiac, cancellationToken);
+
+    public Task SetNotatkaAsync(
+        int zmianaId,
+        int rok,
+        int miesiac,
+        int dzien,
+        string tresc,
+        CancellationToken cancellationToken = default) =>
+        notatkaRepository.UpsertAsync(new GrafikNotatka
+        {
+            ZmianaId = zmianaId,
+            Rok = rok,
+            Miesiac = miesiac,
+            Dzien = dzien,
+            Tresc = tresc
+        }, cancellationToken);
+
+    public Task ClearNotatkaAsync(
+        int zmianaId,
+        int rok,
+        int miesiac,
+        int dzien,
+        CancellationToken cancellationToken = default) =>
+        notatkaRepository.DeleteAsync(zmianaId, rok, miesiac, dzien, cancellationToken);
 }

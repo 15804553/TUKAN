@@ -63,6 +63,16 @@ internal static class SchemaScripts
             ZatwierdzonyPrzez TEXT(100),
             DataZatwierdzenia DATETIME
         )
+        """,
+        """
+        CREATE TABLE GrafikNotatki (
+            Id AUTOINCREMENT PRIMARY KEY,
+            ZmianaId SHORT NOT NULL,
+            Rok SHORT NOT NULL,
+            Miesiac SHORT NOT NULL,
+            Dzien SHORT NOT NULL,
+            Tresc MEMO NOT NULL
+        )
         """
     ];
 }

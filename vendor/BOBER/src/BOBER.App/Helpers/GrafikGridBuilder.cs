@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 using BOBER.App.ViewModels;
 using BOBER.Core.Constants;
@@ -195,13 +196,21 @@ public static class GrafikGridBuilder
         normalStyle.Setters.Add(new Setter(Border.BorderBrushProperty, SelectionBorderBrush));
         normalStyle.Setters.Add(new Setter(Border.PaddingProperty, new Thickness(0)));
 
-        var hideNormal = new DataTrigger
+        var hideNormalForSummary = new DataTrigger
         {
             Binding = new Binding(nameof(GrafikRowViewModel.IsSummaryRow)),
             Value = true
         };
-        hideNormal.Setters.Add(new Setter(FrameworkElement.VisibilityProperty, Visibility.Collapsed));
-        normalStyle.Triggers.Add(hideNormal);
+        hideNormalForSummary.Setters.Add(new Setter(FrameworkElement.VisibilityProperty, Visibility.Collapsed));
+        normalStyle.Triggers.Add(hideNormalForSummary);
+
+        var hideNormalForNotes = new DataTrigger
+        {
+            Binding = new Binding(nameof(GrafikRowViewModel.IsNotesRow)),
+            Value = true
+        };
+        hideNormalForNotes.Setters.Add(new Setter(FrameworkElement.VisibilityProperty, Visibility.Collapsed));
+        normalStyle.Triggers.Add(hideNormalForNotes);
 
         // Widoczne zaznaczenie także na żółtym WS (tło wpisu zasłania AccentBrush komórki).
         var selected = new DataTrigger
@@ -222,6 +231,9 @@ public static class GrafikGridBuilder
 
         var summaryPanelFactory = CreateSummaryCellPanel(day);
         rootFactory.AppendChild(summaryPanelFactory);
+
+        var notesPanelFactory = CreateNotesCellPanel(day);
+        rootFactory.AppendChild(notesPanelFactory);
 
         template.VisualTree = rootFactory;
         return template;
@@ -319,6 +331,79 @@ public static class GrafikGridBuilder
         borderFactory.SetValue(FrameworkElement.StyleProperty, summaryStyle);
 
         return borderFactory;
+    }
+
+    private static readonly SolidColorBrush NoteIconBrush =
+        new(Color.FromRgb(0x2E, 0xA8, 0x44));
+
+    private static FrameworkElementFactory CreateNotesCellPanel(int day)
+    {
+        var borderFactory = new FrameworkElementFactory(typeof(Border));
+        borderFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        borderFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Stretch);
+        borderFactory.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+        borderFactory.SetValue(Border.PaddingProperty, new Thickness(0, 2, 0, 2));
+
+        var iconBorder = new FrameworkElementFactory(typeof(Border));
+        iconBorder.SetValue(Border.WidthProperty, 18.0);
+        iconBorder.SetValue(Border.HeightProperty, 18.0);
+        iconBorder.SetValue(Border.CornerRadiusProperty, new CornerRadius(9));
+        iconBorder.SetValue(Border.BackgroundProperty, NoteIconBrush);
+        iconBorder.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        iconBorder.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        iconBorder.SetValue(FrameworkElement.CursorProperty, Cursors.Help);
+        iconBorder.SetBinding(FrameworkElement.ToolTipProperty, new Binding($"[{day}]"));
+        // Opacity zamiast Visibility — pewniejsze odświeżanie w DataGrid po Items.Refresh().
+        iconBorder.SetBinding(UIElement.OpacityProperty,
+            new Binding($"[{day}]") { Converter = NonEmptyOpacityConverter.Instance });
+        iconBorder.SetBinding(UIElement.IsHitTestVisibleProperty,
+            new Binding($"[{day}]") { Converter = NonEmptyBoolConverter.Instance });
+
+        var letter = new FrameworkElementFactory(typeof(TextBlock));
+        letter.SetValue(TextBlock.TextProperty, "N");
+        letter.SetValue(TextBlock.ForegroundProperty, Brushes.White);
+        letter.SetValue(TextBlock.FontSizeProperty, 10.0);
+        letter.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+        letter.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        letter.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+        iconBorder.AppendChild(letter);
+
+        borderFactory.AppendChild(iconBorder);
+
+        var notesStyle = new Style(typeof(Border));
+        notesStyle.Setters.Add(new Setter(FrameworkElement.VisibilityProperty, Visibility.Collapsed));
+        var showNotes = new DataTrigger
+        {
+            Binding = new Binding(nameof(GrafikRowViewModel.IsNotesRow)),
+            Value = true
+        };
+        showNotes.Setters.Add(new Setter(FrameworkElement.VisibilityProperty, Visibility.Visible));
+        notesStyle.Triggers.Add(showNotes);
+        borderFactory.SetValue(FrameworkElement.StyleProperty, notesStyle);
+
+        return borderFactory;
+    }
+
+    private sealed class NonEmptyOpacityConverter : IValueConverter
+    {
+        public static readonly NonEmptyOpacityConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            string.IsNullOrWhiteSpace(value?.ToString()) ? 0.0 : 1.0;
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class NonEmptyBoolConverter : IValueConverter
+    {
+        public static readonly NonEmptyBoolConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            !string.IsNullOrWhiteSpace(value?.ToString());
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
     }
 
     private sealed class WpisTloConverter(GrafikCellColors colors) : IValueConverter

@@ -12,6 +12,8 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
 
     public int? FunkcjonariuszId { get; init; }
     public bool IsSummaryRow { get; init; }
+    /// <summary>Wiersz ikon notatek pod sumą (Poziom A/AB) — komórki zawierają treść notatki dnia.</summary>
+    public bool IsNotesRow { get; init; }
     /// <summary>Numer porządkowy (Lp.) wynikający z pozycji na liście. Null dla wiersza sumarycznego.</summary>
     public int? Numer { get; init; }
     public string ImieNazwisko { get; init; } = string.Empty;

@@ -93,7 +93,47 @@ public sealed class MainController(AppServices services)
             UpdateSummaryForDay(summaryRow, rows, day);
 
         rows.Add(summaryRow);
+
+        var notatki = await services.Grafik.GetNotatkiMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
+        var notesRow = new GrafikRowViewModel
+        {
+            IsNotesRow = true,
+            ImieNazwisko = string.Empty,
+            RowBackground = Brushes.Transparent,
+            RowForeground = new SolidColorBrush(Color.FromRgb(0x2C, 0x28, 0x18))
+        };
+
+        foreach (var notatka in notatki)
+        {
+            if (!string.IsNullOrWhiteSpace(notatka.Tresc))
+                notesRow.SetCell(notatka.Dzien, notatka.Tresc);
+        }
+
+        rows.Add(notesRow);
         return rows;
+    }
+
+    public async Task SetNotatkaAsync(
+        int rok,
+        int miesiac,
+        int dzien,
+        string tresc,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmed = tresc?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            await services.Grafik.ClearNotatkaAsync(ZmianaId, rok, miesiac, dzien, cancellationToken);
+            return;
+        }
+
+        await services.Grafik.SetNotatkaAsync(ZmianaId, rok, miesiac, dzien, trimmed, cancellationToken);
+    }
+
+    public void UpdateNotesRowCell(GrafikRowViewModel notesRow, int dzien, string tresc)
+    {
+        var trimmed = tresc?.Trim() ?? string.Empty;
+        notesRow.SetCell(dzien, trimmed);
     }
 
     public GrafikCellColors GetCellColors()
@@ -261,7 +301,7 @@ public sealed class MainController(AppServices services)
         int dzien)
     {
         var workerRows = allRows
-            .Where(r => !r.IsSummaryRow && r.FunkcjonariuszId.HasValue)
+            .Where(r => !r.IsSummaryRow && !r.IsNotesRow && r.FunkcjonariuszId.HasValue)
             .ToList();
 
         var nieobecni = workerRows.Count(r => GrafikWpisTypy.JestNieobecnoscia(r.GetCell(dzien)));

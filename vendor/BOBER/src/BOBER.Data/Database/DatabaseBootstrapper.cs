@@ -59,6 +59,25 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         await MigrateUrlopPlanWpisyTableAsync(connection, cancellationToken);
         await MigrateDzienSluzbyColorAsync(connection, cancellationToken);
         await MigrateGrafikNurkowyZatwierdzeniaTableAsync(connection, cancellationToken);
+        await MigrateGrafikNotatkiTableAsync(connection, cancellationToken);
+    }
+
+    private static async Task MigrateGrafikNotatkiTableAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await ExecuteDdlAsync(connection,
+            """
+            CREATE TABLE GrafikNotatki (
+                Id AUTOINCREMENT PRIMARY KEY,
+                ZmianaId SHORT NOT NULL,
+                Rok SHORT NOT NULL,
+                Miesiac SHORT NOT NULL,
+                Dzien SHORT NOT NULL,
+                Tresc MEMO NOT NULL
+            )
+            """,
+            cancellationToken);
     }
 
     private static async Task MigrateGrafikNurkowyZatwierdzeniaTableAsync(
