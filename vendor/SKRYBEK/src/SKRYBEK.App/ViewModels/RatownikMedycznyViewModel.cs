@@ -124,6 +124,22 @@ public sealed partial class RatownikMedycznyViewModel : ObservableObject
         OdswiezDostepneOsoby();
     }
 
+    public void WyczyscJesliOsobaJuzNiedostepna(IReadOnlyCollection<Funkcjonariusz> dostepnyPersonel)
+    {
+        if (_wybranaOsoba is null)
+            return;
+
+        if (dostepnyPersonel.Any(f => f.Id == _wybranaOsoba.Id))
+            return;
+
+        _model.FunkcjonariuszId = null;
+        _model.Nazwisko = string.Empty;
+        SetProperty(ref _wybranaOsoba, null);
+        OnPropertyChanged(nameof(WybranaOsoba));
+        OnPropertyChanged(nameof(WybranyItem));
+        UstawTekstProgramowo(string.Empty);
+    }
+
     /// <summary>Programowe ustawienie osoby (np. auto-uzupełnienie z obsady pojazdu).</summary>
     public void UstawZOsoby(Funkcjonariusz? osoba, string? nazwisko = null)
     {

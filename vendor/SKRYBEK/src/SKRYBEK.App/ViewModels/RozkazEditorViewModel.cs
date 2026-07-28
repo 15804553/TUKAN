@@ -329,6 +329,8 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
                 ? "Brak osób w pracy w tym dniu — sprawdź grafik BOBER."
                 : $"{nowyPersonel.Count} os. dostępnych na {data:dd.MM.yyyy}";
 
+            UsunNiedostepnePrzypisania(nowyPersonel);
+
             foreach (var samVm in PodzialBojowy)
                 samVm.OdswiezWszystkiePozycje();
 
@@ -509,6 +511,21 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             ZaktualizujUstawieniaRatownikow(ustawieniaRatownikow);
         else if (CzyAutoRatownicyAktywne)
             ZastosujAutoFillRatownikow();
+    }
+
+    private void UsunNiedostepnePrzypisania(List<Funkcjonariusz> dostepnyPersonel)
+    {
+        foreach (var pozycja in Sluzba)
+            pozycja.WyczyscJesliOsobaJuzNiedostepna(dostepnyPersonel);
+
+        foreach (var samVm in PodzialBojowy)
+        {
+            foreach (var pozycja in samVm.Pozycje)
+                pozycja.WyczyscJesliOsobaJuzNiedostepna(dostepnyPersonel);
+        }
+
+        foreach (var ratVm in RatownicyMedyczni)
+            ratVm.WyczyscJesliOsobaJuzNiedostepna(dostepnyPersonel);
     }
 
     // ── Filtrowanie personelu ─────────────────────────────────────────────────

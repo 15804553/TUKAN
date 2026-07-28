@@ -218,5 +218,21 @@ public sealed partial class PozycjaSluzbyViewModel : ObservableObject
         OdswiezDostepneOsoby();
     }
 
+    public void WyczyscJesliOsobaJuzNiedostepna(IReadOnlyCollection<Funkcjonariusz> dostepnyPersonel)
+    {
+        if (_wybranaOsoba is null)
+            return;
+
+        if (dostepnyPersonel.Any(f => f.Id == _wybranaOsoba.Id))
+            return;
+
+        SetProperty(ref _wybranaOsoba, null);
+        OnPropertyChanged(nameof(WybranaOsoba));
+        OnPropertyChanged(nameof(WybranyItem));
+        _model.FunkcjonariuszId = null;
+        _model.Nazwisko = string.Empty;
+        UstawTekstProgramowo(string.Empty);
+    }
+
     public PozycjaSluzby ToModel() => _model;
 }

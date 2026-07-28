@@ -261,6 +261,23 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
             UstawTekstProgramowo(_model.Nazwisko);
     }
 
+    public void WyczyscJesliOsobaJuzNiedostepna(IReadOnlyCollection<Funkcjonariusz> dostepnyPersonel)
+    {
+        if (_wybranaOsoba is null)
+            return;
+
+        if (dostepnyPersonel.Any(f => f.Id == _wybranaOsoba.Id))
+            return;
+
+        SetProperty(ref _wybranaOsoba, null);
+        OnPropertyChanged(nameof(WybranaOsoba));
+        OnPropertyChanged(nameof(WybranyItem));
+        _model.FunkcjonariuszId = null;
+        _model.Nazwisko = string.Empty;
+        UstawTekstProgramowo(string.Empty);
+        OdswiezPozycjePoZmianieObsady();
+    }
+
     public PozycjaSamochodu ToModel() => _model;
 }
 
