@@ -6,7 +6,8 @@ namespace BOBER.Services.Grafik;
 /// <summary>Odczyt i zapis wpisów grafiku w BoberDatabase; podsumowania liczy UI (MainController).</summary>
 public sealed class GrafikService(
     IGrafikRepository grafikRepository,
-    IGrafikNotatkaRepository notatkaRepository) : IGrafikService
+    IGrafikNotatkaRepository notatkaRepository,
+    IGrafikUwagaMiesiecznaRepository uwagaMiesiecznaRepository) : IGrafikService
 {
     public Task<IReadOnlyList<GrafikWpis>> GetMonthAsync(
         int zmianaId,
@@ -101,4 +102,35 @@ public sealed class GrafikService(
         int dzien,
         CancellationToken cancellationToken = default) =>
         notatkaRepository.DeleteAsync(zmianaId, rok, miesiac, dzien, cancellationToken);
+
+    public Task<IReadOnlyList<GrafikUwagaMiesieczna>> GetUwagiMonthAsync(
+        int zmianaId,
+        int rok,
+        int miesiac,
+        CancellationToken cancellationToken = default) =>
+        uwagaMiesiecznaRepository.GetByZmianaAndMonthAsync(zmianaId, rok, miesiac, cancellationToken);
+
+    public Task SetUwagaMiesiecznaAsync(
+        int funkcjonariuszId,
+        int zmianaId,
+        int rok,
+        int miesiac,
+        string tresc,
+        CancellationToken cancellationToken = default) =>
+        uwagaMiesiecznaRepository.UpsertAsync(new GrafikUwagaMiesieczna
+        {
+            FunkcjonariuszId = funkcjonariuszId,
+            ZmianaId = zmianaId,
+            Rok = rok,
+            Miesiac = miesiac,
+            Tresc = tresc
+        }, cancellationToken);
+
+    public Task ClearUwagaMiesiecznaAsync(
+        int funkcjonariuszId,
+        int zmianaId,
+        int rok,
+        int miesiac,
+        CancellationToken cancellationToken = default) =>
+        uwagaMiesiecznaRepository.DeleteAsync(funkcjonariuszId, zmianaId, rok, miesiac, cancellationToken);
 }

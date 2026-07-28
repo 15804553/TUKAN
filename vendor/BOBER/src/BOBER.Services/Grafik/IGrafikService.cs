@@ -14,4 +14,8 @@ public interface IGrafikService
     Task<IReadOnlyList<GrafikNotatka>> GetNotatkiMonthAsync(int zmianaId, int rok, int miesiac, CancellationToken cancellationToken = default);
     Task SetNotatkaAsync(int zmianaId, int rok, int miesiac, int dzien, string tresc, CancellationToken cancellationToken = default);
     Task ClearNotatkaAsync(int zmianaId, int rok, int miesiac, int dzien, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<GrafikUwagaMiesieczna>> GetUwagiMonthAsync(int zmianaId, int rok, int miesiac, CancellationToken cancellationToken = default);
+    Task SetUwagaMiesiecznaAsync(int funkcjonariuszId, int zmianaId, int rok, int miesiac, string tresc, CancellationToken cancellationToken = default);
+    Task ClearUwagaMiesiecznaAsync(int funkcjonariuszId, int zmianaId, int rok, int miesiac, CancellationToken cancellationToken = default);
 }

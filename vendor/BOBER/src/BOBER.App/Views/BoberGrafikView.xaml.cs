@@ -217,6 +217,7 @@ public partial class BoberGrafikView : UserControl
 
         dataGrid.LoadingRow += OnDataGridLoadingRow;
         dataGrid.MouseRightButtonDown += OnDataGridRightClick;
+        dataGrid.MouseDoubleClick += OnDataGridDoubleClick;
         dataGrid.SelectedCellsChanged += OnSelectedCellsChanged;
         dataGrid.KeyDown += OnDataGridKeyDown;
 
@@ -406,15 +407,51 @@ public partial class BoberGrafikView : UserControl
             return;
         }
 
+        var month = (int)grid.Tag;
+
+        if (IsUwagiColumn(cell.Column))
+        {
+            e.Handled = true;
+            _ = EditUwagaMiesiecznaAsync(grid, vm, month);
+            return;
+        }
+
         if (cell.Column.Header is not DayHeaderViewModel dayHeader)
         {
             return;
         }
 
-        var month = (int)grid.Tag;
         ShowCellContextMenu(grid, vm, month, dayHeader.Day);
         e.Handled = true;
     }
+
+    private void OnDataGridDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid)
+            return;
+
+        var hit = VisualTreeHelper.HitTest(grid, e.GetPosition(grid));
+        if (hit?.VisualHit is null)
+            return;
+
+        var cell = FindVisualParent<DataGridCell>(hit.VisualHit);
+        if (cell is null || !IsUwagiColumn(cell.Column))
+            return;
+
+        var row = FindVisualParent<DataGridRow>(cell);
+        if (row?.Item is not GrafikRowViewModel vm
+            || vm.IsSummaryRow
+            || vm.IsNotesRow
+            || !vm.FunkcjonariuszId.HasValue)
+            return;
+
+        e.Handled = true;
+        _ = EditUwagaMiesiecznaAsync(grid, vm, (int)grid.Tag);
+    }
+
+    private static bool IsUwagiColumn(DataGridColumn? column) =>
+        column?.Header is string header
+        && header.Equals(GrafikGridBuilder.UwagiColumnHeader, StringComparison.Ordinal);
 
     private void ShowCellContextMenu(DataGrid grid, GrafikRowViewModel vm, int month, int day)
     {
@@ -442,7 +479,8 @@ public partial class BoberGrafikView : UserControl
             (". — Osoba chętna oddać", "KROPKA", "."),
             ("? — Osoba potrzebuje wolne", "PYTAJNIK", "/"),
             ("— Wyczyść", "", "Spacja"),
-            ("Notatka", "NOTATKA", "")
+            ("Notatka", "NOTATKA", ""),
+            ("Uwagi", "UWAGI", "")
         };
 
         foreach (var (label, akcja, gesture) in menuItems)
@@ -510,9 +548,40 @@ public partial class BoberGrafikView : UserControl
             case "NOTATKA":
                 await EditNotatkaAsync(dataGrid, month, day);
                 return;
+            case "UWAGI":
+                await EditUwagaMiesiecznaAsync(dataGrid, vm, month);
+                return;
             default:
                 await ApplyWpisAsync(dataGrid, vm, month, day, akcja);
                 return;
+        }
+    }
+
+    private async Task EditUwagaMiesiecznaAsync(DataGrid dataGrid, GrafikRowViewModel vm, int month)
+    {
+        if (_controller is null || !vm.FunkcjonariuszId.HasValue)
+            return;
+
+        var dialog = new GrafikNotatkaDialog
+        {
+            Owner = OwnerWindow,
+            DialogTitle = "Uwagi",
+            NoteText = vm.UwagaMiesieczna
+        };
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        try
+        {
+            var tresc = dialog.NoteText;
+            await _controller.SetUwagaMiesiecznaAsync(vm.FunkcjonariuszId.Value, _year, month, tresc);
+            vm.UwagaMiesieczna = tresc?.Trim() ?? string.Empty;
+            dataGrid.Items.Refresh();
+        }
+        catch (Exception ex)
+        {
+            UiErrorReporter.Show(OwnerWindow, ex, "Nie udało się zapisać uwagi.");
         }
     }
 

@@ -90,6 +90,109 @@ public static class GrafikGridBuilder
             };
             grid.Columns.Add(col);
         }
+
+        grid.Columns.Add(CreateUwagiColumn());
+    }
+
+    public const string UwagiColumnHeader = "Uwagi";
+    private const double UwagiWidth = 440;
+
+    private static DataGridTemplateColumn CreateUwagiColumn()
+    {
+        return new DataGridTemplateColumn
+        {
+            Header = UwagiColumnHeader,
+            HeaderTemplate = CreateUwagiHeaderTemplate(),
+            CellTemplate = CreateUwagiCellTemplate(),
+            Width = new DataGridLength(UwagiWidth),
+            MinWidth = 160,
+            IsReadOnly = true,
+            CanUserResize = true
+        };
+    }
+
+    private static DataTemplate CreateUwagiHeaderTemplate()
+    {
+        var template = new DataTemplate();
+        var textFactory = new FrameworkElementFactory(typeof(TextBlock));
+        textFactory.SetValue(TextBlock.TextProperty, UwagiColumnHeader);
+        textFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+        textFactory.SetValue(TextBlock.FontSizeProperty, 12.0);
+        textFactory.SetValue(TextBlock.ForegroundProperty, DayNumberFg);
+        textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+        textFactory.SetValue(TextBlock.TextWrappingProperty, TextWrapping.Wrap);
+        textFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(4, 2, 4, 2));
+        template.VisualTree = textFactory;
+        return template;
+    }
+
+    private static DataTemplate CreateUwagiCellTemplate()
+    {
+        var template = new DataTemplate();
+        var borderFactory = new FrameworkElementFactory(typeof(Border));
+        borderFactory.SetValue(Border.PaddingProperty, new Thickness(4, 2, 4, 2));
+        borderFactory.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+        borderFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        borderFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Stretch);
+        borderFactory.SetValue(FrameworkElement.CursorProperty, Cursors.IBeam);
+        borderFactory.SetBinding(FrameworkElement.ToolTipProperty,
+            new Binding(nameof(GrafikRowViewModel.UwagaMiesieczna)));
+
+        var textFactory = new FrameworkElementFactory(typeof(TextBlock));
+        textFactory.SetBinding(TextBlock.TextProperty,
+            new Binding(nameof(GrafikRowViewModel.UwagaMiesieczna)));
+        textFactory.SetValue(TextBlock.FontSizeProperty, 12.0);
+        textFactory.SetValue(TextBlock.TextWrappingProperty, TextWrapping.Wrap);
+        textFactory.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
+        textFactory.SetValue(TextBlock.MaxHeightProperty, 48.0);
+        textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+        textFactory.SetBinding(TextBlock.ForegroundProperty,
+            new Binding(nameof(GrafikRowViewModel.RowForeground)));
+
+        var textStyle = new Style(typeof(TextBlock));
+        var hideForSummary = new DataTrigger
+        {
+            Binding = new Binding(nameof(GrafikRowViewModel.IsSummaryRow)),
+            Value = true
+        };
+        hideForSummary.Setters.Add(new Setter(UIElement.VisibilityProperty, Visibility.Collapsed));
+        textStyle.Triggers.Add(hideForSummary);
+
+        var hideForNotes = new DataTrigger
+        {
+            Binding = new Binding(nameof(GrafikRowViewModel.IsNotesRow)),
+            Value = true
+        };
+        hideForNotes.Setters.Add(new Setter(UIElement.VisibilityProperty, Visibility.Collapsed));
+        textStyle.Triggers.Add(hideForNotes);
+        textFactory.SetValue(FrameworkElement.StyleProperty, textStyle);
+
+        borderFactory.AppendChild(textFactory);
+
+        var borderStyle = new Style(typeof(Border));
+        borderStyle.Setters.Add(new Setter(UIElement.IsHitTestVisibleProperty, true));
+        var disableSummary = new DataTrigger
+        {
+            Binding = new Binding(nameof(GrafikRowViewModel.IsSummaryRow)),
+            Value = true
+        };
+        disableSummary.Setters.Add(new Setter(UIElement.IsHitTestVisibleProperty, false));
+        disableSummary.Setters.Add(new Setter(FrameworkElement.CursorProperty, Cursors.Arrow));
+        borderStyle.Triggers.Add(disableSummary);
+
+        var disableNotes = new DataTrigger
+        {
+            Binding = new Binding(nameof(GrafikRowViewModel.IsNotesRow)),
+            Value = true
+        };
+        disableNotes.Setters.Add(new Setter(UIElement.IsHitTestVisibleProperty, false));
+        disableNotes.Setters.Add(new Setter(FrameworkElement.CursorProperty, Cursors.Arrow));
+        borderStyle.Triggers.Add(disableNotes);
+        borderFactory.SetValue(FrameworkElement.StyleProperty, borderStyle);
+
+        template.VisualTree = borderFactory;
+        return template;
     }
 
     private const double SummaryLineFontSize = 12.0;

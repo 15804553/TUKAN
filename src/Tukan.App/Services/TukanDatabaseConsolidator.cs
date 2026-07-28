@@ -16,6 +16,7 @@ public static class TukanDatabaseConsolidator
         "UrlopPlanWpisy",
         "GrafikNurkowyZatwierdzenia",
         "GrafikNotatki",
+        "GrafikUwagiMiesieczne",
         "KalendarzWpisy",
         "KalendarzOdczyty",
         "KolejnoscFunkcjonariuszy",

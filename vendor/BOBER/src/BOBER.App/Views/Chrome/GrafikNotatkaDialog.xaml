@@ -30,7 +30,8 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Text="Notatka"
+                    <TextBlock x:Name="TitleTextBlock"
+                               Text="Notatka"
                                Margin="14,0,0,0"
                                VerticalAlignment="Center"
                                Foreground="{StaticResource TitleBarForegroundBrush}"

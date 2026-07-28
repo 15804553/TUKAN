@@ -22,6 +22,17 @@ public partial class GrafikNotatkaDialog : Window
         set => NoteTextBox.Text = value ?? string.Empty;
     }
 
+    public string DialogTitle
+    {
+        get => TitleTextBlock.Text;
+        set
+        {
+            var title = string.IsNullOrWhiteSpace(value) ? "Notatka" : value;
+            Title = title;
+            TitleTextBlock.Text = title;
+        }
+    }
+
     private void OnTitleBarMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.LeftButton == MouseButtonState.Pressed)

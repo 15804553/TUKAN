@@ -27,6 +27,22 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
     /// <summary>Kolor obramowania imienia (czerwony dla nurka, przezroczysty w pozostałych przypadkach).</summary>
     public Brush NameBorderBrush { get; set; } = Brushes.Transparent;
 
+    private string _uwagaMiesieczna = string.Empty;
+
+    /// <summary>Tekst uwagi miesięcznej w ostatniej kolumnie grafiku (per pracownik / miesiąc).</summary>
+    public string UwagaMiesieczna
+    {
+        get => _uwagaMiesieczna;
+        set
+        {
+            var next = value ?? string.Empty;
+            if (_uwagaMiesieczna == next)
+                return;
+            _uwagaMiesieczna = next;
+            OnPropertyChanged();
+        }
+    }
+
     /// <summary>Notatki kalendarza DCA per dzień — binding: KalendarzNotes[15].</summary>
     public DayIndexedTexts KalendarzNotes => _kalendarzNotes;
 

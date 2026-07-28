@@ -53,6 +53,11 @@ public sealed class MainController(AppServices services)
             .GroupBy(w => (w.FunkcjonariuszId, w.Dzien))
             .ToDictionary(g => g.Key, g => g.Last().TypWpisu);
 
+        var uwagi = await services.Grafik.GetUwagiMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
+        var uwagiLookup = uwagi
+            .GroupBy(u => u.FunkcjonariuszId)
+            .ToDictionary(g => g.Key, g => g.Last().Tresc);
+
         var daysInMonth = DateTime.DaysInMonth(rok, miesiac);
         var rows = new List<GrafikRowViewModel>();
 
@@ -69,7 +74,8 @@ public sealed class MainController(AppServices services)
                 IsNurek = RoleClassifier.IsNurek(f),
                 RowBackground = GetRoleBrush(f),
                 RowForeground = GetRoleForeground(f),
-                NameBorderBrush = GetNurekBorderBrush(f)
+                NameBorderBrush = GetNurekBorderBrush(f),
+                UwagaMiesieczna = uwagiLookup.TryGetValue(f.Id, out var uwaga) ? uwaga : string.Empty
             };
 
             for (var day = 1; day <= daysInMonth; day++)
@@ -143,6 +149,25 @@ public sealed class MainController(AppServices services)
     {
         var trimmed = tresc?.Trim() ?? string.Empty;
         notesRow.SetCell(dzien, trimmed);
+    }
+
+    public async Task SetUwagaMiesiecznaAsync(
+        int funkcjonariuszId,
+        int rok,
+        int miesiac,
+        string tresc,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmed = tresc?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            await services.Grafik.ClearUwagaMiesiecznaAsync(
+                funkcjonariuszId, ZmianaId, rok, miesiac, cancellationToken);
+            return;
+        }
+
+        await services.Grafik.SetUwagaMiesiecznaAsync(
+            funkcjonariuszId, ZmianaId, rok, miesiac, trimmed, cancellationToken);
     }
 
     public GrafikCellColors GetCellColors()
