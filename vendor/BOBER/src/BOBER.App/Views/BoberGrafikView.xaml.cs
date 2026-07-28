@@ -165,6 +165,8 @@ public partial class BoberGrafikView : UserControl
 
     private Grid CreateMonthGrid(int month)
     {
+        var compactButtonPadding = new Thickness(10, 4, 10, 4);
+
         var outerGrid = new Grid();
         outerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -172,14 +174,17 @@ public partial class BoberGrafikView : UserControl
         var btnPanel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Margin = new Thickness(0, 6, 0, 6)
+            Margin = new Thickness(0, 2, 0, 2)
         };
 
         var exportBtn = new Button
         {
             Content = $"Eksportuj {MonthNames[month]} do Excel",
             Style = (Style)FindResource("SecondaryButton"),
-            Margin = new Thickness(0, 0, 8, 0),
+            Margin = new Thickness(0, 0, 6, 0),
+            Padding = compactButtonPadding,
+            FontSize = 12,
+            MinHeight = 28,
             Tag = month
         };
         exportBtn.Click += OnExportClick;
@@ -191,7 +196,10 @@ public partial class BoberGrafikView : UserControl
             {
                 Content = $"Generuj / aktualizuj grafik nurkowy — {MonthNames[month]}",
                 Style = (Style)FindResource("SecondaryButton"),
-                Margin = new Thickness(0, 0, 8, 0),
+                Margin = new Thickness(0, 0, 6, 0),
+                Padding = compactButtonPadding,
+                FontSize = 12,
+                MinHeight = 28,
                 Tag = month
             };
             nurkowyBtn.Click += OnGenerateGrafikNurkowyClick;
