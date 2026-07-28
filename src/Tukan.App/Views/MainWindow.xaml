@@ -104,11 +104,23 @@
                                     Click="OnGrafikNurkowyClick"
                                     Visibility="Collapsed" />
 
-                            <Button x:Name="KalendarzButton"
-                                    Content="Kalendarz"
-                                    Style="{StaticResource TukanSidebarButton}"
-                                    Click="OnKalendarzClick"
-                                    Visibility="Collapsed" />
+                            <Grid x:Name="KalendarzNavItem" Visibility="Collapsed">
+                                <Button x:Name="KalendarzButton"
+                                        Content="Kalendarz"
+                                        Style="{StaticResource TukanSidebarButton}"
+                                        Click="OnKalendarzClick" />
+                                <TextBlock x:Name="KalendarzUnreadBadge"
+                                           Text="ℹ"
+                                           FontSize="14"
+                                           FontWeight="Bold"
+                                           Foreground="#1E88E5"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,10,0"
+                                           Visibility="Collapsed"
+                                           IsHitTestVisible="False"
+                                           ToolTip="Masz nieprzeczytane notatki w kalendarzu" />
+                            </Grid>
 
                             <Button x:Name="BoberViewButton"
                                     Content="Grafik służb"

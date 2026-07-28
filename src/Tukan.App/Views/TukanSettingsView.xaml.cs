@@ -42,7 +42,7 @@ public partial class TukanSettingsView : UserControl
         {
             InitializeBoberSettings();
             RozkazyTab.Visibility = Visibility.Collapsed;
-            KalendarzTab.Visibility = Visibility.Collapsed;
+            InitializeShiftCalendarSettings();
             if (CanEditPojazdy)
                 InitializePojazdyTab();
         }
@@ -91,6 +91,25 @@ public partial class TukanSettingsView : UserControl
         KalendarzSettingsHost.Content = kalendarzSettings;
 
         SelectDefaultTab();
+    }
+
+    private void InitializeShiftCalendarSettings()
+    {
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        if (user?.IsShiftScoped != true || user.ShiftNumber is not int shiftNumber || shiftNumber is < 1 or > 3)
+        {
+            KalendarzTab.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        KalendarzTab.Visibility = Visibility.Visible;
+        var kalendarzController = new KalendarzController(_tukanServices.Bober);
+        var kalendarzSettings = new KalendarzSettingsView(
+            kalendarzController,
+            showColorSettings: false,
+            settingsShiftNumber: shiftNumber);
+        kalendarzSettings.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+        KalendarzSettingsHost.Content = kalendarzSettings;
     }
 
     private void InitializePojazdyTab()

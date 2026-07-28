@@ -69,8 +69,11 @@ public sealed partial class NieobecniGroupViewModel : ObservableObject
         => Items.Add(new NieobecnyViewModel(new NieobecnyWSluzbie { TypNieobecnosci = Typ }));
 
     [RelayCommand]
-    private void UsunNieobecnego(NieobecnyViewModel vm)
-        => Items.Remove(vm);
+    private void UsunNieobecnego(NieobecnyViewModel? vm)
+    {
+        if (vm is not null)
+            Items.Remove(vm);
+    }
 
     public IEnumerable<NieobecnyWSluzbie> GetModele()
         => Items.Select(i => i.ToModel()).Where(m => !string.IsNullOrWhiteSpace(m.Nazwisko));

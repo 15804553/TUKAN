@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using BOBER.App.Views.Chrome;
 using Chomik.App.Controls;
+using Chomik.App.Views.Branding;
 using Chomik.App.Views.Chrome;
 using SKRYBEK.App.Helpers;
 using Tukan.App.Infrastructure;
@@ -14,6 +16,7 @@ namespace Tukan.App;
 public partial class App : Application
 {
     private const string ApplicationTitle = "TUKAN";
+    private static readonly Uri TukanIconUri = new("pack://application:,,,/Assets/tukan.ico");
 
     private TukanAppServices? _services;
 
@@ -47,6 +50,7 @@ public partial class App : Application
         {
             var (services, migration) = TukanAppServices.CreateAsync().GetAwaiter().GetResult();
             _services = services;
+            _services.StartBackgroundBackup();
 
             if (migration.Any)
             {
@@ -79,6 +83,9 @@ public partial class App : Application
         BoberMessageBox.ApplicationTitleOverride = ApplicationTitle;
         ChomikMessageBox.ApplicationTitleOverride = ApplicationTitle;
         SkrybekMessageBox.ApplicationTitleOverride = ApplicationTitle;
+
+        ChomikAppIcon.IconOverride = BitmapFrame.Create(TukanIconUri);
+        ChomikTitleBar.ShowLogoOverride = false;
     }
 
     private void RunLoginLoop()

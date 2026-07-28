@@ -1,5 +1,6 @@
 using BOBER.Data.Repositories;
 using BOBER.Core.Constants;
+using BOBER.Core.Models;
 
 namespace BOBER.Services.Settings;
 
@@ -72,4 +73,29 @@ public sealed class SettingsService(IUstawieniaRepository ustawieniaRepository) 
 
     public Task SetExportPathGrafikNurkowyAsync(string path, CancellationToken cancellationToken = default) =>
         ustawieniaRepository.SetAsync("ExportPathGrafikNurkowy", path, cancellationToken);
+
+    public async Task<KalendarzAutoDeleteMode> GetKalendarzAutoDeleteModeAsync(
+        int? shiftNumber,
+        CancellationToken cancellationToken = default)
+    {
+        var key = BuildKalendarzAutoDeleteKey(shiftNumber);
+        var raw = await ustawieniaRepository.GetAsync(key, cancellationToken);
+        return Enum.TryParse<KalendarzAutoDeleteMode>(raw, ignoreCase: true, out var mode)
+            ? mode
+            : KalendarzAutoDeleteMode.Nigdy;
+    }
+
+    public Task SetKalendarzAutoDeleteModeAsync(
+        int? shiftNumber,
+        KalendarzAutoDeleteMode mode,
+        CancellationToken cancellationToken = default) =>
+        ustawieniaRepository.SetAsync(
+            BuildKalendarzAutoDeleteKey(shiftNumber),
+            mode.ToString(),
+            cancellationToken);
+
+    private static string BuildKalendarzAutoDeleteKey(int? shiftNumber) =>
+        shiftNumber is >= 1 and <= 3
+            ? $"KalendarzAutoDelete_Zmiana_{shiftNumber.Value}"
+            : "KalendarzAutoDelete_DCA";
 }

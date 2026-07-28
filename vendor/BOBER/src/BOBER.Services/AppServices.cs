@@ -63,7 +63,7 @@ public sealed class AppServices
             Funkcjonariusze,
             Settings,
             new GrafikNurkowyExcelService());
-        Kalendarz = new KalendarzService(kalendarzRepository, koloryRepository, calendarEngine);
+        Kalendarz = new KalendarzService(kalendarzRepository, koloryRepository, calendarEngine, Settings);
         Database = new DatabaseService(bootstrapper, ChomikOptions);
     }
 

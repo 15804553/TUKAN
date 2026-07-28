@@ -14,7 +14,8 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <branding:ChomikLogoMark Grid.Column="0"
+            <branding:ChomikLogoMark x:Name="LogoMark"
+                                       Grid.Column="0"
                                        LogoSize="28"
                                        Variant="Light"
                                        VerticalAlignment="Center" />

@@ -1,3 +1,5 @@
+using BOBER.Core.Models;
+
 namespace BOBER.Services.Settings;
 
 public interface ISettingsService
@@ -22,4 +24,13 @@ public interface ISettingsService
 
     Task<string> GetExportPathGrafikNurkowyAsync(CancellationToken cancellationToken = default);
     Task SetExportPathGrafikNurkowyAsync(string path, CancellationToken cancellationToken = default);
+
+    Task<KalendarzAutoDeleteMode> GetKalendarzAutoDeleteModeAsync(
+        int? shiftNumber,
+        CancellationToken cancellationToken = default);
+
+    Task SetKalendarzAutoDeleteModeAsync(
+        int? shiftNumber,
+        KalendarzAutoDeleteMode mode,
+        CancellationToken cancellationToken = default);
 }

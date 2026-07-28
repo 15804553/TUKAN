@@ -42,6 +42,40 @@ public static class TukanDatabaseMigrator
         var migrated = new List<MigrationEntry>();
         var unifiedPath = Path.Combine(targetDirectory, TukanDatabaseOptions.FileName);
 
+        // Warm start: wspólna baza już istnieje — bez rekurencyjnego skanu dysku.
+        if (IsReadyUnifiedDatabase(unifiedPath))
+        {
+            var localChomik = ResolveLocalLegacy(targetDirectory, "ChomikDatabase.accdb", unifiedPath);
+            var localBober = ResolveLocalLegacy(targetDirectory, "BoberDatabase.accdb", unifiedPath);
+            var localSkrybek = ResolveLocalLegacy(targetDirectory, "SkrybekDatabase.accdb", unifiedPath);
+
+            if (localChomik is null && localBober is null && localSkrybek is null)
+            {
+                UpdateUnifiedConfigFiles(targetDirectory, unifiedPath);
+                MigrateTextDictionary(targetDirectory, "Stopnie.txt", [targetDirectory], migrated);
+                MigrateTextDictionary(targetDirectory, "Stanowiska.txt", [targetDirectory], migrated);
+                return new MigrationResult(migrated);
+            }
+
+            var localConsolidation = await TukanDatabaseConsolidator.ConsolidateAsync(
+                targetDirectory,
+                localChomik,
+                localBober,
+                localSkrybek,
+                cancellationToken);
+
+            foreach (var action in localConsolidation.Actions)
+            {
+                migrated.Add(new MigrationEntry(action.Description, action.SourcePath, localConsolidation.UnifiedPath));
+            }
+
+            MigrateTextDictionary(targetDirectory, "Stopnie.txt", [targetDirectory], migrated);
+            MigrateTextDictionary(targetDirectory, "Stanowiska.txt", [targetDirectory], migrated);
+            UpdateUnifiedConfigFiles(targetDirectory, localConsolidation.UnifiedPath);
+            WriteMigrationJournal(targetDirectory, migrated, localConsolidation.UnifiedPath);
+            return new MigrationResult(migrated);
+        }
+
         var chomikCandidates = CollectChomikCandidates(targetDirectory).ToList();
         var boberCandidates = CollectBoberCandidates(targetDirectory).ToList();
         var skrybekCandidates = CollectSkrybekCandidates(targetDirectory).ToList();
@@ -75,6 +109,34 @@ public static class TukanDatabaseMigrator
         WriteMigrationJournal(targetDirectory, migrated, consolidation.UnifiedPath);
 
         return new MigrationResult(migrated);
+    }
+
+    private static bool IsReadyUnifiedDatabase(string unifiedPath)
+    {
+        if (!File.Exists(unifiedPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            return new FileInfo(unifiedPath).Length >= LikelyEmptyDatabaseBytes;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    private static string? ResolveLocalLegacy(string targetDirectory, string fileName, string unifiedPath)
+    {
+        var candidate = Path.Combine(targetDirectory, fileName);
+        if (!File.Exists(candidate) || PathsEqual(candidate, unifiedPath))
+        {
+            return null;
+        }
+
+        return candidate;
     }
 
     private static string? FindBestDatabaseSource(

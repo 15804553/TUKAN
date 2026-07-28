@@ -76,6 +76,19 @@
                                      GroupName="Target"
                                      Foreground="{StaticResource ForegroundBrush}" />
                     </StackPanel>
+                    <StackPanel x:Name="PrivateTargetsPanel" Margin="0,0,0,10" Visibility="Collapsed">
+                        <CheckBox x:Name="Shift1CheckBox"
+                                  Content="Zmiana I"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  Margin="0,0,0,4" />
+                        <CheckBox x:Name="Shift2CheckBox"
+                                  Content="Zmiana II"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  Margin="0,0,0,4" />
+                        <CheckBox x:Name="Shift3CheckBox"
+                                  Content="Zmiana III"
+                                  Foreground="{StaticResource ForegroundBrush}" />
+                    </StackPanel>
 
                     <TextBox x:Name="NoteTextBox"
                              MinHeight="110"
@@ -109,6 +122,13 @@
                                 Margin="0,0,8,0"
                                 Visibility="Collapsed"
                                 Click="OnDeleteClick" />
+                        <Button x:Name="ReplyButton"
+                                Content="Odpowiedz"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="12,6"
+                                Margin="0,0,8,0"
+                                Visibility="Collapsed"
+                                Click="OnReplyClick" />
                         <Button x:Name="MarkReadButton"
                                 Content="Przeczytałem"
                                 Style="{StaticResource PrimaryButton}"

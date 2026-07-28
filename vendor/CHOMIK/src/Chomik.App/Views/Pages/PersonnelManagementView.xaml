@@ -51,7 +51,8 @@
                       BorderThickness="0"
                       Background="Transparent"
                       CanUserAddRows="False"
-                      ScrollViewer.CanContentScroll="False">
+                      ScrollViewer.CanContentScroll="False"
+                      PreviewMouseDoubleClick="OnPersonnelGridPreviewMouseDoubleClick">
                 <DataGrid.RowStyle>
                     <Style TargetType="DataGridRow">
                         <Setter Property="MinHeight" Value="32" />

@@ -34,10 +34,13 @@ public partial class PersonnelEditWindow : Window
         var chromeTitle = entity.Id == 0
             ? "Nowy funkcjonariusz"
             : entity.PelneImieNazwisko;
-        Title = $"Chomik — {chromeTitle}";
+        var appTitle = ChomikMessageBox.ApplicationTitleOverride ?? "Chomik";
+        Title = $"{appTitle} — {chromeTitle}";
         TitleBar.Title = chromeTitle;
         BindEntity(entity);
         WstepienieDoSluzbyDatePicker.SelectedDateChanged += (_, _) => UpdateStazFromServiceStartDate();
+        ImieTextBox.LostFocus += (_, _) => ImieTextBox.Text = CapitalizePersonName(ImieTextBox.Text);
+        NazwiskoTextBox.LostFocus += (_, _) => NazwiskoTextBox.Text = CapitalizePersonName(NazwiskoTextBox.Text);
     }
 
     private void BuildUprawnieniaUi(IReadOnlyList<TypUprawnienia> typy, Funkcjonariusz entity)
@@ -205,8 +208,10 @@ public partial class PersonnelEditWindow : Window
         _entity.NumerPorzadkowy = numerPorzadkowy;
         _entity.StopienId = stopienId;
         _entity.StanowiskoId = stanowiskoId;
-        _entity.Imie = ImieTextBox.Text.Trim();
-        _entity.Nazwisko = NazwiskoTextBox.Text.Trim();
+        _entity.Imie = CapitalizePersonName(ImieTextBox.Text);
+        _entity.Nazwisko = CapitalizePersonName(NazwiskoTextBox.Text);
+        ImieTextBox.Text = _entity.Imie;
+        NazwiskoTextBox.Text = _entity.Nazwisko;
         _entity.Telefon = string.IsNullOrWhiteSpace(TelefonTextBox.Text) ? null : TelefonTextBox.Text.Trim();
         _entity.DataWstepieniaDoSluzby = WstepienieDoSluzbyDatePicker.SelectedDate;
         _entity.StazLat = StazCalculator.CalculateServiceYears(_entity.DataWstepieniaDoSluzby);
@@ -254,6 +259,20 @@ public partial class PersonnelEditWindow : Window
     {
         var years = StazCalculator.CalculateServiceYears(WstepienieDoSluzbyDatePicker.SelectedDate);
         StazTextBox.Text = years?.ToString() ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Kapitalizuje imię/nazwisko wg reguł kultury pl-PL (pierwsza litera każdego członu wielka).
+    /// </summary>
+    private static string CapitalizePersonName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var culture = CultureInfo.GetCultureInfo("pl-PL");
+        return culture.TextInfo.ToTitleCase(value.Trim().ToLower(culture));
     }
 
     private sealed class UprawnienieEditorRow(TypUprawnienia typ)

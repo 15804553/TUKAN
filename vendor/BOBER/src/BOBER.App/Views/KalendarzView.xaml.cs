@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using BOBER.App.Controllers;
+using BOBER.App.ViewModels;
 using BOBER.App.Views.Chrome;
 using BOBER.Core.Constants;
 using BOBER.Core.Models;
@@ -28,6 +29,8 @@ public partial class KalendarzView : UserControl
 
     public bool IsEmbedded { get; set; }
 
+    public event EventHandler? NotesChanged;
+
     public KalendarzView()
     {
         InitializeComponent();
@@ -49,10 +52,10 @@ public partial class KalendarzView : UserControl
 
         HintTextBlock.Text = canEdit
             ? "Kliknij dzień, aby dodać lub edytować notatkę."
-            : "Niebieskie „i” oznacza notatkę od DCA — kliknij, aby odczytać.";
+            : "Kliknij dzień, aby odczytać notatki, usuwać swoje lub DCA oraz wysyłać prywatne informacje między zmianami.";
         FooterTextBlock.Text = canEdit
             ? "Status odczytu: po potwierdzeniu przez zmianę pojawia się informacja przy notatce."
-            : "Po odczytaniu notatki naciśnij „Przeczytałem”, aby potwierdzić zapoznanie się z treścią.";
+            : "Prywatne notatki między zmianami nie są widoczne dla DCA. Przycisk „Przeczytałem” potwierdza odczyt otrzymanej notatki.";
 
         PopulateYearCombo();
         _ = ReloadAsync();
@@ -136,11 +139,15 @@ public partial class KalendarzView : UserControl
         {
             MonthTitleTextBlock.Text = $"{GrafikNurkowyConstants.MonthNames[_month]} {_year}";
 
+            await _controller.ApplyAutoDeleteAsync(_shiftNumber, _canEdit);
             _kolory = await _controller.GetKoloryZmianAsync();
             _workingShifts = await _controller.GetWorkingShiftsForMonthAsync(_year, _month);
 
-            int? filter = _canEdit ? null : _shiftNumber;
-            var wpisy = await _controller.GetMonthAsync(_year, _month, filter);
+            var wpisy = await _controller.GetMonthAsync(
+                _year,
+                _month,
+                _canEdit ? null : _shiftNumber,
+                includePrivateEntries: !_canEdit);
             _wpisy = wpisy.ToList();
 
             ApplyLegend();
@@ -153,6 +160,7 @@ public partial class KalendarzView : UserControl
         finally
         {
             _isLoading = false;
+            NotesChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -286,7 +294,13 @@ public partial class KalendarzView : UserControl
                 var status = w.Odczyt?.Przeczytane == true
                     ? $"przeczytane ({w.Odczyt.PrzeczytanePrzez}, {w.Odczyt.DataOdczytu:dd.MM.yyyy HH:mm})"
                     : "nieprzeczytane";
-                return $"Zmiana {ToRoman(w.ZmianaId)}: {status}";
+                var prefix = w.TypWpisu switch
+                {
+                    KalendarzTypWpisu.Dca => $"DCA -> zmiana {ToRoman(w.ZmianaId)}",
+                    KalendarzTypWpisu.OdpowiedzDca => $"Zmiana {ToRoman(w.AutorZmianaId ?? 0)} -> DCA",
+                    _ => $"Zmiana {ToRoman(w.AutorZmianaId ?? 0)} -> zmiana {ToRoman(w.ZmianaId)}"
+                };
+                return $"{prefix}: {status}";
             }));
     }
 
@@ -313,18 +327,26 @@ public partial class KalendarzView : UserControl
         if (_controller is null)
             return;
 
-        var workingShift = _workingShifts.GetValueOrDefault(date.Day, await _controller.GetWorkingShiftAsync(date));
         var dayWpisy = _wpisy.Where(w => w.Data == date).ToList();
-        var existingForShift = dayWpisy.FirstOrDefault(w => w.ZmianaId == workingShift);
-        var status = BuildDcaStatusText(dayWpisy);
+        var replies = dayWpisy.Where(w => w.TypWpisu == KalendarzTypWpisu.OdpowiedzDca).ToList();
+        if (replies.Count > 0)
+        {
+            await ShowDcaDayDialogAsync(date, dayWpisy);
+            return;
+        }
+
+        var workingShift = _workingShifts.GetValueOrDefault(date.Day, await _controller.GetWorkingShiftAsync(date));
+        var dcaNotes = dayWpisy.Where(w => w.TypWpisu == KalendarzTypWpisu.Dca).ToList();
+        var existingForShift = dcaNotes.FirstOrDefault(w => w.ZmianaId == workingShift);
+        var status = BuildDcaStatusText(dcaNotes);
 
         var dialog = new KalendarzNotatkaDialog { Owner = OwnerWindow };
         dialog.ConfigureForEdit(
             date,
             workingShift,
-            existingForShift?.Tresc ?? dayWpisy.FirstOrDefault()?.Tresc,
+            existingForShift?.Tresc ?? dcaNotes.FirstOrDefault()?.Tresc,
             status,
-            canDelete: dayWpisy.Count > 0);
+            canDelete: dcaNotes.Count > 0);
 
         if (dialog.ShowDialog() != true)
             return;
@@ -348,44 +370,343 @@ public partial class KalendarzView : UserControl
         await ReloadAsync();
     }
 
+    private async Task ShowDcaDayDialogAsync(DateOnly date, IReadOnlyList<KalendarzWpis> dayWpisy)
+    {
+        if (_controller is null)
+            return;
+
+        var models = dayWpisy
+            .OrderByDescending(w => w.DataModyfikacji)
+            .Select(w => ToDcaDayEntryViewModel(w))
+            .ToList();
+        var dialog = new KalendarzDzienDialog { Owner = OwnerWindow };
+        dialog.Configure(
+            date,
+            canAddPrivate: true,
+            canDeleteVisibleEntries: true,
+            addButtonText: "Notatka DCA");
+        dialog.Entries = models;
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        switch (dialog.ResultAction)
+        {
+            case KalendarzDzienDialog.DialogAction.AddPrivate:
+                await EditDcaNoteForDayAsync(date);
+                await ShowDcaDayDialogAsync(
+                    date,
+                    _wpisy.Where(w => w.Data == date).OrderByDescending(w => w.DataModyfikacji).ToList());
+                break;
+            case KalendarzDzienDialog.DialogAction.Open:
+                if (dialog.SelectedEntry is not null)
+                {
+                    await OpenDcaEntryAsync(date, dialog.SelectedEntry);
+                    await ShowDcaDayDialogAsync(
+                        date,
+                        _wpisy.Where(w => w.Data == date).OrderByDescending(w => w.DataModyfikacji).ToList());
+                }
+                break;
+            case KalendarzDzienDialog.DialogAction.DeleteSelected:
+                await DeleteSelectedShiftEntriesAsync(dialog.SelectedEntries, viewerShiftId: 0);
+                break;
+        }
+    }
+
+    private async Task EditDcaNoteForDayAsync(DateOnly date)
+    {
+        if (_controller is null)
+            return;
+
+        var workingShift = _workingShifts.GetValueOrDefault(date.Day, await _controller.GetWorkingShiftAsync(date));
+        var dcaNotes = _wpisy.Where(w => w.Data == date && w.TypWpisu == KalendarzTypWpisu.Dca).ToList();
+        var existingForShift = dcaNotes.FirstOrDefault(w => w.ZmianaId == workingShift);
+        var dialog = new KalendarzNotatkaDialog { Owner = OwnerWindow };
+        dialog.ConfigureForEdit(
+            date,
+            workingShift,
+            existingForShift?.Tresc,
+            BuildDcaStatusText(dcaNotes),
+            canDelete: dcaNotes.Count > 0);
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        var targets = dialog.TargetAllShifts
+            ? (IReadOnlyList<int>)[1, 2, 3]
+            : [workingShift];
+
+        switch (dialog.ResultAction)
+        {
+            case KalendarzNotatkaDialog.DialogAction.Save:
+                await _controller.UpsertAsync(date, targets, dialog.NoteText, _userLogin);
+                break;
+            case KalendarzNotatkaDialog.DialogAction.Delete:
+                await _controller.DeleteAsync(date, targets);
+                break;
+            default:
+                return;
+        }
+
+        await ReloadAsync();
+    }
+
+    private async Task OpenDcaEntryAsync(DateOnly date, KalendarzDzienWpisViewModel entry)
+    {
+        if (_controller is null)
+            return;
+
+        if (entry.Wpis.TypWpisu == KalendarzTypWpisu.Dca)
+        {
+            var workingShift = entry.Wpis.ZmianaId is >= 1 and <= 3
+                ? entry.Wpis.ZmianaId
+                : _workingShifts.GetValueOrDefault(date.Day, await _controller.GetWorkingShiftAsync(date));
+            var dcaNotes = _wpisy.Where(w => w.Data == date && w.TypWpisu == KalendarzTypWpisu.Dca).ToList();
+            var dialog = new KalendarzNotatkaDialog { Owner = OwnerWindow };
+            dialog.ConfigureForEdit(
+                date,
+                workingShift,
+                entry.Wpis.Tresc,
+                BuildDcaStatusText(dcaNotes),
+                canDelete: true);
+
+            if (dialog.ShowDialog() != true)
+                return;
+
+            var targets = dialog.TargetAllShifts
+                ? (IReadOnlyList<int>)[1, 2, 3]
+                : [workingShift];
+
+            switch (dialog.ResultAction)
+            {
+                case KalendarzNotatkaDialog.DialogAction.Save:
+                    await _controller.UpsertAsync(date, targets, dialog.NoteText, _userLogin);
+                    break;
+                case KalendarzNotatkaDialog.DialogAction.Delete:
+                    await _controller.DeleteAsync(date, targets);
+                    break;
+                default:
+                    return;
+            }
+
+            await ReloadAsync();
+            return;
+        }
+
+        var alreadyRead = entry.Wpis.Odczyt?.Przeczytane == true;
+        var readDialog = new KalendarzNotatkaDialog { Owner = OwnerWindow };
+        readDialog.ConfigureForRead(
+            date,
+            entry.Wpis.AutorZmianaId ?? 0,
+            entry.Wpis.Tresc,
+            alreadyRead,
+            alreadyRead
+                ? $"Przeczytane przez {entry.Wpis.Odczyt!.PrzeczytanePrzez} ({entry.Wpis.Odczyt.DataOdczytu:dd.MM.yyyy HH:mm})"
+                : "Nieprzeczytane — potwierdź odczyt przyciskiem poniżej.",
+            entry.Tytul,
+            canConfirmRead: entry.CanConfirmRead,
+            canReply: false);
+
+        if (readDialog.ShowDialog() != true)
+            return;
+
+        if (readDialog.ResultAction == KalendarzNotatkaDialog.DialogAction.MarkRead && entry.CanConfirmRead)
+        {
+            await _controller.MarkAsReadAsync(entry.Wpis.Id, 0, _userLogin);
+            await ReloadAsync();
+        }
+    }
+
     private async Task HandleShiftDayAsync(DateOnly date)
     {
         if (_controller is null || _shiftNumber is not int zmianaId)
             return;
 
-        var wpis = _wpisy.FirstOrDefault(w => w.Data == date && w.ZmianaId == zmianaId);
-        if (wpis is null)
+        var dayWpisy = _wpisy
+            .Where(w => w.Data == date && IsVisibleForShift(w, zmianaId))
+            .OrderByDescending(w => w.DataModyfikacji)
+            .ToList();
+
+        if (dayWpisy.Count == 0)
         {
-            BoberMessageBox.Show(OwnerWindow, "Brak notatki DCA dla tego dnia.", "Kalendarz");
+            await ShowShiftDayDialogAsync(date, []);
             return;
         }
 
-        var alreadyRead = wpis.Odczyt?.Przeczytane == true;
-        var readInfo = alreadyRead
-            ? $"Przeczytane przez {wpis.Odczyt!.PrzeczytanePrzez} ({wpis.Odczyt.DataOdczytu:dd.MM.yyyy HH:mm})"
-            : null;
+        await ShowShiftDayDialogAsync(date, dayWpisy);
+    }
 
-        var dialog = new KalendarzNotatkaDialog { Owner = OwnerWindow };
-        dialog.ConfigureForRead(date, zmianaId, wpis.Tresc, alreadyRead, readInfo);
+    private async Task ShowShiftDayDialogAsync(DateOnly date, IReadOnlyList<KalendarzWpis> dayWpisy)
+    {
+        if (_controller is null || _shiftNumber is not int zmianaId)
+            return;
+
+        var models = dayWpisy.Select(w => ToDayEntryViewModel(w, zmianaId)).ToList();
+        var dialog = new KalendarzDzienDialog { Owner = OwnerWindow };
+        dialog.Configure(date, canAddPrivate: true, canDeleteVisibleEntries: true);
+        dialog.Entries = models;
 
         if (dialog.ShowDialog() != true)
             return;
 
-        if (dialog.ResultAction == KalendarzNotatkaDialog.DialogAction.MarkRead)
+        switch (dialog.ResultAction)
         {
-            await _controller.MarkAsReadAsync(wpis.Id, zmianaId, _userLogin);
-            await ReloadAsync();
+            case KalendarzDzienDialog.DialogAction.AddPrivate:
+                await ComposePrivateShiftNoteAsync(date, zmianaId);
+                await ShowShiftDayDialogAsync(
+                    date,
+                    _wpisy.Where(w => w.Data == date && IsVisibleForShift(w, zmianaId))
+                        .OrderByDescending(w => w.DataModyfikacji)
+                        .ToList());
+                break;
+            case KalendarzDzienDialog.DialogAction.Open:
+                if (dialog.SelectedEntry is not null)
+                {
+                    await OpenShiftEntryAsync(date, zmianaId, dialog.SelectedEntry);
+                    await ShowShiftDayDialogAsync(
+                        date,
+                        _wpisy.Where(w => w.Data == date && IsVisibleForShift(w, zmianaId))
+                            .OrderByDescending(w => w.DataModyfikacji)
+                            .ToList());
+                }
+                break;
+            case KalendarzDzienDialog.DialogAction.DeleteSelected:
+                await DeleteSelectedShiftEntriesAsync(dialog.SelectedEntries, zmianaId);
+                break;
         }
+    }
+
+    private async Task ComposePrivateShiftNoteAsync(
+        DateOnly date,
+        int zmianaId,
+        IReadOnlyList<int>? defaultTargets = null,
+        string? titleOverride = null)
+    {
+        if (_controller is null)
+            return;
+
+        var dialog = new KalendarzNotatkaDialog { Owner = OwnerWindow };
+        dialog.ConfigureForShiftCompose(date, zmianaId, defaultTargets, titleOverride);
+        if (dialog.ShowDialog() != true || dialog.ResultAction != KalendarzNotatkaDialog.DialogAction.Save)
+            return;
+
+        await _controller.AddShiftNoteAsync(date, zmianaId, dialog.SelectedPrivateTargets, dialog.NoteText, _userLogin);
+        await ReloadAsync();
+    }
+
+    private async Task ComposeDcaReplyAsync(DateOnly date, int zmianaId)
+    {
+        if (_controller is null)
+            return;
+
+        var dialog = new KalendarzNotatkaDialog { Owner = OwnerWindow };
+        dialog.ConfigureForDcaReply(date, zmianaId);
+        if (dialog.ShowDialog() != true || dialog.ResultAction != KalendarzNotatkaDialog.DialogAction.Save)
+            return;
+
+        await _controller.AddDcaReplyAsync(date, zmianaId, dialog.NoteText, _userLogin);
+        await ReloadAsync();
+    }
+
+    private async Task OpenShiftEntryAsync(
+        DateOnly date,
+        int zmianaId,
+        KalendarzDzienWpisViewModel entry)
+    {
+        if (_controller is null)
+            return;
+
+        var wpis = entry.Wpis;
+        var alreadyRead = wpis.Odczyt?.Przeczytane == true;
+        var readInfo = alreadyRead
+            ? $"Przeczytane przez {wpis.Odczyt!.PrzeczytanePrzez} ({wpis.Odczyt.DataOdczytu:dd.MM.yyyy HH:mm})"
+            : entry.CanConfirmRead
+                ? "Nieprzeczytane — potwierdź odczyt przyciskiem poniżej."
+                : entry.IsSent
+                    ? "Wysłana — potwierdzenie odczytu należy do adresata."
+                    : "Ta notatka została już zapisana dla wskazanej zmiany.";
+
+        var dialog = new KalendarzNotatkaDialog { Owner = OwnerWindow };
+        dialog.ConfigureForRead(
+            date,
+            wpis.TypWpisu == KalendarzTypWpisu.OdpowiedzDca
+                ? 0
+                : wpis.ZmianaId,
+            wpis.Tresc,
+            alreadyRead,
+            readInfo,
+            entry.Tytul,
+            canConfirmRead: entry.CanConfirmRead,
+            canReply: entry.CanReply);
+
+        if (dialog.ShowDialog() != true)
+            return;
+
+        switch (dialog.ResultAction)
+        {
+            case KalendarzNotatkaDialog.DialogAction.MarkRead when entry.CanConfirmRead:
+                await _controller.MarkAsReadAsync(wpis.Id, wpis.ZmianaId, _userLogin);
+                await ReloadAsync();
+                break;
+            case KalendarzNotatkaDialog.DialogAction.Reply when entry.CanReply:
+                if (wpis.TypWpisu == KalendarzTypWpisu.Dca)
+                    await ComposeDcaReplyAsync(date, zmianaId);
+                else if (wpis.AutorZmianaId is int authorShift)
+                    await ComposePrivateShiftNoteAsync(
+                        date,
+                        zmianaId,
+                        defaultTargets: [authorShift],
+                        titleOverride: $"Odpowiedź do zmiany {ToRoman(authorShift)}");
+                break;
+        }
+    }
+
+    private async Task DeleteSelectedShiftEntriesAsync(
+        IReadOnlyList<KalendarzDzienWpisViewModel> selectedEntries,
+        int viewerShiftId)
+    {
+        if (_controller is null)
+            return;
+
+        var notAllowed = selectedEntries.Where(e => !e.CanDelete).ToList();
+        if (notAllowed.Count > 0)
+        {
+            BoberMessageBox.Show(
+                OwnerWindow,
+                viewerShiftId == 0
+                    ? "Możesz usuwać notatki DCA oraz odpowiedzi zmian."
+                    : "Możesz usuwać tylko notatki od DCA albo prywatne notatki utworzone przez własną zmianę.",
+                "Kalendarz");
+            return;
+        }
+
+        var ids = selectedEntries.Select(e => e.Wpis.Id).Distinct().ToList();
+        if (ids.Count == 0)
+            return;
+
+        var confirm = BoberMessageBox.Show(
+            OwnerWindow,
+            ids.Count == 1
+                ? "Usunąć wybraną notatkę?"
+                : $"Usunąć zaznaczone notatki ({ids.Count})?",
+            "Kalendarz",
+            BoberMessageButtons.YesNo);
+        if (confirm != MessageBoxResult.Yes)
+            return;
+
+        await _controller.DeleteManyAsync(ids);
+        await ReloadAsync();
     }
 
     private static string? BuildDcaStatusText(IReadOnlyList<KalendarzWpis> dayWpisy)
     {
-        if (dayWpisy.Count == 0)
+        var dcaNotes = dayWpisy.Where(w => w.TypWpisu == KalendarzTypWpisu.Dca).ToList();
+        if (dcaNotes.Count == 0)
             return null;
 
         return string.Join(
             Environment.NewLine,
-            dayWpisy
+            dcaNotes
                 .OrderBy(w => w.ZmianaId)
                 .Select(w =>
                 {
@@ -398,8 +719,92 @@ public partial class KalendarzView : UserControl
                 }));
     }
 
+    private static bool IsVisibleForShift(KalendarzWpis wpis, int viewerShiftId) =>
+        wpis.ZmianaId == viewerShiftId
+        || (wpis.TypWpisu == KalendarzTypWpisu.MiedzyZmianami && wpis.AutorZmianaId == viewerShiftId)
+        || (wpis.TypWpisu == KalendarzTypWpisu.OdpowiedzDca && wpis.AutorZmianaId == viewerShiftId);
+
+    private static KalendarzDzienWpisViewModel ToDayEntryViewModel(KalendarzWpis wpis, int viewerShiftId)
+    {
+        var isDcaEntry = wpis.TypWpisu == KalendarzTypWpisu.Dca;
+        var isDcaReply = wpis.TypWpisu == KalendarzTypWpisu.OdpowiedzDca;
+        var isOwnPrivateEntry = wpis.AutorZmianaId == viewerShiftId;
+        var isSent = (!isDcaEntry && isOwnPrivateEntry) || isDcaReply;
+        var isReceived = wpis.ZmianaId == viewerShiftId && !isSent;
+        var isUnread = isReceived && wpis.Odczyt?.Przeczytane != true;
+        var readInfo = wpis.Odczyt?.Przeczytane == true
+            ? $"przeczytane przez {wpis.Odczyt.PrzeczytanePrzez}"
+            : "nieprzeczytane";
+
+        var title = isDcaEntry
+            ? $"DCA -> zmiana {ToRoman(wpis.ZmianaId)}"
+            : isDcaReply
+                ? $"Zmiana {ToRoman(wpis.AutorZmianaId ?? 0)} -> DCA"
+                : $"Zmiana {ToRoman(wpis.AutorZmianaId ?? 0)} -> zmiana {ToRoman(wpis.ZmianaId)}";
+
+        var details = isDcaEntry
+            ? $"Odebrana od DCA, {readInfo}."
+            : isDcaReply
+                ? $"Wysłana odpowiedź do DCA, {readInfo}."
+                : isSent
+                    ? $"Wysłana do zmiany {ToRoman(wpis.ZmianaId)}, {readInfo}."
+                    : $"Odebrana od zmiany {ToRoman(wpis.AutorZmianaId ?? 0)}, {readInfo}.";
+
+        return new KalendarzDzienWpisViewModel
+        {
+            Wpis = wpis,
+            Tytul = title,
+            Szczegoly = details,
+            CanDelete = isDcaEntry || isOwnPrivateEntry || isDcaReply,
+            CanConfirmRead = isReceived && wpis.Odczyt?.Przeczytane != true,
+            CanReply = isReceived,
+            IsUnread = isUnread || (isSent && wpis.Odczyt?.Przeczytane != true),
+            IsSent = isSent,
+            IsReceived = isReceived
+        };
+    }
+
+    private static KalendarzDzienWpisViewModel ToDcaDayEntryViewModel(KalendarzWpis wpis)
+    {
+        var isDcaEntry = wpis.TypWpisu == KalendarzTypWpisu.Dca;
+        var isUnread = wpis.Odczyt?.Przeczytane != true;
+        var readInfo = !isUnread
+            ? $"przeczytane przez {wpis.Odczyt!.PrzeczytanePrzez}"
+            : "nieprzeczytane";
+
+        if (isDcaEntry)
+        {
+            return new KalendarzDzienWpisViewModel
+            {
+                Wpis = wpis,
+                Tytul = $"DCA -> zmiana {ToRoman(wpis.ZmianaId)}",
+                Szczegoly = $"Twoja notatka do zmiany, {readInfo}.",
+                CanDelete = true,
+                CanConfirmRead = false,
+                CanReply = false,
+                IsUnread = isUnread,
+                IsSent = true,
+                IsReceived = false
+            };
+        }
+
+        return new KalendarzDzienWpisViewModel
+        {
+            Wpis = wpis,
+            Tytul = $"Zmiana {ToRoman(wpis.AutorZmianaId ?? 0)} -> DCA",
+            Szczegoly = $"Odebrana odpowiedź zmiany, {readInfo}.",
+            CanDelete = true,
+            CanConfirmRead = isUnread,
+            CanReply = false,
+            IsUnread = isUnread,
+            IsSent = false,
+            IsReceived = true
+        };
+    }
+
     private static string ToRoman(int zmianaId) => zmianaId switch
     {
+        0 => "DCA",
         1 => "I",
         2 => "II",
         3 => "III",

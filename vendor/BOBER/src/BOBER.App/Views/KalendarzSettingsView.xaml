@@ -3,15 +3,18 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
         <StackPanel MaxWidth="520">
-            <TextBlock Text="KOLORY ZMIAN W KALENDARZU"
+            <TextBlock x:Name="ColorsHeaderTextBlock"
+                       Text="KOLORY ZMIAN W KALENDARZU"
                        Style="{StaticResource SectionHeader}" />
-            <TextBlock Text="Domyślnie jak w grafiku nurkowym. Kolory obowiązują dla DCA oraz kont zmian 1–3."
+            <TextBlock x:Name="ColorsDescriptionTextBlock"
+                       Text="Domyślnie jak w grafiku nurkowym. Kolory obowiązują dla DCA oraz kont zmian 1–3."
                        Foreground="{StaticResource ForegroundMutedBrush}"
                        FontSize="12"
                        TextWrapping="Wrap"
                        Margin="0,0,0,12" />
 
-            <Border Background="{StaticResource BackgroundBrush}"
+            <Border x:Name="ColorsBorder"
+                    Background="{StaticResource BackgroundBrush}"
                     CornerRadius="6"
                     Padding="14,12"
                     Margin="0,0,0,16">
@@ -48,11 +51,26 @@
                 </ItemsControl>
             </Border>
 
+            <TextBlock Text="AUTOMATYCZNE USUWANIE NOTATEK"
+                       Style="{StaticResource SectionHeader}" />
+            <TextBlock x:Name="AutoDeleteDescriptionTextBlock"
+                       Foreground="{StaticResource ForegroundMutedBrush}"
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,12" />
+            <ComboBox x:Name="AutoDeleteComboBox"
+                      Width="220"
+                      HorizontalAlignment="Left"
+                      Margin="0,0,0,16"
+                      DisplayMemberPath="Label"
+                      SelectedValuePath="Value" />
+
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Przywróć domyślne"
                         Style="{StaticResource SecondaryButton}"
                         Padding="12,6"
                         Margin="0,0,8,0"
+                        x:Name="ResetDefaultsButton"
                         Click="OnResetDefaultsClick" />
                 <Button Content="Zapisz"
                         Style="{StaticResource PrimaryButton}"

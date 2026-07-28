@@ -27,6 +27,14 @@ public partial class ChomikTitleBar : UserControl
     public static readonly DependencyProperty ShowMaximizeButtonProperty =
         DependencyProperty.Register(nameof(ShowMaximizeButton), typeof(bool), typeof(ChomikTitleBar), new PropertyMetadata(false, OnChromeButtonsChanged));
 
+    public static readonly DependencyProperty ShowLogoProperty =
+        DependencyProperty.Register(nameof(ShowLogo), typeof(bool), typeof(ChomikTitleBar), new PropertyMetadata(true, OnShowLogoChanged));
+
+    /// <summary>
+    /// Gdy ustawione (np. przez hosta TUKAN), ukrywa logo modułu we wszystkich title barach.
+    /// </summary>
+    public static bool? ShowLogoOverride { get; set; }
+
     public ChomikTitleBar()
     {
         InitializeComponent();
@@ -37,6 +45,7 @@ public partial class ChomikTitleBar : UserControl
     {
         UpdateTitleText();
         UpdateChromeButtons();
+        UpdateLogoVisibility();
         UpdateMaximizeGlyph();
         if (HostWindow is not null)
         {
@@ -70,6 +79,12 @@ public partial class ChomikTitleBar : UserControl
         set => SetValue(ShowMaximizeButtonProperty, value);
     }
 
+    public bool ShowLogo
+    {
+        get => (bool)GetValue(ShowLogoProperty);
+        set => SetValue(ShowLogoProperty, value);
+    }
+
     private static void OnChromeButtonsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is ChomikTitleBar titleBar)
@@ -78,10 +93,29 @@ public partial class ChomikTitleBar : UserControl
         }
     }
 
+    private static void OnShowLogoChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is ChomikTitleBar titleBar)
+        {
+            titleBar.UpdateLogoVisibility();
+        }
+    }
+
     private void UpdateChromeButtons()
     {
         MinimizeButton.Visibility = ShowMinimizeButton ? Visibility.Visible : Visibility.Collapsed;
         MaximizeButton.Visibility = ShowMaximizeButton ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdateLogoVisibility()
+    {
+        if (LogoMark is null)
+        {
+            return;
+        }
+
+        var visible = ShowLogoOverride ?? ShowLogo;
+        LogoMark.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private Window? HostWindow => Window.GetWindow(this);

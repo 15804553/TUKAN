@@ -63,6 +63,7 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         await MigrateGrafikUwagiMiesieczneTableAsync(connection, cancellationToken);
         await MigrateKalendarzTablesAsync(connection, cancellationToken);
         await MigrateKalendarzKoloryAsync(connection, cancellationToken);
+        await MigrateKalendarzEntryTypesAsync(connection, cancellationToken);
     }
 
     private static async Task MigrateKalendarzTablesAsync(
@@ -75,6 +76,8 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                 Id AUTOINCREMENT PRIMARY KEY,
                 Data DATETIME NOT NULL,
                 ZmianaId SHORT NOT NULL,
+                TypWpisu TEXT(30) NOT NULL,
+                AutorZmianaId SHORT,
                 Tresc MEMO NOT NULL,
                 AutorLogin TEXT(100) NOT NULL,
                 DataUtworzenia DATETIME NOT NULL,
@@ -138,6 +141,50 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         catch (OleDbException)
         {
             // Tabela może jeszcze nie istnieć przy pierwszym starcie — pomijamy.
+        }
+    }
+
+    private static async Task MigrateKalendarzEntryTypesAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        const string migrationKey = "MigratedKalendarzEntryTypes20260728";
+
+        try
+        {
+            await using var checkCmd = new OleDbCommand(
+                "SELECT COUNT(*) FROM Ustawienia WHERE Klucz = ? AND Wartosc = '1'",
+                connection);
+            checkCmd.Parameters.AddWithValue("@p1", migrationKey);
+            if (Convert.ToInt32(await checkCmd.ExecuteScalarAsync(cancellationToken)) > 0)
+                return;
+
+            await TryAlterTableAsync(
+                connection,
+                "ALTER TABLE KalendarzWpisy ADD COLUMN TypWpisu TEXT(30)",
+                cancellationToken);
+            await TryAlterTableAsync(
+                connection,
+                "ALTER TABLE KalendarzWpisy ADD COLUMN AutorZmianaId SHORT",
+                cancellationToken);
+
+            await using (var updateCmd = new OleDbCommand(
+                "UPDATE KalendarzWpisy SET TypWpisu = 'Dca' WHERE TypWpisu IS NULL OR TypWpisu = ''",
+                connection))
+            {
+                await updateCmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await using var flagCmd = new OleDbCommand(
+                "INSERT INTO Ustawienia (Klucz, Wartosc) VALUES (?, ?)",
+                connection);
+            flagCmd.Parameters.AddWithValue("@p1", migrationKey);
+            flagCmd.Parameters.AddWithValue("@p2", "1");
+            await flagCmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch
+        {
+            // Przy pierwszym uruchomieniu pełny schemat utworzy tabele już z nowymi kolumnami.
         }
     }
 
@@ -645,6 +692,24 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                                          || ex.Message.Contains("już istnieje", StringComparison.OrdinalIgnoreCase))
         {
             // Tabela już istnieje — pomijamy.
+        }
+    }
+
+    private static async Task TryAlterTableAsync(
+        OleDbConnection connection,
+        string ddl,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var command = new OleDbCommand(ddl, connection);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch (OleDbException ex) when (ex.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)
+                                         || ex.Message.Contains("już istnieje", StringComparison.OrdinalIgnoreCase)
+                                         || ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+        {
+            // Kolumna już istnieje — pomijamy.
         }
     }
 }

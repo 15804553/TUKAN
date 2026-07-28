@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using SKRYBEK.App.Helpers;
 using SKRYBEK.App.ViewModels;
 using SKRYBEK.Services.Logging;
@@ -25,6 +26,32 @@ public partial class RozkazEditorView : UserControl
                 ApplyLoggedInUserAccess(_loggedInLogin, _canEditAll, vm);
             }
         };
+    }
+
+    private void UsunNieobecnego_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: NieobecnyViewModel nieobecny })
+        {
+            return;
+        }
+
+        var group = FindDataContext<NieobecniGroupViewModel>(sender as DependencyObject);
+        group?.UsunNieobecnegoCommand.Execute(nieobecny);
+    }
+
+    private static T? FindDataContext<T>(DependencyObject? start) where T : class
+    {
+        while (start is not null)
+        {
+            if (start is FrameworkElement { DataContext: T match })
+            {
+                return match;
+            }
+
+            start = VisualTreeHelper.GetParent(start);
+        }
+
+        return null;
     }
 
     private void SubscribeEditorVm(RozkazEditorViewModel vm)

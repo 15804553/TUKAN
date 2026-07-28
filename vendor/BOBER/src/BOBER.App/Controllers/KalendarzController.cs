@@ -11,9 +11,10 @@ public sealed class KalendarzController(AppServices services)
     public Task<IReadOnlyList<KalendarzWpis>> GetMonthAsync(
         int rok,
         int miesiac,
-        int? zmianaFilter = null,
+        int? viewerShiftId = null,
+        bool includePrivateEntries = false,
         CancellationToken cancellationToken = default) =>
-        services.Kalendarz.GetMonthAsync(rok, miesiac, zmianaFilter, cancellationToken);
+        services.Kalendarz.GetMonthAsync(rok, miesiac, viewerShiftId, includePrivateEntries, cancellationToken);
 
     public Task UpsertAsync(
         DateOnly data,
@@ -29,12 +30,34 @@ public sealed class KalendarzController(AppServices services)
         CancellationToken cancellationToken = default) =>
         services.Kalendarz.DeleteAsync(data, zmianaIds, cancellationToken);
 
+    public Task DeleteManyAsync(
+        IReadOnlyList<int> wpisIds,
+        CancellationToken cancellationToken = default) =>
+        services.Kalendarz.DeleteManyAsync(wpisIds, cancellationToken);
+
     public Task MarkAsReadAsync(
         int wpisId,
         int zmianaId,
         string login,
         CancellationToken cancellationToken = default) =>
         services.Kalendarz.MarkAsReadAsync(wpisId, zmianaId, login, cancellationToken);
+
+    public Task AddShiftNoteAsync(
+        DateOnly data,
+        int authorShiftId,
+        IReadOnlyList<int> recipientShiftIds,
+        string tresc,
+        string autorLogin,
+        CancellationToken cancellationToken = default) =>
+        services.Kalendarz.AddShiftNoteAsync(data, authorShiftId, recipientShiftIds, tresc, autorLogin, cancellationToken);
+
+    public Task AddDcaReplyAsync(
+        DateOnly data,
+        int authorShiftId,
+        string tresc,
+        string autorLogin,
+        CancellationToken cancellationToken = default) =>
+        services.Kalendarz.AddDcaReplyAsync(data, authorShiftId, tresc, autorLogin, cancellationToken);
 
     public Task<IReadOnlyDictionary<int, string>> GetKoloryZmianAsync(
         CancellationToken cancellationToken = default) =>
@@ -44,6 +67,28 @@ public sealed class KalendarzController(AppServices services)
         IReadOnlyDictionary<int, string> kolory,
         CancellationToken cancellationToken = default) =>
         services.Kalendarz.SaveKoloryZmianAsync(kolory, cancellationToken);
+
+    public Task<KalendarzAutoDeleteMode> GetAutoDeleteModeAsync(
+        int? shiftNumber,
+        CancellationToken cancellationToken = default) =>
+        services.Kalendarz.GetAutoDeleteModeAsync(shiftNumber, cancellationToken);
+
+    public Task SaveAutoDeleteModeAsync(
+        int? shiftNumber,
+        KalendarzAutoDeleteMode mode,
+        CancellationToken cancellationToken = default) =>
+        services.Kalendarz.SaveAutoDeleteModeAsync(shiftNumber, mode, cancellationToken);
+
+    public Task ApplyAutoDeleteAsync(
+        int? shiftNumber,
+        bool canEditDcaEntries,
+        CancellationToken cancellationToken = default) =>
+        services.Kalendarz.ApplyAutoDeleteAsync(shiftNumber, canEditDcaEntries, cancellationToken);
+
+    public Task<bool> HasUnreadForRecipientAsync(
+        int zmianaId,
+        CancellationToken cancellationToken = default) =>
+        services.Kalendarz.HasUnreadForRecipientAsync(zmianaId, cancellationToken);
 
     public Task<IReadOnlyDictionary<int, int>> GetWorkingShiftsForMonthAsync(
         int rok,

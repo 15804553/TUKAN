@@ -601,12 +601,15 @@
                                                                 Content="✕"
                                                                 Style="{StaticResource ChromeIconButton}"
                                                                 Width="22" Height="22" FontSize="10"
+                                                                Margin="4,0,0,0"
+                                                                VerticalAlignment="Center"
+                                                                ToolTip="Usuń osobę"
+                                                                Foreground="{StaticResource ForegroundBrush}"
                                                                 IsEnabled="{Binding DataContext.IsReadOnly,
                                                                            RelativeSource={RelativeSource AncestorType=UserControl},
                                                                            Converter={StaticResource InverseBoolConverter}}"
-                                                                Command="{Binding DataContext.UsunNieobecnegoCommand,
-                                                                         RelativeSource={RelativeSource AncestorType=Border}}"
-                                                                CommandParameter="{Binding}" />
+                                                                Tag="{Binding}"
+                                                                Click="UsunNieobecnego_Click" />
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>

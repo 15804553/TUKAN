@@ -94,15 +94,13 @@
                                 <TextBox x:Name="TelefonTextBox" Style="{StaticResource ModernTextBox}" />
                             </StackPanel>
                             <StackPanel Grid.Row="3" Grid.Column="1" Margin="8,0,0,12">
-                                <TextBlock Text="Staż (lata)" />
-                                <TextBlock Text="Obliczany od daty wstąpienia do służby"
-                                           Foreground="{StaticResource MutedTextBrush}"
-                                           FontSize="11"
-                                           Margin="0,0,0,4" />
+                                <TextBlock Text="Staż (lata)"
+                                           ToolTip="Obliczany od daty wstąpienia do służby" />
                                 <TextBox x:Name="StazTextBox"
                                          Style="{StaticResource ModernTextBox}"
                                          IsReadOnly="True"
-                                         Background="{StaticResource SurfaceBrush}" />
+                                         Background="{StaticResource SurfaceBrush}"
+                                         ToolTip="Obliczany od daty wstąpienia do służby" />
                             </StackPanel>
 
                             <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,0,0,12">

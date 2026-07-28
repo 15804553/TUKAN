@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using Chomik.App.Controllers;
 using Chomik.App.Views;
 using Chomik.App.Views.Chrome;
@@ -84,6 +86,36 @@ public partial class PersonnelManagementView : UserControl
             return;
         }
 
+        await OpenEditDialogAsync(selected);
+    }
+
+    private async void OnPersonnelGridPreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.Handled)
+        {
+            return;
+        }
+
+        if (e.OriginalSource is DependencyObject source
+            && FindVisualParent<Button>(source) is not null)
+        {
+            return;
+        }
+
+        var row = FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject)?.Item as PersonnelGridRow
+            ?? PersonnelGrid.SelectedItem as PersonnelGridRow;
+        if (row is null)
+        {
+            return;
+        }
+
+        PersonnelGrid.SelectedItem = row;
+        e.Handled = true;
+        await OpenEditDialogAsync(row.Entity);
+    }
+
+    private async Task OpenEditDialogAsync(Funkcjonariusz selected)
+    {
         var entity = await _controller.GetForEditAsync(selected.Id);
         if (entity is null || _dictionaries is null || OwnerWindow is null)
         {
@@ -91,12 +123,27 @@ public partial class PersonnelManagementView : UserControl
         }
 
         var window = new PersonnelEditWindow(_controller, _dictionaries, entity);
-        AppWindowLayout.ApplyDialog(window, OwnerWindow!);
+        AppWindowLayout.ApplyDialog(window, OwnerWindow);
         if (window.ShowDialog() == true)
         {
             await LoadAsync();
             PersonnelChanged?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject? child) where T : DependencyObject
+    {
+        while (child is not null)
+        {
+            if (child is T match)
+            {
+                return match;
+            }
+
+            child = VisualTreeHelper.GetParent(child);
+        }
+
+        return null;
     }
 
     private async void OnDeleteClick(object sender, RoutedEventArgs e)

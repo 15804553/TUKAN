@@ -43,10 +43,66 @@ public sealed class KalendarzServiceTests
         var data = new DateOnly(2026, 7, 22);
 
         await service.UpsertAsync(data, [1, 2, 3], "X", "dca");
-        var filtered = await service.GetMonthAsync(2026, 7, zmianaFilter: 2);
+        var filtered = await service.GetMonthAsync(2026, 7, viewerShiftId: 2);
 
         Assert.Single(filtered);
         Assert.Equal(2, filtered[0].ZmianaId);
+    }
+
+    [Fact]
+    public async Task AddShiftNoteAsync_ShiftViewSeesPrivateEntries_ButDcaDoesNot()
+    {
+        var repo = new FakeKalendarzRepository();
+        var service = CreateService(repo, new FakeKoloryRepository());
+        var data = new DateOnly(2026, 7, 22);
+
+        await service.UpsertAsync(data, [2], "DCA", "dca");
+        await service.AddShiftNoteAsync(data, 1, [2], "Prywatna", "zmiana1");
+
+        var recipientView = await service.GetMonthAsync(2026, 7, viewerShiftId: 2, includePrivateEntries: true);
+        var authorView = await service.GetMonthAsync(2026, 7, viewerShiftId: 1, includePrivateEntries: true);
+        var dcaView = await service.GetMonthAsync(2026, 7);
+
+        Assert.Equal(2, recipientView.Count);
+        Assert.Contains(authorView, wpis => wpis.TypWpisu == KalendarzTypWpisu.MiedzyZmianami && wpis.ZmianaId == 2);
+        Assert.Single(dcaView.Where(w => w.TypWpisu == KalendarzTypWpisu.Dca));
+        Assert.DoesNotContain(dcaView, wpis => wpis.TypWpisu == KalendarzTypWpisu.MiedzyZmianami);
+    }
+
+    [Fact]
+    public async Task AddDcaReplyAsync_IsVisibleToDca_AndAuthor()
+    {
+        var repo = new FakeKalendarzRepository();
+        var service = CreateService(repo, new FakeKoloryRepository());
+        var data = new DateOnly(2026, 7, 22);
+
+        await service.AddDcaReplyAsync(data, 1, "Odpowiedź", "zmiana1");
+
+        var dcaView = await service.GetMonthAsync(2026, 7);
+        var authorView = await service.GetMonthAsync(2026, 7, viewerShiftId: 1, includePrivateEntries: true);
+
+        Assert.Contains(dcaView, w => w.TypWpisu == KalendarzTypWpisu.OdpowiedzDca);
+        Assert.Contains(authorView, w => w.TypWpisu == KalendarzTypWpisu.OdpowiedzDca);
+    }
+
+    [Fact]
+    public async Task ApplyAutoDeleteAsync_ForShift_RemovesOldRecipientEntries()
+    {
+        var repo = new FakeKalendarzRepository();
+        var settings = new FakeSettingsService
+        {
+            AutoDeleteModes = { ["2"] = KalendarzAutoDeleteMode.RazNaMiesiac }
+        };
+        var service = CreateService(repo, new FakeKoloryRepository(), settings);
+        var oldDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(-2));
+
+        await service.UpsertAsync(oldDate, [2], "Stare DCA", "dca");
+        await service.AddShiftNoteAsync(oldDate, 1, [2], "Stara prywatna", "zmiana1");
+
+        await service.ApplyAutoDeleteAsync(2, canEditDcaEntries: false);
+
+        var remaining = await service.GetMonthAsync(oldDate.Year, oldDate.Month, viewerShiftId: 2, includePrivateEntries: true);
+        Assert.Empty(remaining);
     }
 
     [Fact]
@@ -97,6 +153,21 @@ public sealed class KalendarzServiceTests
     }
 
     [Fact]
+    public async Task HasUnreadForRecipientAsync_TrueUntilMarkedAsRead()
+    {
+        var repo = new FakeKalendarzRepository();
+        var service = CreateService(repo, new FakeKoloryRepository());
+        var data = new DateOnly(2026, 7, 22);
+
+        await service.UpsertAsync(data, [2], "Briefing", "dca");
+        Assert.True(await service.HasUnreadForRecipientAsync(2));
+        Assert.False(await service.HasUnreadForRecipientAsync(1));
+
+        await service.MarkAsReadAsync(repo.Wpisy[0].Id, 2, "zmiana2");
+        Assert.False(await service.HasUnreadForRecipientAsync(2));
+    }
+
+    [Fact]
     public async Task SaveKoloryZmianAsync_PersistsAndPreservesOtherKeys()
     {
         var koloryRepo = new FakeKoloryRepository();
@@ -118,13 +189,12 @@ public sealed class KalendarzServiceTests
 
     private static KalendarzService CreateService(
         IKalendarzRepository repository,
-        IKoloryRepository koloryRepository)
+        IKoloryRepository koloryRepository,
+        FakeSettingsService? settings = null)
     {
-        // Calendar engine nie jest używany w tych testach — stub przez null-object niepotrzebny,
-        // ale konstruktor wymaga instancji. Używamy fake ustawień z domyślną datą.
         var ustawienia = new FakeUstawieniaRepository();
         var calendar = new ShiftCalendarEngine(ustawienia);
-        return new KalendarzService(repository, koloryRepository, calendar);
+        return new KalendarzService(repository, koloryRepository, calendar, settings ?? new FakeSettingsService());
     }
 
     private sealed class FakeKalendarzRepository : IKalendarzRepository
@@ -136,12 +206,22 @@ public sealed class KalendarzServiceTests
         public Task<IReadOnlyList<KalendarzWpis>> GetByMonthAsync(
             int rok,
             int miesiac,
-            int? zmianaFilter = null,
+            int? viewerShiftId = null,
+            bool includePrivateEntries = false,
             CancellationToken cancellationToken = default)
         {
             var result = Wpisy
                 .Where(w => w.Data.Year == rok && w.Data.Month == miesiac)
-                .Where(w => zmianaFilter is null || w.ZmianaId == zmianaFilter)
+                .Where(w =>
+                    includePrivateEntries && viewerShiftId is not null
+                        ? w.ZmianaId == viewerShiftId
+                          || (w.TypWpisu == KalendarzTypWpisu.MiedzyZmianami
+                              && w.AutorZmianaId == viewerShiftId)
+                          || (w.TypWpisu == KalendarzTypWpisu.OdpowiedzDca
+                              && w.AutorZmianaId == viewerShiftId)
+                        : (w.TypWpisu == KalendarzTypWpisu.Dca
+                           || w.TypWpisu == KalendarzTypWpisu.OdpowiedzDca)
+                          && (viewerShiftId is null || w.ZmianaId == viewerShiftId))
                 .Select(CloneWithOdczyt)
                 .ToList();
             return Task.FromResult<IReadOnlyList<KalendarzWpis>>(result);
@@ -158,7 +238,8 @@ public sealed class KalendarzServiceTests
 
         public Task<int> UpsertAsync(KalendarzWpis wpis, CancellationToken cancellationToken = default)
         {
-            var existing = Wpisy.FirstOrDefault(w => w.Data == wpis.Data && w.ZmianaId == wpis.ZmianaId);
+            var existing = Wpisy.FirstOrDefault(w =>
+                w.Data == wpis.Data && w.ZmianaId == wpis.ZmianaId && w.TypWpisu == wpis.TypWpisu);
             if (existing is null)
             {
                 wpis.Id = _nextId++;
@@ -176,6 +257,15 @@ public sealed class KalendarzServiceTests
                 Odczyty.RemoveAll(o => o.WpisId == existing.Id);
 
             return Task.FromResult(existing.Id);
+        }
+
+        public Task<int> AddAsync(KalendarzWpis wpis, CancellationToken cancellationToken = default)
+        {
+            wpis.Id = _nextId++;
+            wpis.DataUtworzenia = DateTime.Now;
+            wpis.DataModyfikacji = DateTime.Now;
+            Wpisy.Add(wpis);
+            return Task.FromResult(wpis.Id);
         }
 
         public Task DeleteAsync(int wpisId, CancellationToken cancellationToken = default)
@@ -240,18 +330,79 @@ public sealed class KalendarzServiceTests
             return Task.FromResult(odczyt);
         }
 
+        public Task DeleteOlderThanAsync(
+            DateOnly thresholdDate,
+            KalendarzTypWpisu typWpisu,
+            int? recipientShiftId = null,
+            CancellationToken cancellationToken = default)
+        {
+            var ids = Wpisy
+                .Where(w => w.Data < thresholdDate && w.TypWpisu == typWpisu)
+                .Where(w => recipientShiftId is null || w.ZmianaId == recipientShiftId)
+                .Select(w => w.Id)
+                .ToList();
+            Wpisy.RemoveAll(w => ids.Contains(w.Id));
+            Odczyty.RemoveAll(o => ids.Contains(o.WpisId));
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> HasUnreadForRecipientAsync(
+            int zmianaId,
+            CancellationToken cancellationToken = default)
+        {
+            var hasUnread = Wpisy
+                .Where(w => w.ZmianaId == zmianaId)
+                .Any(w =>
+                {
+                    var odczyt = Odczyty.FirstOrDefault(o => o.WpisId == w.Id && o.ZmianaId == zmianaId);
+                    return odczyt?.Przeczytane != true;
+                });
+            return Task.FromResult(hasUnread);
+        }
+
         private KalendarzWpis CloneWithOdczyt(KalendarzWpis source) =>
             new()
             {
                 Id = source.Id,
                 Data = source.Data,
                 ZmianaId = source.ZmianaId,
+                TypWpisu = source.TypWpisu,
+                AutorZmianaId = source.AutorZmianaId,
                 Tresc = source.Tresc,
                 AutorLogin = source.AutorLogin,
                 DataUtworzenia = source.DataUtworzenia,
                 DataModyfikacji = source.DataModyfikacji,
                 Odczyt = Odczyty.FirstOrDefault(o => o.WpisId == source.Id && o.ZmianaId == source.ZmianaId)
             };
+    }
+
+    private sealed class FakeSettingsService : BOBER.Services.Settings.ISettingsService
+    {
+        public Dictionary<string, KalendarzAutoDeleteMode> AutoDeleteModes { get; } = [];
+
+        public Task<string> GetChomikDbPathAsync(CancellationToken cancellationToken = default) => Task.FromResult(string.Empty);
+        public Task SetChomikDbPathAsync(string path, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<int> GetStanZmianyAsync(int zmianaId, CancellationToken cancellationToken = default) => Task.FromResult(10);
+        public Task SetStanZmianyAsync(int zmianaId, int stan, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<int> GetStanMinimalnyAsync(int zmianaId, CancellationToken cancellationToken = default) => Task.FromResult(6);
+        public Task SetStanMinimalnyAsync(int zmianaId, int stan, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<int> GetMaxUrlopowNaSluzbieAsync(int zmianaId, CancellationToken cancellationToken = default) => Task.FromResult(0);
+        public Task SetMaxUrlopowNaSluzbieAsync(int zmianaId, int max, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<string> GetExportPathRozkazyAsync(CancellationToken cancellationToken = default) => Task.FromResult(string.Empty);
+        public Task SetExportPathRozkazyAsync(string path, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<string> GetExportPathGrafikSluzbAsync(CancellationToken cancellationToken = default) => Task.FromResult(string.Empty);
+        public Task SetExportPathGrafikSluzbAsync(string path, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<string> GetExportPathGrafikNurkowyAsync(CancellationToken cancellationToken = default) => Task.FromResult(string.Empty);
+        public Task SetExportPathGrafikNurkowyAsync(string path, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<KalendarzAutoDeleteMode> GetKalendarzAutoDeleteModeAsync(int? shiftNumber, CancellationToken cancellationToken = default) =>
+            Task.FromResult(AutoDeleteModes.TryGetValue(BuildKey(shiftNumber), out var mode) ? mode : KalendarzAutoDeleteMode.Nigdy);
+        public Task SetKalendarzAutoDeleteModeAsync(int? shiftNumber, KalendarzAutoDeleteMode mode, CancellationToken cancellationToken = default)
+        {
+            AutoDeleteModes[BuildKey(shiftNumber)] = mode;
+            return Task.CompletedTask;
+        }
+
+        private static string BuildKey(int? shiftNumber) => shiftNumber?.ToString() ?? "DCA";
     }
 
     private sealed class FakeKoloryRepository : IKoloryRepository

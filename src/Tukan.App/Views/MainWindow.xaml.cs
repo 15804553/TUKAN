@@ -55,6 +55,7 @@ public partial class MainWindow : Window
         ApplyRoleUi();
         UpdateTitleBarAccount();
         Loaded += OnLoaded;
+        Activated += OnActivated;
         StateChanged += OnStateChanged;
         SourceInitialized += OnSourceInitialized;
     }
@@ -94,7 +95,7 @@ public partial class MainWindow : Window
         GrafikNurkowyButton.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.CanViewGrafikNurkowy == true
             ? Visibility.Visible
             : Visibility.Collapsed;
-        KalendarzButton.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.CanViewKalendarz == true
+        KalendarzNavItem.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.CanViewKalendarz == true
             ? Visibility.Visible
             : Visibility.Collapsed;
         DutyAssignmentsButton.Visibility = CanOpenDutyAssignments()
@@ -114,12 +115,40 @@ public partial class MainWindow : Window
         try
         {
             ShowGeneralView();
+            _ = RefreshKalendarzUnreadBadgeAsync();
         }
         catch (Exception ex)
         {
             TukanMessageBox.Show(this, $"Nie można otworzyć widoku głównego:\n\n{ex.Message}", "TUKAN");
             DialogResult = false;
             Close();
+        }
+    }
+
+    private void OnActivated(object? sender, EventArgs e) =>
+        _ = RefreshKalendarzUnreadBadgeAsync();
+
+    private async Task RefreshKalendarzUnreadBadgeAsync()
+    {
+        try
+        {
+            var user = _tukanServices.Chomik.Auth.CurrentUser;
+            if (user?.CanViewKalendarz != true
+                || user.IsShiftScoped != true
+                || user.ShiftNumber is not int shiftNumber
+                || shiftNumber is < 1 or > 3)
+            {
+                KalendarzUnreadBadge.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var controller = new KalendarzController(_tukanServices.Bober);
+            var hasUnread = await controller.HasUnreadForRecipientAsync(shiftNumber);
+            KalendarzUnreadBadge.Visibility = hasUnread ? Visibility.Visible : Visibility.Collapsed;
+        }
+        catch
+        {
+            // Badge jest tylko wskazówką — błąd bazy nie powinien blokować UI.
         }
     }
 
@@ -176,9 +205,15 @@ public partial class MainWindow : Window
 
     private void ShowGeneralView()
     {
+        var isFirstCreate = _generalView is null;
         _generalView ??= CreateGeneralView();
         NavigateTo(_generalView, "Widok ogólny — personel", GeneralViewButton);
-        _ = RefreshGeneralViewAsync();
+
+        // Pierwsze utworzenie ładuje dane w OnViewLoaded — unikamy podwójnego odczytu personelu.
+        if (!isFirstCreate)
+        {
+            _ = RefreshGeneralViewAsync();
+        }
     }
 
     private async Task RefreshGeneralViewAsync()
@@ -318,6 +353,8 @@ public partial class MainWindow : Window
 
         var controller = new KalendarzController(_tukanServices.Bober);
         _kalendarzView ??= new KalendarzView { IsEmbedded = true };
+        _kalendarzView.NotesChanged -= OnKalendarzNotesChanged;
+        _kalendarzView.NotesChanged += OnKalendarzNotesChanged;
         _kalendarzView.Initialize(
             controller,
             canEdit: user.CanEditKalendarz,
@@ -325,6 +362,9 @@ public partial class MainWindow : Window
             shiftNumber: user.ShiftNumber);
         NavigateTo(_kalendarzView, "Kalendarz", KalendarzButton);
     }
+
+    private void OnKalendarzNotesChanged(object? sender, EventArgs e) =>
+        _ = RefreshKalendarzUnreadBadgeAsync();
 
     private void OnDutyAssignmentsClick(object sender, RoutedEventArgs e)
     {
@@ -429,6 +469,8 @@ public partial class MainWindow : Window
                 TukanMessageBox.Show(this, $"Nie udało się odświeżyć kalendarza po zapisie ustawień:\n\n{ex.Message}", "TUKAN");
             }
         }
+
+        await RefreshKalendarzUnreadBadgeAsync();
     }
 
     private async void OnCreatePersonnelListClick(object sender, RoutedEventArgs e)

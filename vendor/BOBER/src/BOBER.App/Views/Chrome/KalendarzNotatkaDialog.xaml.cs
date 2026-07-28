@@ -5,21 +5,25 @@ namespace BOBER.App.Views.Chrome;
 
 public partial class KalendarzNotatkaDialog : Window
 {
+    private bool _requiresPrivateTargets;
+
     public enum DialogAction
     {
         Cancel,
         Save,
         Delete,
-        MarkRead
+        MarkRead,
+        Reply
     }
 
     public KalendarzNotatkaDialog()
     {
         InitializeComponent();
         ChromeWindowConfigurator.Apply(this, canResize: false);
+        PreviewKeyDown += OnPreviewKeyDown;
         Loaded += (_, _) =>
         {
-            if (NoteTextBox.IsEnabled)
+            if (NoteTextBox.IsEnabled && !NoteTextBox.IsReadOnly)
             {
                 NoteTextBox.Focus();
                 NoteTextBox.CaretIndex = NoteTextBox.Text.Length;
@@ -37,6 +41,17 @@ public partial class KalendarzNotatkaDialog : Window
 
     public bool TargetAllShifts => AllShiftsRadio.IsChecked == true;
 
+    public IReadOnlyList<int> SelectedPrivateTargets =>
+        new[]
+        {
+            (CheckBox: Shift1CheckBox, Shift: 1),
+            (CheckBox: Shift2CheckBox, Shift: 2),
+            (CheckBox: Shift3CheckBox, Shift: 3)
+        }
+        .Where(item => item.CheckBox.IsChecked == true)
+        .Select(item => item.Shift)
+        .ToList();
+
     public void ConfigureForEdit(
         DateOnly data,
         int workingShiftId,
@@ -44,6 +59,7 @@ public partial class KalendarzNotatkaDialog : Window
         string? readStatus,
         bool canDelete)
     {
+        _requiresPrivateTargets = false;
         TitleTextBlock.Text = string.IsNullOrWhiteSpace(existingText) ? "Dodaj notatkę" : "Edytuj notatkę";
         DateTextBlock.Text = $"{data:dd.MM.yyyy} — służba: zmiana {ToRoman(workingShiftId)}";
         ThisShiftRadio.Content = $"Zmiana {ToRoman(workingShiftId)} (służba tego dnia)";
@@ -51,12 +67,14 @@ public partial class KalendarzNotatkaDialog : Window
         NoteTextBox.IsReadOnly = false;
         NoteTextBox.IsEnabled = true;
         TargetPanel.Visibility = Visibility.Visible;
+        PrivateTargetsPanel.Visibility = Visibility.Collapsed;
         TargetLabel.Visibility = Visibility.Visible;
         AcceptButton.Visibility = Visibility.Visible;
         AcceptButton.ToolTip = "Zapisz";
         DeleteButton.Visibility = canDelete && !string.IsNullOrWhiteSpace(existingText)
             ? Visibility.Visible
             : Visibility.Collapsed;
+        ReplyButton.Visibility = Visibility.Collapsed;
         MarkReadButton.Visibility = Visibility.Collapsed;
         SetStatus(readStatus);
     }
@@ -66,21 +84,84 @@ public partial class KalendarzNotatkaDialog : Window
         int zmianaId,
         string tresc,
         bool alreadyRead,
-        string? readInfo)
+        string? readInfo,
+        string titleText = "Notatka od DCA",
+        bool canConfirmRead = true,
+        bool canReply = false)
     {
-        TitleTextBlock.Text = "Notatka od DCA";
+        _requiresPrivateTargets = false;
+        TitleTextBlock.Text = titleText;
         DateTextBlock.Text = $"{data:dd.MM.yyyy} — zmiana {ToRoman(zmianaId)}";
         NoteText = tresc;
         NoteTextBox.IsReadOnly = true;
         NoteTextBox.IsEnabled = true;
         TargetPanel.Visibility = Visibility.Collapsed;
+        PrivateTargetsPanel.Visibility = Visibility.Collapsed;
         TargetLabel.Visibility = Visibility.Collapsed;
         AcceptButton.Visibility = Visibility.Collapsed;
         DeleteButton.Visibility = Visibility.Collapsed;
-        MarkReadButton.Visibility = alreadyRead ? Visibility.Collapsed : Visibility.Visible;
-        SetStatus(alreadyRead
-            ? (readInfo ?? "Przeczytane")
-            : "Nieprzeczytane — potwierdź odczyt przyciskiem poniżej.");
+        ReplyButton.Visibility = canReply ? Visibility.Visible : Visibility.Collapsed;
+        MarkReadButton.Visibility = canConfirmRead && !alreadyRead
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        if (canConfirmRead && !alreadyRead)
+        {
+            SetStatus(readInfo ?? "Nieprzeczytane — potwierdź odczyt przyciskiem poniżej.");
+        }
+        else if (alreadyRead)
+        {
+            SetStatus(readInfo ?? "Przeczytane");
+        }
+        else
+        {
+            SetStatus(readInfo);
+        }
+    }
+
+    public void ConfigureForShiftCompose(
+        DateOnly data,
+        int authorShiftId,
+        IReadOnlyList<int>? defaultTargets = null,
+        string? titleOverride = null,
+        string? initialText = null)
+    {
+        _requiresPrivateTargets = true;
+        TitleTextBlock.Text = titleOverride ?? "Prywatna notatka między zmianami";
+        DateTextBlock.Text = $"{data:dd.MM.yyyy} — nadawca: zmiana {ToRoman(authorShiftId)}";
+        TargetLabel.Text = "Do zmian:";
+        NoteText = initialText ?? string.Empty;
+        NoteTextBox.IsReadOnly = false;
+        NoteTextBox.IsEnabled = true;
+        TargetPanel.Visibility = Visibility.Collapsed;
+        PrivateTargetsPanel.Visibility = Visibility.Visible;
+        TargetLabel.Visibility = Visibility.Visible;
+        AcceptButton.Visibility = Visibility.Visible;
+        AcceptButton.ToolTip = "Wyślij";
+        DeleteButton.Visibility = Visibility.Collapsed;
+        ReplyButton.Visibility = Visibility.Collapsed;
+        MarkReadButton.Visibility = Visibility.Collapsed;
+        SetPrivateTargetSelection(defaultTargets ?? []);
+        SetStatus("Wiadomość jest widoczna tylko dla wskazanych zmian. DCA nie zobaczy tej notatki.");
+    }
+
+    public void ConfigureForDcaReply(DateOnly data, int authorShiftId)
+    {
+        _requiresPrivateTargets = false;
+        TitleTextBlock.Text = "Odpowiedź do DCA";
+        DateTextBlock.Text = $"{data:dd.MM.yyyy} — nadawca: zmiana {ToRoman(authorShiftId)}";
+        NoteText = string.Empty;
+        NoteTextBox.IsReadOnly = false;
+        NoteTextBox.IsEnabled = true;
+        TargetPanel.Visibility = Visibility.Collapsed;
+        PrivateTargetsPanel.Visibility = Visibility.Collapsed;
+        TargetLabel.Visibility = Visibility.Collapsed;
+        AcceptButton.Visibility = Visibility.Visible;
+        AcceptButton.ToolTip = "Wyślij odpowiedź";
+        DeleteButton.Visibility = Visibility.Collapsed;
+        ReplyButton.Visibility = Visibility.Collapsed;
+        MarkReadButton.Visibility = Visibility.Collapsed;
+        SetStatus("Odpowiedź będzie widoczna dla DCA.");
     }
 
     private void SetStatus(string? text)
@@ -98,6 +179,7 @@ public partial class KalendarzNotatkaDialog : Window
 
     private static string ToRoman(int zmianaId) => zmianaId switch
     {
+        0 => "DCA",
         1 => "I",
         2 => "II",
         3 => "III",
@@ -110,11 +192,27 @@ public partial class KalendarzNotatkaDialog : Window
             DragMove();
     }
 
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape)
+            return;
+
+        ResultAction = DialogAction.Cancel;
+        DialogResult = false;
+        e.Handled = true;
+    }
+
     private void OnAcceptClick(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(NoteTextBox.Text))
         {
             BoberMessageBox.Show(this, "Treść notatki nie może być pusta.", "Kalendarz");
+            return;
+        }
+
+        if (_requiresPrivateTargets && SelectedPrivateTargets.Count == 0)
+        {
+            BoberMessageBox.Show(this, "Wybierz co najmniej jedną zmianę docelową.", "Kalendarz");
             return;
         }
 
@@ -136,6 +234,12 @@ public partial class KalendarzNotatkaDialog : Window
         DialogResult = true;
     }
 
+    private void OnReplyClick(object sender, RoutedEventArgs e)
+    {
+        ResultAction = DialogAction.Reply;
+        DialogResult = true;
+    }
+
     private void OnMarkReadClick(object sender, RoutedEventArgs e)
     {
         ResultAction = DialogAction.MarkRead;
@@ -146,5 +250,13 @@ public partial class KalendarzNotatkaDialog : Window
     {
         ResultAction = DialogAction.Cancel;
         DialogResult = false;
+    }
+
+    private void SetPrivateTargetSelection(IReadOnlyList<int> selectedTargets)
+    {
+        var selected = selectedTargets.ToHashSet();
+        Shift1CheckBox.IsChecked = selected.Contains(1);
+        Shift2CheckBox.IsChecked = selected.Contains(2);
+        Shift3CheckBox.IsChecked = selected.Contains(3);
     }
 }

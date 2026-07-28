@@ -117,7 +117,7 @@ public sealed class MainController(AppServices services)
 
         // Notatki kalendarza DCA dla tej zmiany — niebieska ikona obok zielonej „N”.
         var kalendarzWpisy = await services.Kalendarz.GetMonthAsync(
-            rok, miesiac, zmianaFilter: ZmianaId, cancellationToken);
+            rok, miesiac, viewerShiftId: ZmianaId, cancellationToken: cancellationToken);
         foreach (var wpis in kalendarzWpisy)
         {
             if (!string.IsNullOrWhiteSpace(wpis.Tresc))

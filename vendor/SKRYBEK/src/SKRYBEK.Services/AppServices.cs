@@ -72,15 +72,24 @@ public sealed class AppServices
     /// <param name="sharedDatabasePath">
     /// Wspólna baza CHOMIK/BOBER (TUKAN). Gdy podana — pomija odczyt DatabasePatch.txt.
     /// </param>
-    public static async Task<AppServices> CreateAsync(string dbPath, string? sharedDatabasePath = null)
+    /// <param name="ensureCreated">
+    /// Gdy false — pomija EnsureCreated (np. gdy TUKAN już wykonał bootstrap schematu).
+    /// </param>
+    public static async Task<AppServices> CreateAsync(
+        string dbPath,
+        string? sharedDatabasePath = null,
+        bool ensureCreated = true)
     {
         var databasePatch = sharedDatabasePath is not null
             ? DatabasePatch.FromUnifiedDatabase(sharedDatabasePath)
             : DatabasePatch.Load();
 
         var skrybek = new SkrybekConnectionFactory(dbPath);
-        var bootstrapper = new DatabaseBootstrapper(skrybek);
-        await bootstrapper.EnsureCreatedAsync();
+        if (ensureCreated)
+        {
+            var bootstrapper = new DatabaseBootstrapper(skrybek);
+            await bootstrapper.EnsureCreatedAsync();
+        }
 
         var bober  = new BoberConnectionFactory(databasePatch.BoberDatabasePath);
         var chomik = new ChomikConnectionFactory(databasePatch.ChomikDatabasePath);

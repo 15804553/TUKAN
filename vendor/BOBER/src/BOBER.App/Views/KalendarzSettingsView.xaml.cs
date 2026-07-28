@@ -6,6 +6,7 @@ using BOBER.App.Controllers;
 using BOBER.App.ViewModels;
 using BOBER.App.Views.Chrome;
 using BOBER.Core.Constants;
+using BOBER.Core.Models;
 using MediaColor = System.Windows.Media.Color;
 using WpfColorConverter = System.Windows.Media.ColorConverter;
 
@@ -14,17 +15,43 @@ namespace BOBER.App.Views;
 public partial class KalendarzSettingsView : UserControl
 {
     private readonly KalendarzController _controller;
+    private readonly bool _showColorSettings;
+    private readonly int? _settingsShiftNumber;
     private readonly ObservableCollection<KolorRoliViewModel> _kolory = new();
     private int _loadGeneration;
 
     public event EventHandler? SettingsSaved;
 
-    public KalendarzSettingsView(KalendarzController controller)
+    public KalendarzSettingsView(
+        KalendarzController controller,
+        bool showColorSettings = true,
+        int? settingsShiftNumber = null)
     {
         InitializeComponent();
         _controller = controller;
+        _showColorSettings = showColorSettings;
+        _settingsShiftNumber = settingsShiftNumber;
         KoloryItemsControl.ItemsSource = _kolory;
+        AutoDeleteComboBox.ItemsSource = BuildAutoDeleteOptions();
+        ConfigureLayout();
         Loaded += OnLoaded;
+    }
+
+    private void ConfigureLayout()
+    {
+        if (_showColorSettings)
+        {
+            AutoDeleteDescriptionTextBlock.Text =
+                "Ustaw po jakim czasie stare notatki DCA mają być usuwane automatycznie z kalendarza.";
+            return;
+        }
+
+        ColorsHeaderTextBlock.Visibility = Visibility.Collapsed;
+        ColorsDescriptionTextBlock.Visibility = Visibility.Collapsed;
+        ColorsBorder.Visibility = Visibility.Collapsed;
+        ResetDefaultsButton.Visibility = Visibility.Collapsed;
+        AutoDeleteDescriptionTextBlock.Text =
+            "Ustaw po jakim czasie stare notatki widoczne dla tej zmiany mają być usuwane automatycznie.";
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -32,25 +59,35 @@ public partial class KalendarzSettingsView : UserControl
         var generation = ++_loadGeneration;
         try
         {
-            var kolory = await _controller.GetKoloryZmianAsync();
             if (generation != _loadGeneration)
                 return;
 
-            _kolory.Clear();
-            for (var zmiana = 1; zmiana <= 3; zmiana++)
+            if (_showColorSettings)
             {
-                var klucz = RoleKeys.KalendarzKluczForZmiana(zmiana);
-                _kolory.Add(new KolorRoliViewModel
+                var kolory = await _controller.GetKoloryZmianAsync();
+                if (generation != _loadGeneration)
+                    return;
+
+                _kolory.Clear();
+                for (var zmiana = 1; zmiana <= 3; zmiana++)
                 {
-                    KluczRoli = klucz,
-                    Etykieta = RoleKeys.DomyslneEtykiety.TryGetValue(klucz, out var etykieta)
-                        ? etykieta
-                        : $"Zmiana {zmiana}",
-                    KolorHex = kolory.TryGetValue(zmiana, out var hex)
-                        ? hex
-                        : RoleKeys.GetDefaultKolorHex(klucz)
-                });
+                    var klucz = RoleKeys.KalendarzKluczForZmiana(zmiana);
+                    _kolory.Add(new KolorRoliViewModel
+                    {
+                        KluczRoli = klucz,
+                        Etykieta = RoleKeys.DomyslneEtykiety.TryGetValue(klucz, out var etykieta)
+                            ? etykieta
+                            : $"Zmiana {zmiana}",
+                        KolorHex = kolory.TryGetValue(zmiana, out var hex)
+                            ? hex
+                            : RoleKeys.GetDefaultKolorHex(klucz)
+                    });
+                }
             }
+
+            var autoDeleteMode = await _controller.GetAutoDeleteModeAsync(_settingsShiftNumber);
+            if (generation == _loadGeneration)
+                AutoDeleteComboBox.SelectedValue = autoDeleteMode;
         }
         catch (Exception ex)
         {
@@ -97,22 +134,34 @@ public partial class KalendarzSettingsView : UserControl
     {
         try
         {
-            var map = new Dictionary<int, string>();
-            foreach (var vm in _kolory)
+            if (_showColorSettings)
             {
-                var zmiana = vm.KluczRoli switch
+                var map = new Dictionary<int, string>();
+                foreach (var vm in _kolory)
                 {
-                    RoleKeys.KalendarzZmiana1 => 1,
-                    RoleKeys.KalendarzZmiana2 => 2,
-                    RoleKeys.KalendarzZmiana3 => 3,
-                    _ => 0
-                };
-                if (zmiana > 0)
-                    map[zmiana] = vm.KolorHex;
+                    var zmiana = vm.KluczRoli switch
+                    {
+                        RoleKeys.KalendarzZmiana1 => 1,
+                        RoleKeys.KalendarzZmiana2 => 2,
+                        RoleKeys.KalendarzZmiana3 => 3,
+                        _ => 0
+                    };
+                    if (zmiana > 0)
+                        map[zmiana] = vm.KolorHex;
+                }
+
+                await _controller.SaveKoloryZmianAsync(map);
             }
 
-            await _controller.SaveKoloryZmianAsync(map);
-            BoberMessageBox.Show(OwnerWindow, "Kolory kalendarza zostały zapisane.", "Kalendarz");
+            var mode = AutoDeleteComboBox.SelectedValue is KalendarzAutoDeleteMode selected
+                ? selected
+                : KalendarzAutoDeleteMode.Nigdy;
+            await _controller.SaveAutoDeleteModeAsync(_settingsShiftNumber, mode);
+
+            var message = _showColorSettings
+                ? "Ustawienia kalendarza zostały zapisane."
+                : "Automatyczne usuwanie notatek zostało zapisane.";
+            BoberMessageBox.Show(OwnerWindow, message, "Kalendarz");
             SettingsSaved?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
@@ -120,6 +169,15 @@ public partial class KalendarzSettingsView : UserControl
             BoberMessageBox.Show(OwnerWindow, ex.Message, "Kalendarz — błąd zapisu");
         }
     }
+
+    private static IReadOnlyList<AutoDeleteOption> BuildAutoDeleteOptions() =>
+    [
+        new(KalendarzAutoDeleteMode.Nigdy, "Nigdy"),
+        new(KalendarzAutoDeleteMode.RazNaMiesiac, "Raz na miesiąc"),
+        new(KalendarzAutoDeleteMode.RazNaPolRoku, "Raz na pół roku")
+    ];
+
+    private sealed record AutoDeleteOption(KalendarzAutoDeleteMode Value, string Label);
 
     private Window? OwnerWindow => Window.GetWindow(this);
 }

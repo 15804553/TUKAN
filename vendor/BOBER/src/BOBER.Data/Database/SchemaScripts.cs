@@ -89,6 +89,8 @@ internal static class SchemaScripts
             Id AUTOINCREMENT PRIMARY KEY,
             Data DATETIME NOT NULL,
             ZmianaId SHORT NOT NULL,
+            TypWpisu TEXT(30) NOT NULL,
+            AutorZmianaId SHORT,
             Tresc MEMO NOT NULL,
             AutorLogin TEXT(100) NOT NULL,
             DataUtworzenia DATETIME NOT NULL,

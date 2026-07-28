@@ -37,6 +37,8 @@ public sealed class TukanAppServices : IDisposable
 
         var chomik = new Chomik.Services.AppServices();
         chomik.DatabaseOptions.FilePath = unifiedPath;
+        chomik.DatabaseOptions.DatabasePassword = TukanDatabaseOptions.Password;
+        chomik.DatabaseOptions.UseDatabasePassword = true;
         chomik.DatabaseOptions.MigrateLegacyDatabaseIfNeeded();
 
         var bober = new BOBER.Services.AppServices();
@@ -44,17 +46,38 @@ public sealed class TukanAppServices : IDisposable
         bober.ChomikOptions.FilePath = unifiedPath;
         DatabasePathFile.Write(unifiedPath);
 
+        // Warm: szybki SELECT wersji schematu; cold: pełny bootstrap raz (konsolidator też woła —
+        // wtedy flaga TukanSchemaVersion pomija drugi przebieg).
         await TukanUnifiedDatabaseBootstrapper.EnsureSchemaAsync(unifiedPath);
-        await chomik.Database.InitializeAsync();
-        await bober.Database.InitializeAsync();
 
-        var skrybek = await SKRYBEK.Services.AppServices.CreateAsync(unifiedPath, unifiedPath);
+        // CreateAsync bez ponownego EnsureCreated — schemat jest już gotowy.
+        var skrybek = await SKRYBEK.Services.AppServices.CreateAsync(
+            unifiedPath,
+            unifiedPath,
+            ensureCreated: false);
         ServiceProvider.Services = skrybek;
-        await skrybek.Backup.SprawdzIWykonajBackupAsync();
 
         BoberLog.Information("TUKAN: wspólna baza={UnifiedPath}", unifiedPath);
 
         return (new TukanAppServices(chomik, bober) { Skrybek = skrybek }, migration);
+    }
+
+    /// <summary>Backup w tle — nie blokuje okna logowania.</summary>
+    public void StartBackgroundBackup()
+    {
+        _ = RunBackupSafelyAsync();
+    }
+
+    private async Task RunBackupSafelyAsync()
+    {
+        try
+        {
+            await Skrybek.Backup.SprawdzIWykonajBackupAsync();
+        }
+        catch (Exception ex)
+        {
+            SkrybekLog.Warning($"TUKAN backup w tle: {ex.Message}");
+        }
     }
 
     public async Task<(bool Success, string ErrorMessage)> TryLoginAsync(string login, string password)
