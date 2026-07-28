@@ -34,7 +34,8 @@ bld/
 !**/EmptyTemplate.accdb
 *.mdb
 *.ldb
-BACKUP/
+# Pliki .bck w katalogu BACKUP obok bazy (nie mylić z kodem Services/Backup)
+**/BACKUP/*.bck
 [Ee]ksport/
 
 # OS

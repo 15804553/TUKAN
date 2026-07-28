@@ -198,22 +198,53 @@
             </TabItem>
 
             <TabItem x:Name="BackupTabItem" Header="Backup" Style="{StaticResource SkrybekTabItem}">
-                <StackPanel Margin="16">
-                    <TextBlock Text="Backup bazy danych"
-                               Style="{StaticResource SectionHeader}"
-                               Margin="0,0,0,8" />
-                    <TextBlock TextWrapping="Wrap"
-                               Foreground="{StaticResource ForegroundMutedBrush}"
-                               FontSize="12"
-                               Margin="0,0,0,16">
-                        Program automatycznie tworzy backup każdego miesiąca przy starcie.
-                        Pliki backupu są przechowywane w katalogu BACKUP\ obok programu z rozszerzeniem .bck.
-                    </TextBlock>
-                    <Button Content="Wykonaj backup teraz"
-                            Style="{StaticResource PrimaryButton}"
-                            Command="{Binding WykonajBackupCommand}"
-                            HorizontalAlignment="Left" />
-                </StackPanel>
+                <ScrollViewer Margin="16" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="Backup bazy danych"
+                                   Style="{StaticResource SectionHeader}"
+                                   Margin="0,0,0,8" />
+                        <TextBlock Text="{Binding OpisBackupu}"
+                                   TextWrapping="Wrap"
+                                   Foreground="{StaticResource ForegroundMutedBrush}"
+                                   FontSize="12"
+                                   Margin="0,0,0,16" />
+
+                        <TextBlock Text="Częstotliwość automatycznego backupu"
+                                   FontSize="12"
+                                   Foreground="{StaticResource ForegroundMutedBrush}"
+                                   Margin="0,0,0,6" />
+                        <ComboBox ItemsSource="{Binding OpcjeCzestotliwosciBackupu}"
+                                  SelectedValue="{Binding WybranaCzestotliwoscBackupu, UpdateSourceTrigger=PropertyChanged}"
+                                  SelectedValuePath="Wartosc"
+                                  DisplayMemberPath="Etykieta"
+                                  Style="{StaticResource DarkComboBox}"
+                                  Width="180"
+                                  HorizontalAlignment="Left"
+                                  Margin="0,0,0,16" />
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
+                            <Button Content="Wykonaj backup teraz"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Command="{Binding WykonajBackupCommand}"
+                                    Margin="0,0,10,0" />
+                        </StackPanel>
+
+                        <TextBlock Text="Odzyskiwanie bazy danych"
+                                   Style="{StaticResource SectionHeader}"
+                                   Margin="0,0,0,8" />
+                        <TextBlock TextWrapping="Wrap"
+                                   Foreground="{StaticResource ForegroundMutedBrush}"
+                                   FontSize="12"
+                                   Margin="0,0,0,16">
+                            Przywraca bazę z wybranego pliku .bck. Bieżąca baza zostanie wcześniej
+                            skopiowana jako kopia bezpieczeństwa. Po odzyskaniu zalecany jest restart aplikacji.
+                        </TextBlock>
+                        <Button Content="Odzyskaj bazę z backupu…"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding OdzyskajBazeZBackupuCommand}"
+                                HorizontalAlignment="Left" />
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
 

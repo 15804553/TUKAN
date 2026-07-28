@@ -8,6 +8,10 @@ public sealed class SessionInfo
     public int NumerZmiany { get; set; }
     public bool IsReadOnly { get; set; }
     public bool CanEditAll { get; set; }
+
+    /// <summary>Dodawanie/edycja pojazdów i ich wymaganych kursów — DCA JRG oraz Zmiana 1–3.</summary>
+    public bool CanEditPojazdy { get; set; }
+
     public bool IsPaAccount { get; set; }
 
     /// <summary>Ujednolica flagi konta PA (login lub nazwa roli).</summary>

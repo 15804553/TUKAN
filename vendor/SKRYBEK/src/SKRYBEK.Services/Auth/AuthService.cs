@@ -91,6 +91,8 @@ public sealed class AuthService
             NumerZmiany = user.NumerZmiany,
             IsReadOnly  = user.IsReadOnly,
             CanEditAll  = user.Role == UserRole.DCAJRG,
+            CanEditPojazdy = user.Role is UserRole.DCAJRG
+                or UserRole.Zmiana1 or UserRole.Zmiana2 or UserRole.Zmiana3,
             IsPaAccount = user.Role == UserRole.PA
         };
         session.NormalizePaFlags();

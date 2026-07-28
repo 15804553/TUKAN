@@ -13,7 +13,7 @@ public sealed class Samochod
 
     public bool CzyPodstawowy => Typ == TypSamochodu.Podstawowy;
 
-    /// <summary>Dodatkowe kursy/uprawnienia ustawione przez DCA JRG — obowiązują wyłącznie na pozycjach 1.D i 2.K.</summary>
+    /// <summary>Dodatkowe kursy/uprawnienia ustawione w ustawieniach pojazdów — obowiązują wyłącznie na pozycjach 1.D i 2.K.</summary>
     public bool CzyWymagaKursow => WymaganeUprawnieniaIds.Count > 0;
 
     /// <summary>

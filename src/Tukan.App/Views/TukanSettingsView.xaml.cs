@@ -6,6 +6,7 @@ using Chomik.App.Controllers;
 using Chomik.App.Views.Pages;
 using SKRYBEK.App.ViewModels;
 using SKRYBEK.App.Views;
+using SKRYBEK.Core.Models;
 using Tukan.App.Services;
 
 namespace Tukan.App.Views;
@@ -42,10 +43,14 @@ public partial class TukanSettingsView : UserControl
             InitializeBoberSettings();
             RozkazyTab.Visibility = Visibility.Collapsed;
             KalendarzTab.Visibility = Visibility.Collapsed;
+            if (CanEditPojazdy)
+                InitializePojazdyTab();
         }
     }
 
     private bool IsDcaJrgAccount => _tukanServices.SkrybekSession?.CanEditAll == true;
+
+    private bool CanEditPojazdy => _tukanServices.SkrybekSession?.CanEditPojazdy == true;
 
     private bool IsAdministratorAccount =>
         _tukanServices.Chomik.Auth.CurrentUser?.CanManageExportPaths == true;
@@ -69,7 +74,6 @@ public partial class TukanSettingsView : UserControl
     {
         ChomikTab.Header = "Uprawnienia/Kursy";
         GrafikTab.Visibility = Visibility.Collapsed;
-        PojazdyTab.Visibility = Visibility.Visible;
         RozkazyTab.Visibility = Visibility.Visible;
         KalendarzTab.Visibility = Visibility.Visible;
 
@@ -79,8 +83,7 @@ public partial class TukanSettingsView : UserControl
 
         SkrybekSettingsHost.Content = new SkrybekSettingsView(
             session, SkrybekSettingsSection.OgolneZBackupem, skrybekViewModel);
-        SkrybekPojazdyHost.Content = new SkrybekSettingsView(
-            session, SkrybekSettingsSection.Pojazdy, skrybekViewModel);
+        InitializePojazdyTab(session, skrybekViewModel);
 
         var kalendarzController = new KalendarzController(_tukanServices.Bober);
         var kalendarzSettings = new KalendarzSettingsView(kalendarzController);
@@ -88,6 +91,21 @@ public partial class TukanSettingsView : UserControl
         KalendarzSettingsHost.Content = kalendarzSettings;
 
         SelectDefaultTab();
+    }
+
+    private void InitializePojazdyTab()
+    {
+        var session = _tukanServices.SkrybekSession!;
+        var skrybekViewModel = new SettingsViewModel(session);
+        _ = skrybekViewModel.LoadAsync();
+        InitializePojazdyTab(session, skrybekViewModel);
+    }
+
+    private void InitializePojazdyTab(SessionInfo session, SettingsViewModel skrybekViewModel)
+    {
+        PojazdyTab.Visibility = Visibility.Visible;
+        SkrybekPojazdyHost.Content = new SkrybekSettingsView(
+            session, SkrybekSettingsSection.Pojazdy, skrybekViewModel);
     }
 
     public void SelectDefaultTab()

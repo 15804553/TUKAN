@@ -148,8 +148,9 @@ public sealed class DatabaseBootstrapper
 
         var defaults = new Dictionary<string, string>
         {
-            ["NrJRG"]         = "4",
-            ["OstatniBackup"] = string.Empty
+            ["NrJRG"]               = "4",
+            ["OstatniBackup"]       = string.Empty,
+            ["CzestotliwoscBackupu"] = CzestotliwoscBackupu.Domyslna
         };
 
         foreach (var (klucz, wartosc) in defaults)
