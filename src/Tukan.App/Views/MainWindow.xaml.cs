@@ -11,6 +11,7 @@ using Tukan.App.Views.Chrome;
 using Chomik.App.Views.Pages;
 using Microsoft.Win32;
 using SKRYBEK.App.Views;
+using Tukan.App.Controllers;
 using Tukan.App.Infrastructure;
 using Tukan.App.Services;
 
@@ -30,9 +31,11 @@ public partial class MainWindow : Window
     private UrlopPlanController? _urlopPlanController;
     private GrafikNurkowyView? _grafikNurkowyView;
     private KalendarzView? _kalendarzView;
+    private DutyAssignmentsView? _dutyAssignmentsView;
     private SkrybekMainView? _skrybekView;
 
     private MainController? _boberController;
+    private DutyAssignmentsController? _dutyAssignmentsController;
     private bool _sidebarExpanded = true;
 
     public MainWindow(TukanAppServices tukanServices)
@@ -94,6 +97,15 @@ public partial class MainWindow : Window
         KalendarzButton.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.CanViewKalendarz == true
             ? Visibility.Visible
             : Visibility.Collapsed;
+        DutyAssignmentsButton.Visibility = CanOpenDutyAssignments()
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private bool CanOpenDutyAssignments()
+    {
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        return user is { IsShiftScoped: true, IsPaUser: false } && user.ShiftNumber is >= 1 and <= 3;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -121,7 +133,7 @@ public partial class MainWindow : Window
         {
             GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
             BoberViewButton, UrlopPlanButton, GrafikNurkowyButton, KalendarzButton, SkrybekViewButton,
-            SettingsButton, LogoutButton
+            DutyAssignmentsButton, SettingsButton, LogoutButton
         })
         {
             button.Content = _sidebarExpanded ? GetButtonLabel(button) : GetButtonIcon(button);
@@ -138,6 +150,7 @@ public partial class MainWindow : Window
         nameof(UrlopPlanButton) => "Plan urlopów",
         nameof(GrafikNurkowyButton) => "Grafik nurkowy",
         nameof(KalendarzButton) => "Kalendarz",
+        nameof(DutyAssignmentsButton) => "Obsada funkcji",
         nameof(SkrybekViewButton) => "Rozkazy dzienne",
         nameof(SettingsButton) => "Ustawienia",
         nameof(LogoutButton) => "Wyloguj",
@@ -154,6 +167,7 @@ public partial class MainWindow : Window
         nameof(UrlopPlanButton) => "🏖",
         nameof(GrafikNurkowyButton) => "🤿",
         nameof(KalendarzButton) => "🗓",
+        nameof(DutyAssignmentsButton) => "👥",
         nameof(SkrybekViewButton) => "📄",
         nameof(SettingsButton) => "⚙",
         nameof(LogoutButton) => "⎋",
@@ -310,6 +324,21 @@ public partial class MainWindow : Window
             userLogin: user.Login,
             shiftNumber: user.ShiftNumber);
         NavigateTo(_kalendarzView, "Kalendarz", KalendarzButton);
+    }
+
+    private void OnDutyAssignmentsClick(object sender, RoutedEventArgs e)
+    {
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        if (user?.IsShiftScoped != true || user.IsPaUser || user.ShiftNumber is not int shiftNumber)
+        {
+            return;
+        }
+
+        var shiftName = $"Zmiana {shiftNumber}";
+        _dutyAssignmentsController ??= new DutyAssignmentsController(_tukanServices, shiftNumber, shiftName);
+        _dutyAssignmentsView ??= new DutyAssignmentsView();
+        _dutyAssignmentsView.Initialize(_dutyAssignmentsController);
+        NavigateTo(_dutyAssignmentsView, "Obsada funkcji", DutyAssignmentsButton);
     }
 
     private async void OnSkrybekViewClick(object sender, RoutedEventArgs e)
@@ -495,6 +524,18 @@ public partial class MainWindow : Window
                 TukanMessageBox.Show(this, $"Nie udało się odświeżyć grafiku po zmianie personelu:\n\n{ex.Message}", "TUKAN");
             }
         }
+
+        if (_dutyAssignmentsView is not null)
+        {
+            try
+            {
+                await _dutyAssignmentsView.RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                TukanMessageBox.Show(this, $"Nie udało się odświeżyć obsady funkcji po zmianie personelu:\n\n{ex.Message}", "TUKAN");
+            }
+        }
     }
 
     private void NavigateTo(UserControl view, string title, Button? activeButton)
@@ -520,7 +561,7 @@ public partial class MainWindow : Window
         {
             GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
             BoberViewButton, UrlopPlanButton, GrafikNurkowyButton, KalendarzButton, SkrybekViewButton,
-            SettingsButton
+            DutyAssignmentsButton, SettingsButton
         })
         {
             if (button.Visibility != Visibility.Visible)

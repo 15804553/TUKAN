@@ -120,6 +120,12 @@
                                     Style="{StaticResource TukanSidebarButton}"
                                     Click="OnSkrybekViewClick" />
 
+                            <Button x:Name="DutyAssignmentsButton"
+                                    Content="Obsada funkcji"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnDutyAssignmentsClick"
+                                    Visibility="Collapsed" />
+
                             <Button x:Name="SettingsButton"
                                     Content="Ustawienia"
                                     Style="{StaticResource TukanSidebarButton}"
