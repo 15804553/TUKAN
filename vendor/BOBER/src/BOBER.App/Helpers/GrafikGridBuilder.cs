@@ -91,7 +91,9 @@ public static class GrafikGridBuilder
             grid.Columns.Add(col);
         }
 
-        grid.Columns.Add(CreateUwagiColumn());
+        var uwagiColumn = CreateUwagiColumn();
+        grid.Columns.Add(uwagiColumn);
+        uwagiColumn.DisplayIndex = grid.Columns.Count - 1;
     }
 
     public const string UwagiColumnHeader = "Uwagi";
