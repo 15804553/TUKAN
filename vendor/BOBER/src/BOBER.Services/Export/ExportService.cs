@@ -118,7 +118,8 @@ public sealed class ExportService
         ws.Row(1).Height = 22;
         ws.Row(2).Height = 18;
         ws.Column(colLp).Width = 7;
-        ws.Column(colName).Width = 30;
+        // Węższa kolumna nazwiska — cały miesiąc ma się zmieścić na A4 w poziomie.
+        ws.Column(colName).Width = 18;
         ws.Style.Font.FontSize = 14;
 
         var wpisyLookup = wpisy
@@ -242,6 +243,12 @@ public sealed class ExportService
 
         ws.PageSetup.PageOrientation = XLPageOrientation.Landscape;
         ws.PageSetup.PaperSize = XLPaperSize.A4Paper;
+        ws.PageSetup.Margins.Left = 0.25;
+        ws.PageSetup.Margins.Right = 0.25;
+        ws.PageSetup.Margins.Top = 0.4;
+        ws.PageSetup.Margins.Bottom = 0.4;
+        // Dopasuj szerokość do 1 strony; wysokość bez limitu stron.
+        ws.PageSetup.FitToPages(1, 0);
     }
 
     private static XLColor ToXl(string hex) => XLColor.FromHtml(hex);
