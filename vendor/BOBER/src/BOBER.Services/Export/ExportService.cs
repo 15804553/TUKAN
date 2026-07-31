@@ -77,21 +77,18 @@ public sealed class ExportService
             ? workDays.OrderBy(d => d)
             : Enumerable.Range(1, daysInMonth)).ToList();
 
-        // Kolumna 1: Lp., kolumna 2: Imię i Nazwisko, kolumny 3+: dni
-        const int colLp = 1;
+        // Kolumna 1: oznaczenia D/N/K, 2: Imię i Nazwisko, 3+: dni
+        const int colMarks = 1;
         const int colName = 2;
         const int firstDayCol = 3;
         var lastCol = workDaysList.Count + 2;
 
         var gridLineColor = XLColor.FromHtml("#505050");
 
-        // Nagłówek "Lp."
-        var lpHeader = ws.Range(1, colLp, 2, colLp);
-        lpHeader.Merge();
-        lpHeader.Value = "Lp.";
-        StyleBandCell(lpHeader.FirstCell(), bandBg, bandFg);
-        lpHeader.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-        lpHeader.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        // Wąska kolumna oznaczeń ról (D/N/K) — pusty nagłówek
+        var marksHeader = ws.Range(1, colMarks, 2, colMarks);
+        marksHeader.Merge();
+        StyleBandCell(marksHeader.FirstCell(), bandBg, bandFg);
 
         // Nagłówek "Imię i Nazwisko"
         var nameHeader = ws.Range(1, colName, 2, colName);
@@ -111,15 +108,11 @@ public sealed class ExportService
             ws.Cell(2, col).Value = date.ToString("ddd");
             StyleBandCell(ws.Cell(1, col), bandBg, bandFg);
             StyleBandCell(ws.Cell(2, col), bandBg, bandFg);
-
-            ws.Column(col).Width = 9;
         }
 
         ws.Row(1).Height = 22;
         ws.Row(2).Height = 18;
-        ws.Column(colLp).Width = 7;
-        // Węższa kolumna nazwiska — cały miesiąc ma się zmieścić na A4 w poziomie.
-        ws.Column(colName).Width = 18;
+        ws.Column(colMarks).Width = MarksColumnWidth;
         ws.Style.Font.FontSize = 14;
 
         var wpisyLookup = wpisy
@@ -139,11 +132,17 @@ public sealed class ExportService
                 ? ToXl(ResolveHex(kolory, RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow))
                 : ToXl(AppColors.ContrastTextHex(rowBgHex));
 
-            // Kolumna Lp.
-            ws.Cell(row, colLp).Value = i + 1;
-            ws.Cell(row, colLp).Style.Fill.BackgroundColor = rowBg;
-            ws.Cell(row, colLp).Style.Font.FontColor = nameText;
-            ws.Cell(row, colLp).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            // Kolumna oznaczeń D/N/K
+            var marksCell = ws.Cell(row, colMarks);
+            var marks = RoleClassifier.FormatExportRoleMarks(f);
+            if (marks.Length > 0)
+                marksCell.Value = marks;
+            marksCell.Style.Fill.BackgroundColor = rowBg;
+            marksCell.Style.Font.FontColor = nameText;
+            marksCell.Style.Font.FontSize = RoleMarkFontSize;
+            marksCell.Style.Font.Bold = true;
+            marksCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            marksCell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
 
             // Kolumna Imię i Nazwisko
             ws.Cell(row, colName).Value = f.PelneImieNazwisko;
@@ -162,7 +161,8 @@ public sealed class ExportService
 
                 var bazowy = GrafikWpisTypy.BazowyKod(wpis);
 
-                if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase))
+                if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase)
+                    || bazowy.Equals(GrafikWpisTypy.UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase))
                 {
                     cell.Style.Fill.BackgroundColor = nieobecnoscBg;
                     cell.Value = GrafikWpisTypy.TekstWyswietlany(wpis);
@@ -232,6 +232,14 @@ public sealed class ExportService
         }
 
         int lastRow = sumBase + sumLabels.Length - 1;
+
+        // Szerokość nazwiska wg treści, z limitem tak by dni zmieściły się na 1 stronie A4 (poziom).
+        var nameTexts = funkcjonariusze
+            .Select(f => f.PelneImieNazwisko)
+            .Append("Imię i Nazwisko")
+            .Concat(sumLabels);
+        ApplyNameAndDayColumnWidths(ws, colName, firstDayCol, workDaysList.Count, nameTexts);
+
         var dataRange = ws.Range(1, 1, lastRow, lastCol);
         dataRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
         dataRange.Style.Border.InsideBorderColor = gridLineColor;
@@ -249,6 +257,72 @@ public sealed class ExportService
         ws.PageSetup.Margins.Bottom = 0.4;
         // Dopasuj szerokość do 1 strony; wysokość bez limitu stron.
         ws.PageSetup.FitToPages(1, 0);
+    }
+
+    private const double RoleMarkFontSize = 8;
+    private const double MarksColumnWidth = 4.5;
+    private const double PreferredDayColumnWidth = 9;
+    private const double MinDayColumnWidth = 5.5;
+    private const double MinNameColumnWidth = 12;
+    private const double MaxNameColumnWidth = 28;
+    /// <summary>Przybliżona suma szerokości kolumn Excel na A4 w poziomie (marginesy 0,25").</summary>
+    private const double A4LandscapeUsableWidth = 132;
+
+    /// <summary>
+    /// Dobiera szerokość nazwiska do najdłuższego tekstu; w razie braku miejsca
+    /// najpierw zwęża kolumny dni (do minimum), potem ewentualnie nazwisko —
+    /// żeby ostatnia kolumna nie wychodziła na drugą stronę.
+    /// </summary>
+    private static (double NameWidth, double DayWidth) ResolveNameAndDayColumnWidths(
+        int dayCount,
+        IEnumerable<string> nameColumnTexts)
+    {
+        var needed = nameColumnTexts
+            .Select(EstimateTextColumnWidth)
+            .DefaultIfEmpty(MinNameColumnWidth)
+            .Max();
+        needed = Math.Clamp(needed, MinNameColumnWidth, MaxNameColumnWidth);
+
+        if (dayCount <= 0)
+            return (needed, PreferredDayColumnWidth);
+
+        var remainingForDays = A4LandscapeUsableWidth - MarksColumnWidth - needed;
+        var preferredDaysTotal = dayCount * PreferredDayColumnWidth;
+
+        if (preferredDaysTotal <= remainingForDays)
+            return (needed, PreferredDayColumnWidth);
+
+        var dayWidth = remainingForDays / dayCount;
+        if (dayWidth >= MinDayColumnWidth)
+            return (needed, dayWidth);
+
+        dayWidth = MinDayColumnWidth;
+        var nameWidth = Math.Max(
+            MinNameColumnWidth,
+            A4LandscapeUsableWidth - MarksColumnWidth - dayCount * dayWidth);
+        return (Math.Min(nameWidth, needed), dayWidth);
+    }
+
+    private static double EstimateTextColumnWidth(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return MinNameColumnWidth;
+
+        // Czcionka 14: nieco więcej niż domyślna jednostka Excel (~11 pt).
+        return text.Length * 1.15 + 2.0;
+    }
+
+    private static void ApplyNameAndDayColumnWidths(
+        IXLWorksheet ws,
+        int colName,
+        int firstDayCol,
+        int dayCount,
+        IEnumerable<string> nameColumnTexts)
+    {
+        var (nameWidth, dayWidth) = ResolveNameAndDayColumnWidths(dayCount, nameColumnTexts);
+        ws.Column(colName).Width = nameWidth;
+        for (var i = 0; i < dayCount; i++)
+            ws.Column(firstDayCol + i).Width = dayWidth;
     }
 
     private static XLColor ToXl(string hex) => XLColor.FromHtml(hex);

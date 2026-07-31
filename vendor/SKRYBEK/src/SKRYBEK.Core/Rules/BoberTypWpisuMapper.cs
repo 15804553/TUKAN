@@ -39,7 +39,7 @@ public static class BoberTypWpisuMapper
             return false;
 
         var bazowy = trimmed[..^1].Trim().ToUpperInvariant();
-        return bazowy is "D" or "WS" or "U";
+        return bazowy is "D" or "WS" or "U" or "UWS";
     }
 
     public static string BazowyKod(string? typWpisu)
@@ -70,6 +70,10 @@ public static class BoberTypWpisuMapper
         {
             "U" or "URL" or "URLOP" or "UR"
                 => TypNieobecnosci.Urlop,
+
+            // UWS — urlop z wolną służbą → sekcja WOLNA SŁUŻBA (nie URLOP)
+            "UWS" or "U+WS" or "U/WS"
+                => TypNieobecnosci.CzasWolny,
 
             "DEL" or "DELEGACJA" or "DELEG" or "DG" or "S" or "SZKOLENIE" or "SZK"
                 => TypNieobecnosci.Delegowany,

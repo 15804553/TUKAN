@@ -179,15 +179,15 @@ public partial class PersonnelManagementView : UserControl
     private sealed class PersonnelGridRow(Funkcjonariusz funkcjonariusz)
     {
         public Funkcjonariusz Entity { get; } = funkcjonariusz;
-        public int NumerPorzadkowy => funkcjonariusz.NumerPorzadkowy;
-        public string Stopien => funkcjonariusz.Stopien;
-        public string PelneImieNazwisko => funkcjonariusz.PelneImieNazwisko;
-        public string Stanowisko => funkcjonariusz.Stanowisko;
-        public string? Telefon => funkcjonariusz.Telefon;
-        public string UprawnieniaSkrot => string.Join(", ", funkcjonariusz.Uprawnienia.Select(u =>
+        public int NumerPorzadkowy => Entity.NumerPorzadkowy;
+        public string Stopien => Entity.Stopien;
+        public string PelneImieNazwisko => Entity.PelneImieNazwisko;
+        public string Stanowisko => Entity.Stanowisko;
+        public string? Telefon => Entity.Telefon;
+        public string UprawnieniaSkrot => string.Join(", ", Entity.Uprawnienia.Select(u =>
             string.IsNullOrWhiteSpace(u.Podtyp) ? u.Nazwa : $"{u.Nazwa} {u.Podtyp}"));
 
-        public string OdznaczeniaSkrot => string.Join(", ", funkcjonariusz.Odznaczenia.Select(o =>
+        public string OdznaczeniaSkrot => string.Join(", ", Entity.Odznaczenia.Select(o =>
             $"{o.Nazwa} ({DateDisplayFormat.Format(o.DataNadania)})"));
     }
 }

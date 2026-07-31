@@ -74,7 +74,7 @@
             <TextBlock Foreground="{StaticResource ForegroundMutedBrush}"
                        FontSize="11"
                        VerticalAlignment="Center"
-                       Text="Skróty: Spacja — w pracy | D — Dyżur | W — Wolna służba | U — Urlop | E — Delegacja | S — Szkolenie | C — Chory | O — Oddaje | . — chętna oddać | / — potrzebuje wolne (?)" />
+                       Text="Skróty: Spacja — w pracy | D — Dyżur | W — Wolna służba | U — Urlop | U+W — Urlop z WS | E — Delegacja | S — Szkolenie | C — Chory | O — Oddaje | . — chętna oddać | / — potrzebuje wolne (?)" />
         </Border>
     </Grid>
 </UserControl>

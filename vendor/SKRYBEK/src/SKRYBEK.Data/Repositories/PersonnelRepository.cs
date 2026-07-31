@@ -132,7 +132,7 @@ public sealed class PersonnelRepository
 
     /// <summary>
     /// Pobiera nieobecnych z BOBER wraz z typem nieobecności.
-    /// Kolumna TypWpisu: U, Del, WS, D, S, C (+ opcjonalnie Oddał „/”).
+    /// Kolumna TypWpisu: U, UWS, Del, WS, D, S, C (+ opcjonalnie Oddał „/”).
     /// </summary>
     public async Task<List<(int FunkcjonariuszId, Core.Enums.TypNieobecnosci Typ)>> PobierzNieobecnychZTypemAsync(
         DateOnly data, int nrZmiany)

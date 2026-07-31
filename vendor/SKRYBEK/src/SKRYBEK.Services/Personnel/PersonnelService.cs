@@ -120,7 +120,7 @@ public sealed class PersonnelService
             wynik.Add(new NieobecnyWSluzbie
             {
                 FunkcjonariuszId = dyzur.FunkcjonariuszId,
-                Nazwisko = dyzur.Nazwisko,
+                Nazwisko = nazwisko,
                 TypNieobecnosci = TypNieobecnosci.CzasWolny
             });
 

@@ -11,7 +11,9 @@ public sealed class GrafikWpisTypyTests
     [InlineData("D", true)]
     [InlineData("WS", true)]
     [InlineData("U", true)]
+    [InlineData("UWS", true)]
     [InlineData("U.", true)]
+    [InlineData("UWS.", true)]
     [InlineData("WS.", true)]
     [InlineData("Del", true)]
     [InlineData("S", true)]
@@ -19,6 +21,7 @@ public sealed class GrafikWpisTypyTests
     [InlineData("D/", false)]
     [InlineData("WS/", false)]
     [InlineData("U/", false)]
+    [InlineData("UWS/", false)]
     [InlineData("S/", true)]
     public void JestNieobecnoscia_UwzgledniaFlagi(string? typ, bool expected)
     {
@@ -28,6 +31,8 @@ public sealed class GrafikWpisTypyTests
     [Theory]
     [InlineData("U", "U.")]
     [InlineData("U.", "U")]
+    [InlineData("UWS", "UWS.")]
+    [InlineData("UWS.", "UWS")]
     [InlineData("WS", "WS.")]
     [InlineData("WS/", "WS.")]
     public void PrzelaczKropke_TylkoUorazWS(string wejscie, string oczekiwane)
@@ -78,6 +83,8 @@ public sealed class GrafikWpisTypyTests
     [InlineData("WS.", "")]
     [InlineData("?", "")]
     [InlineData("U", "U")]
+    [InlineData("UWS", "U")]
+    [InlineData("UWS.", "U")]
     public void TekstGlowny_BezZnaczka(string? typ, string expected)
     {
         Assert.Equal(expected, GrafikWpisTypy.TekstGlowny(typ));
@@ -90,5 +97,30 @@ public sealed class GrafikWpisTypyTests
     public void TekstZnaczka(string? typ, string expected)
     {
         Assert.Equal(expected, GrafikWpisTypy.TekstZnaczka(typ));
+    }
+
+    [Theory]
+    [InlineData("U", "WS", "UWS")]
+    [InlineData("UWS", "WS", "U")]
+    [InlineData("WS", "U", "UWS")]
+    [InlineData("", "WS", "WS")]
+    [InlineData("", "U", "U")]
+    [InlineData("D", "WS", "WS")]
+    [InlineData("U.", "WS", "UWS")]
+    public void ResolvePoNalozeniu_LaczyUrlopZWs(string? aktualny, string nowy, string oczekiwane)
+    {
+        Assert.Equal(oczekiwane, GrafikWpisTypy.ResolvePoNalozeniu(aktualny, nowy));
+    }
+
+    [Theory]
+    [InlineData("UWS", true)]
+    [InlineData("WS", true)]
+    [InlineData("D", true)]
+    [InlineData("Del", true)]
+    [InlineData("U", false)]
+    [InlineData("S", false)]
+    public void MaTloWolnejSluzby(string? typ, bool expected)
+    {
+        Assert.Equal(expected, GrafikWpisTypy.MaTloWolnejSluzby(typ));
     }
 }

@@ -70,7 +70,7 @@ public sealed class GrafikSluzbExportMarksTests
             using var wb = new XLWorkbook(path);
             var ws = wb.Worksheet(1);
 
-            // Wiersz danych zaczyna się od 3; kolumna dnia 1 = 3.
+            // Wiersz danych zaczyna się od 3; kolumna dnia 1 = 3 (D/N/K | Imię | dzień…).
             Assert.Equal("S", CellText(ws, 3, 3));
             Assert.Equal("C", CellText(ws, 4, 3));
             Assert.Equal("U—", CellText(ws, 5, 3));
@@ -119,7 +119,7 @@ public sealed class GrafikSluzbExportMarksTests
             using var wb = new XLWorkbook(path);
             var ws = wb.Worksheet(1);
 
-            // sumBase = 3 funkcjonariuszy + 3 = 6; "Wolne miejsca" w wierszu 6, kolumna 3
+            // sumBase = 3 funkcjonariuszy + 3 = 6; "Wolne miejsca" w wierszu 6, kolumna dnia 1 = 3
             // nieobecny tylko S (1 osoba): wolne = 3 - 2 - 1 = 0
             Assert.Equal(0, ws.Cell(6, 3).GetValue<int>());
         }
@@ -128,6 +128,127 @@ public sealed class GrafikSluzbExportMarksTests
             if (File.Exists(path))
                 File.Delete(path);
         }
+    }
+
+    [Fact]
+    public void ExportMonth_OznaczeniaRol_WWaskiejKolumniePrzedNazwiskiem()
+    {
+        var funkcjonariusze = new List<Funkcjonariusz>
+        {
+            new() { Id = 1, Imie = "Anna", Nazwisko = "Nowak", Stanowisko = "Dowódca zmiany" },
+            new()
+            {
+                Id = 2, Imie = "Jan", Nazwisko = "Kowalski", Stanowisko = "Strażak",
+                NazwyUprawnien = ["Nurek"]
+            },
+            new()
+            {
+                Id = 3, Imie = "Piotr", Nazwisko = "Wiśniewski", Stanowisko = "Kierowca",
+                NazwyUprawnien = ["Prawo jazdy kat. C"]
+            },
+            new()
+            {
+                Id = 4, Imie = "Ewa", Nazwisko = "Zielińska", Stanowisko = "Dowódca sekcji",
+                NazwyUprawnien = ["Nurek", "Prawo jazdy kat. C+E"]
+            },
+            new() { Id = 5, Imie = "Adam", Nazwisko = "Wójcik", Stanowisko = "Strażak" },
+        };
+
+        var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-marks-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            new ExportService().ExportMonth(
+                path, 2026, 7, funkcjonariusze, wpisy: [],
+                stanZmiany: 5, stanMinimalny: 3,
+                kolory: DefaultKolory(),
+                workDays: [1]);
+
+            using var wb = new XLWorkbook(path);
+            var ws = wb.Worksheet(1);
+
+            // Kolumna 1 = D/N/K, kolumna 2 = imię i nazwisko (bez Lp.)
+            Assert.Equal("D", CellText(ws, 3, 1));
+            Assert.Equal("Anna Nowak", CellText(ws, 3, 2));
+            Assert.Equal("N", CellText(ws, 4, 1));
+            Assert.Equal("Jan Kowalski", CellText(ws, 4, 2));
+            Assert.Equal("K", CellText(ws, 5, 1));
+            Assert.Equal("Piotr Wiśniewski", CellText(ws, 5, 2));
+            Assert.Equal("DNK", CellText(ws, 6, 1));
+            Assert.Equal("Ewa Zielińska", CellText(ws, 6, 2));
+            Assert.Equal(string.Empty, CellText(ws, 7, 1));
+            Assert.Equal("Adam Wójcik", CellText(ws, 7, 2));
+
+            Assert.Equal(8.0, ws.Cell(3, 1).Style.Font.FontSize);
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void ExportMonth_SzerokoscNazwiska_DopasowanaDoTresciWBudzecieA4()
+    {
+        var funkcjonariusze = new List<Funkcjonariusz>
+        {
+            new()
+            {
+                Id = 1,
+                Imie = "Aleksander",
+                Nazwisko = "Chrząszczyżewoszyński",
+                Stanowisko = "Strażak"
+            },
+            new() { Id = 2, Imie = "Jan", Nazwisko = "Kot", Stanowisko = "Strażak" },
+        };
+
+        var workDays = Enumerable.Range(1, 11).ToList();
+        var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-width-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            new ExportService().ExportMonth(
+                path, 2026, 7, funkcjonariusze, wpisy: [],
+                stanZmiany: 2, stanMinimalny: 1,
+                kolory: DefaultKolory(),
+                workDays: workDays);
+
+            using var wb = new XLWorkbook(path);
+            var ws = wb.Worksheet(1);
+
+            var nameWidth = ws.Column(2).Width;
+            Assert.True(nameWidth > 18, $"Oczekiwano szerszej kolumny nazwiska dla długiego wpisu, jest {nameWidth}");
+            Assert.True(nameWidth <= 28);
+
+            var total = ws.Column(1).Width + nameWidth
+                + Enumerable.Range(3, workDays.Count).Sum(c => ws.Column(c).Width);
+            Assert.True(total <= 132.01, $"Suma szerokości {total} przekracza budżet A4");
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
+    [Theory]
+    [InlineData("Dowódca zmiany", null, "D")]
+    [InlineData("Dowódca sekcji", null, "D")]
+    [InlineData("Zastępca dowódcy zmiany", null, "D")]
+    [InlineData("Dowódca zastępu", null, "D")]
+    [InlineData("Strażak", new[] { "Nurek" }, "N")]
+    [InlineData("Strażak", new[] { "Kierownik prac podwodnych" }, "N")]
+    [InlineData("Kierowca", null, "K")]
+    [InlineData("Strażak", new[] { "Prawo jazdy kat. C" }, "K")]
+    [InlineData("Dowódca zmiany", new[] { "Nurek", "Prawo jazdy kat. C" }, "DNK")]
+    [InlineData("Strażak", null, "")]
+    public void FormatExportRoleMarks_BudujeOznaczenia(string stanowisko, string[]? uprawnienia, string expected)
+    {
+        var f = new Funkcjonariusz
+        {
+            Stanowisko = stanowisko,
+            NazwyUprawnien = uprawnienia?.ToList() ?? []
+        };
+        Assert.Equal(expected, RoleClassifier.FormatExportRoleMarks(f));
     }
 
     private static IReadOnlyDictionary<string, string> DefaultKolory()

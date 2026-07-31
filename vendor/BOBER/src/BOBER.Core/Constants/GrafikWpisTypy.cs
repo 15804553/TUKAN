@@ -2,24 +2,27 @@ namespace BOBER.Core.Constants;
 
 /// <summary>
 /// Kody wpisów w komórkach grafiku i reguły ich interpretacji przy podsumowaniach.
-/// Oddaje (O) — nakładka „/” na WS/D/U (obecność).
-/// Kropka (.) — chętna oddać, tylko z U lub WS (nie wpływa na stan etatowy).
+/// Oddaje (O) — nakładka „/” na WS/D/U/UWS (obecność).
+/// Kropka (.) — chętna oddać, tylko z U, UWS lub WS (nie wpływa na stan etatowy).
 /// Pytajnik (?) — potrzebuje wolne, tylko gdy osoba jest w pracy (nie wpływa na stan).
+/// UWS — urlop z wolną służbą (żółte tło jak WS, napis „U”).
 /// </summary>
 public static class GrafikWpisTypy
 {
     public const string Dyzur = "D";
     public const string WolnaSluzba = "WS";
     public const string Urlop = "U";
+    /// <summary>Urlop z wolną służbą — tło WS, tekst „U”; w rozkazie → WOLNA SŁUŻBA.</summary>
+    public const string UrlopZWolnaSluzba = "UWS";
     public const string Delegacja = "Del";
     public const string Szkolenie = "S";
     public const string Chory = "C";
     public const string PotrzebujeWolne = "?";
 
-    /// <summary>Sufiks Oddaje — bazowy kod (WS/D/U) zostaje pod spodem.</summary>
+    /// <summary>Sufiks Oddaje — bazowy kod (WS/D/U/UWS) zostaje pod spodem.</summary>
     public const char OddalSufiks = '/';
 
-    /// <summary>Sufiks „chętna oddać” — tylko z U lub WS.</summary>
+    /// <summary>Sufiks „chętna oddać” — tylko z U, UWS lub WS.</summary>
     public const char KropkaSufiks = '.';
 
     /// <summary>Znak wizualny długiej pauzy (Oddaje) w komórce.</summary>
@@ -44,6 +47,7 @@ public static class GrafikWpisTypy
         return kod.Equals(Dyzur, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
+            || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Delegacja, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Szkolenie, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Chory, StringComparison.OrdinalIgnoreCase)
@@ -51,13 +55,55 @@ public static class GrafikWpisTypy
             || kod.Equals("DD", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Czy kod bazowy (WS, D, U) można oddać klawiszem O.</summary>
+    /// <summary>Czy kod bazowy (WS, D, U, UWS) można oddać klawiszem O.</summary>
     public static bool MoznaOddac(string? typWpisu)
     {
         var kod = BazowyKod(typWpisu);
         return kod.Equals(Dyzur, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase)
-            || kod.Equals(Urlop, StringComparison.OrdinalIgnoreCase);
+            || kod.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
+            || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>U lub UWS — osoba na urlopie w grafiku.</summary>
+    public static bool JestUrlopem(string? typWpisu)
+    {
+        var kod = BazowyKod(typWpisu);
+        return kod.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
+            || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Czy komórka ma żółte tło wolnej służby (WS, D, Del, UWS).</summary>
+    public static bool MaTloWolnejSluzby(string? typWpisu)
+    {
+        var kod = BazowyKod(typWpisu);
+        return kod.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase)
+            || kod.Equals(Dyzur, StringComparison.OrdinalIgnoreCase)
+            || kod.Equals(Delegacja, StringComparison.OrdinalIgnoreCase)
+            || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// U+W → UWS, W na UWS → U, U na WS → UWS; w pozostałych przypadkach zwraca <paramref name="nowyTyp"/>.
+    /// </summary>
+    public static string ResolvePoNalozeniu(string? aktualnyTyp, string nowyTyp)
+    {
+        var bazowy = BazowyKod(aktualnyTyp);
+        var nowy = (nowyTyp ?? string.Empty).Trim();
+
+        if (nowy.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase))
+        {
+            if (bazowy.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase))
+                return Urlop;
+            if (bazowy.Equals(Urlop, StringComparison.OrdinalIgnoreCase))
+                return UrlopZWolnaSluzba;
+        }
+
+        if (nowy.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
+            && bazowy.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase))
+            return UrlopZWolnaSluzba;
+
+        return nowy;
     }
 
     /// <summary>S, C lub Del — nie podlegają oddaniu; UI pokazuje komunikat.</summary>
@@ -127,11 +173,12 @@ public static class GrafikWpisTypy
         return MaOddal(typWpisu) ? bazowy : bazowy + OddalSufiks;
     }
 
-    /// <summary>Dodaje lub usuwa kropkę (tylko U / WS). Zwraca null, gdy nie wolno.</summary>
+    /// <summary>Dodaje lub usuwa kropkę (tylko U / UWS / WS). Zwraca null, gdy nie wolno.</summary>
     public static string? PrzelaczKropke(string? typWpisu)
     {
         var bazowy = BazowyKod(typWpisu);
         if (!bazowy.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
+            && !bazowy.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
             && !bazowy.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase))
             return null;
 
@@ -164,6 +211,10 @@ public static class GrafikWpisTypy
 
         if (jestWs)
             return MaOddal(typWpisu) ? OddalZnak : string.Empty;
+
+        // UWS — żółte tło jak WS, ale napis „U”
+        if (bazowy.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase))
+            return Urlop;
 
         if (string.IsNullOrEmpty(bazowy))
             return string.Empty;

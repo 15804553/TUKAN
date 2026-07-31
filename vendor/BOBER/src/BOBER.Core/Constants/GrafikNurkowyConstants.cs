@@ -95,8 +95,7 @@ public static class GrafikNurkowyConstants
         if (GrafikWpisTypy.MaOddal(typWpisu) && GrafikWpisTypy.MoznaOddac(typWpisu))
             return WartoscWPracy;
 
-        var bazowy = GrafikWpisTypy.BazowyKod(typWpisu);
-        if (bazowy.Equals(GrafikWpisTypy.Urlop, StringComparison.OrdinalIgnoreCase))
+        if (GrafikWpisTypy.JestUrlopem(typWpisu))
             return WartoscUrlop;
 
         return null;

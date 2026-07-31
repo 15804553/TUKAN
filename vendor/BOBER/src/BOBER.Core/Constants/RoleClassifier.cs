@@ -1,3 +1,4 @@
+using System.Text;
 using BOBER.Core.Models;
 
 namespace BOBER.Core.Constants;
@@ -14,6 +15,24 @@ public static class RoleClassifier
     {
         var role = DetermineBackgroundRole(f);
         return role is RoleKeys.DowodcaZmiany or RoleKeys.DowodcaSekcji or RoleKeys.DowodcaZastepu;
+    }
+
+    /// <summary>
+    /// Kierowca: uprawnienia kat. C / C+E albo stanowisko zawierające „kierowca”.
+    /// </summary>
+    public static bool IsKierowca(Funkcjonariusz f) =>
+        f.MaUprawnieniaKierowca || MatchesStanowisko(f, "kierowca");
+
+    /// <summary>
+    /// Piktogramy ról do eksportu (D = dowódca, N = nurek, K = kierowca), kolejność stała.
+    /// </summary>
+    public static string FormatExportRoleMarks(Funkcjonariusz f)
+    {
+        var sb = new StringBuilder(3);
+        if (IsDowodca(f)) sb.Append('D');
+        if (IsNurek(f)) sb.Append('N');
+        if (IsKierowca(f)) sb.Append('K');
+        return sb.ToString();
     }
 
     /// <summary>

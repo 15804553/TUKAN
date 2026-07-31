@@ -361,6 +361,8 @@ public partial class BoberGrafikView : UserControl
         }
 
         e.Handled = true;
+        if (!string.IsNullOrEmpty(typWpisu))
+            typWpisu = GrafikWpisTypy.ResolvePoNalozeniu(vm.GetCell(day), typWpisu);
         await ApplyWpisAsync(dataGrid, vm, month, day, typWpisu);
     }
 
@@ -560,8 +562,13 @@ public partial class BoberGrafikView : UserControl
                 await EditUwagaMiesiecznaAsync(dataGrid, vm, month);
                 return;
             default:
-                await ApplyWpisAsync(dataGrid, vm, month, day, akcja);
+            {
+                var typ = string.IsNullOrEmpty(akcja)
+                    ? akcja
+                    : GrafikWpisTypy.ResolvePoNalozeniu(vm.GetCell(day), akcja);
+                await ApplyWpisAsync(dataGrid, vm, month, day, typ);
                 return;
+            }
         }
     }
 
@@ -657,7 +664,7 @@ public partial class BoberGrafikView : UserControl
         {
             BoberMessageBox.Show(
                 OwnerWindow,
-                "Znak „.” (osoba chętna oddać) można ustawić tylko przy oznaczeniu U (urlop) lub WS (wolna służba).",
+                "Znak „.” (osoba chętna oddać) można ustawić tylko przy oznaczeniu U (urlop), U+WS lub WS (wolna służba).",
                 "Grafik");
             return;
         }

@@ -553,14 +553,9 @@ public static class GrafikGridBuilder
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            var bazowy = GrafikWpisTypy.BazowyKod(value?.ToString());
-            return bazowy switch
-            {
-                GrafikWpisTypy.Dyzur => colors.DyzurTlo,
-                GrafikWpisTypy.WolnaSluzba => colors.WsTlo,
-                GrafikWpisTypy.Delegacja => colors.DyzurTlo,
-                _ => Transparent
-            };
+            return GrafikWpisTypy.MaTloWolnejSluzby(value?.ToString())
+                ? colors.WsTlo
+                : Transparent;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
