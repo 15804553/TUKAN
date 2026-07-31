@@ -24,4 +24,7 @@ public partial class RatownikMedycznyUstawieniaView : UserControl
         Loaded -= OnLoaded;
         await _viewModel.LoadAsync();
     }
+
+    /// <summary>Ponownie wczytuje listę pojazdów (np. po zmianie nazwy lub liczby miejsc).</summary>
+    public Task ReloadAsync() => _viewModel.LoadAsync();
 }

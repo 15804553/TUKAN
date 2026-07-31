@@ -16,6 +16,7 @@ public partial class TukanSettingsView : UserControl
     private readonly TukanAppServices _tukanServices;
     private readonly Chomik.App.Controllers.SettingsController _chomikSettingsController;
     private SettingsView? _chomikSettingsView;
+    private RatownikMedycznyUstawieniaView? _ratownikMedycznySettingsView;
 
     public event EventHandler? SettingsSaved;
 
@@ -123,8 +124,23 @@ public partial class TukanSettingsView : UserControl
     private void InitializePojazdyTab(SessionInfo session, SettingsViewModel skrybekViewModel)
     {
         PojazdyTab.Visibility = Visibility.Visible;
+        skrybekViewModel.SettingsSaved -= OnSkrybekSettingsSaved;
+        skrybekViewModel.SettingsSaved += OnSkrybekSettingsSaved;
         SkrybekPojazdyHost.Content = new SkrybekSettingsView(
             session, SkrybekSettingsSection.Pojazdy, skrybekViewModel);
+    }
+
+    private async void OnSkrybekSettingsSaved(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_ratownikMedycznySettingsView is not null)
+                await _ratownikMedycznySettingsView.ReloadAsync();
+        }
+        finally
+        {
+            SettingsSaved?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public void SelectDefaultTab()
@@ -169,9 +185,9 @@ public partial class TukanSettingsView : UserControl
             return;
         }
 
-        var view = new RatownikMedycznyUstawieniaView(zmianaId);
-        view.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
-        RatownikMedycznySettingsHost.Content = view;
+        _ratownikMedycznySettingsView = new RatownikMedycznyUstawieniaView(zmianaId);
+        _ratownikMedycznySettingsView.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+        RatownikMedycznySettingsHost.Content = _ratownikMedycznySettingsView;
     }
 
     private void InitializeBoberSettings()

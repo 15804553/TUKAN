@@ -16,6 +16,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly SessionInfo _session;
 
+    /// <summary>Wyzwalane po udanym zapisie ustawień ogólnych lub pojazdów.</summary>
+    public event EventHandler? SettingsSaved;
+
     [ObservableProperty] private string _nrJrg = "4";
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isLoading;
@@ -150,11 +153,12 @@ public sealed partial class SettingsViewModel : ObservableObject
                 BackupService.NormalizujCzestotliwosc(WybranaCzestotliwoscBackupu));
 
             if (Wybranysamochod is not null)
-                await ZapiszSamochodCoreAsync(Wybranysamochod);
+                await ZapiszSamochodCoreAsync(Wybranysamochod, odswiezListe: true, powiadom: false);
 
             StatusMessage = Wybranysamochod is not null
                 ? "Ustawienia zapisane (w tym wymagania wybranego pojazdu)."
                 : "Ustawienia zapisane.";
+            PowiadomOZapisie();
         }
         catch (Exception ex)
         {
@@ -181,12 +185,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         Wybranysamochod = Samochody.FirstOrDefault(x => x.Id == noweId)
             ?? Samochody.LastOrDefault();
         StatusMessage = "Dodano pojazd — ustaw wymagane uprawnienia po prawej i kliknij „Zapisz zmiany”.";
+        PowiadomOZapisie();
     }
 
     [RelayCommand]
     private Task ZapiszSamochodAsync(Samochod s) => ZapiszSamochodCoreAsync(s);
 
-    private async Task ZapiszSamochodCoreAsync(Samochod s, bool odswiezListe = true)
+    private async Task ZapiszSamochodCoreAsync(Samochod s, bool odswiezListe = true, bool powiadom = true)
     {
         try
         {
@@ -201,6 +206,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             }
 
             StatusMessage = $"Zapisano pojazd: {s.Nazwa}";
+            if (powiadom)
+                PowiadomOZapisie();
         }
         catch (Exception ex)
         {
@@ -229,6 +236,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             Wybranysamochod = null;
             await LoadAsync();
             StatusMessage = $"Usunięto pojazd: {s.Nazwa}";
+            PowiadomOZapisie();
         }
         catch (Exception ex)
         {
@@ -236,6 +244,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             SkrybekLog.Error($"Błąd usuwania pojazdu Id={s.Id}, Nazwa={s.Nazwa}", ex);
         }
     }
+
+    private void PowiadomOZapisie() => SettingsSaved?.Invoke(this, EventArgs.Empty);
 
     // ── Backup ────────────────────────────────────────────────────────────────
 

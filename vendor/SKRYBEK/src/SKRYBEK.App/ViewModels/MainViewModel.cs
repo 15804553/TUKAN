@@ -186,7 +186,9 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            await EditorVm.OdswiezPoPowrocieZInnegoWidokuAsync();
+            // Pełne odświeżenie (personel + pojazdy) — ustawienia pojazdów mogły
+            // zostać zmienione w zakładce Ustawienia bez restartu aplikacji.
+            await OdswiezPoUstawieniachAsync();
         }
         catch (Exception ex)
         {
