@@ -24,9 +24,10 @@ public static class UrlopPlanInstructions
 
     public static IReadOnlyList<string> Skroty =>
     [
-        "W — urlop wypoczynkowy",
-        "D — urlop dodatkowy",
-        "Spacja — wyczyść komórkę",
+        "Shift+klik lub Ctrl+klik — zaznacz kilka dni w wierszu",
+        "W — urlop wypoczynkowy (dla zaznaczonych komórek)",
+        "D — urlop dodatkowy (dla zaznaczonych komórek)",
+        "Spacja — wyczyść zaznaczone komórki",
         "Prawy przycisk myszy — menu kontekstowe"
     ];
 }

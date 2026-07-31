@@ -23,6 +23,7 @@ public partial class UrlopPlanView : UserControl
     private (UrlopPlanRowViewModel Vm, int Month, int Day)? _selectedCell;
     private bool _initializeCalled;
     private bool _isSettingUp;
+    private bool _isRestrictingSelection;
     private int _setupGeneration;
 
     public bool IsEmbedded { get; set; }
@@ -185,7 +186,7 @@ public partial class UrlopPlanView : UserControl
             IsReadOnly = true,
             Focusable = true,
             SelectionUnit = DataGridSelectionUnit.Cell,
-            SelectionMode = DataGridSelectionMode.Single
+            SelectionMode = DataGridSelectionMode.Extended
         };
         _monthGrids[month] = dataGrid;
         dataGrid.SelectedCellsChanged += OnSelectedCellsChanged;
@@ -456,27 +457,31 @@ public partial class UrlopPlanView : UserControl
 
     private void OnSelectedCellsChanged(object? sender, SelectedCellsChangedEventArgs e)
     {
-        if (sender is not DataGrid grid)
+        if (_isRestrictingSelection || sender is not DataGrid grid)
             return;
 
-        var hasInvalid = e.AddedCells.Any(c =>
-            c.Column.DisplayIndex <= 3
-            || c.Item is not UrlopPlanRowViewModel vm
-            || vm.IsSummaryRow
-            || !vm.FunkcjonariuszId.HasValue
-            || c.Column?.Header is not DayHeaderViewModel);
-
-        if (hasInvalid)
+        var validCells = GetValidDayCellInfos(grid).ToList();
+        if (validCells.Count == 0)
         {
-            grid.UnselectAllCells();
+            if (grid.SelectedCells.Count > 0)
+                RestrictSelection(grid, Array.Empty<DataGridCellInfo>());
             _selectedCell = null;
             return;
         }
 
-        var cell = grid.SelectedCells.FirstOrDefault();
-        if (cell.Item is UrlopPlanRowViewModel row
+        // Multi-select tylko w jednym wierszu (zakres dni jednej osoby).
+        var anchorRow = ResolveAnchorRow(e, validCells);
+        var sameRowCells = validCells
+            .Where(c => ReferenceEquals(c.Item, anchorRow))
+            .ToList();
+
+        if (sameRowCells.Count != grid.SelectedCells.Count)
+            RestrictSelection(grid, sameRowCells);
+
+        var primary = ResolvePrimaryCell(grid, sameRowCells);
+        if (primary.Item is UrlopPlanRowViewModel row
             && row.FunkcjonariuszId.HasValue
-            && cell.Column?.Header is DayHeaderViewModel dayHeader)
+            && primary.Column?.Header is DayHeaderViewModel dayHeader)
         {
             _selectedCell = (row, (int)grid.Tag, dayHeader.Day);
             grid.Focus();
@@ -486,6 +491,69 @@ public partial class UrlopPlanView : UserControl
         {
             _selectedCell = null;
         }
+    }
+
+    private static UrlopPlanRowViewModel? ResolveAnchorRow(
+        SelectedCellsChangedEventArgs e,
+        IReadOnlyList<DataGridCellInfo> validCells)
+    {
+        for (var i = e.AddedCells.Count - 1; i >= 0; i--)
+        {
+            if (e.AddedCells[i].Item is UrlopPlanRowViewModel added)
+                return added;
+        }
+
+        return validCells[0].Item as UrlopPlanRowViewModel;
+    }
+
+    private static DataGridCellInfo ResolvePrimaryCell(
+        DataGrid grid,
+        IReadOnlyList<DataGridCellInfo> sameRowCells)
+    {
+        if (sameRowCells.Any(c =>
+                ReferenceEquals(c.Item, grid.CurrentCell.Item)
+                && ReferenceEquals(c.Column, grid.CurrentCell.Column)))
+            return grid.CurrentCell;
+
+        return sameRowCells[^1];
+    }
+
+    private void RestrictSelection(DataGrid grid, IReadOnlyList<DataGridCellInfo> keep)
+    {
+        _isRestrictingSelection = true;
+        try
+        {
+            grid.SelectedCells.Clear();
+            foreach (var cell in keep)
+                grid.SelectedCells.Add(cell);
+        }
+        finally
+        {
+            _isRestrictingSelection = false;
+        }
+    }
+
+    private static IEnumerable<DataGridCellInfo> GetValidDayCellInfos(DataGrid grid) =>
+        grid.SelectedCells.Where(IsValidDayCell);
+
+    private static bool IsValidDayCell(DataGridCellInfo cell) =>
+        cell.Column is { DisplayIndex: > 3 }
+        && cell.Item is UrlopPlanRowViewModel vm
+        && !vm.IsSummaryRow
+        && vm.FunkcjonariuszId.HasValue
+        && cell.Column.Header is DayHeaderViewModel;
+
+    private static List<(UrlopPlanRowViewModel Vm, int Month, int Day)> GetSelectedDayCells(DataGrid grid)
+    {
+        var month = (int)grid.Tag;
+        return GetValidDayCellInfos(grid)
+            .Select(c => (
+                Vm: (UrlopPlanRowViewModel)c.Item,
+                Month: month,
+                Day: ((DayHeaderViewModel)c.Column.Header!).Day))
+            .Distinct()
+            .OrderBy(c => c.Day)
+            .ToList();
     }
 
     private void OnDataGridPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -499,10 +567,9 @@ public partial class UrlopPlanView : UserControl
 
     private async void OnViewPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (_selectedCell is null)
-            return;
-
-        var dataGrid = FindMonthGrid(_selectedCell.Value.Month);
+        var dataGrid = _selectedCell is not null
+            ? FindMonthGrid(_selectedCell.Value.Month)
+            : null;
         if (dataGrid is null)
             return;
 
@@ -519,7 +586,7 @@ public partial class UrlopPlanView : UserControl
 
     private async Task TryHandleShortcutKeyAsync(DataGrid dataGrid, KeyEventArgs e)
     {
-        if (_controller is null || _selectedCell is null)
+        if (_controller is null)
             return;
 
         var typ = e.Key switch
@@ -533,8 +600,15 @@ public partial class UrlopPlanView : UserControl
         if (typ is null)
             return;
 
+        var targets = GetSelectedDayCells(dataGrid);
+        if (targets.Count == 0 && _selectedCell is not null)
+            targets = [_selectedCell.Value];
+
+        if (targets.Count == 0)
+            return;
+
         e.Handled = true;
-        await ApplyCellValueAsync(dataGrid, _selectedCell.Value, typ);
+        await ApplyCellsValueAsync(dataGrid, targets, typ);
     }
 
     private void OnDataGridRightClick(object sender, MouseButtonEventArgs e)
@@ -553,18 +627,29 @@ public partial class UrlopPlanView : UserControl
             return;
 
         var month = (int)grid.Tag;
-        _selectedCell = (vm, month, dayHeader.Day);
         var cellInfo = new DataGridCellInfo(vm, cell.Column);
-        grid.SelectedCells.Clear();
-        grid.CurrentCell = cellInfo;
-        grid.SelectedCells.Add(cellInfo);
+        var alreadyInSelection = grid.SelectedCells.Any(c =>
+            ReferenceEquals(c.Item, vm) && ReferenceEquals(c.Column, cell.Column));
+
+        if (!alreadyInSelection)
+        {
+            RestrictSelection(grid, [cellInfo]);
+            grid.CurrentCell = cellInfo;
+        }
+
+        _selectedCell = (vm, month, dayHeader.Day);
         grid.Focus();
         Keyboard.Focus(grid);
 
+        var targets = GetSelectedDayCells(grid);
+        if (targets.Count == 0)
+            targets = [(vm, month, dayHeader.Day)];
+
+        var labelSuffix = targets.Count > 1 ? $" ({targets.Count} dni)" : string.Empty;
         var menu = new ContextMenu();
-        AddMenuItem(menu, "w — Wypoczynkowy", UrlopTypy.Wypoczynkowy, grid, vm, month, dayHeader.Day);
-        AddMenuItem(menu, "d — Dodatkowy", UrlopTypy.Dodatkowy, grid, vm, month, dayHeader.Day);
-        AddMenuItem(menu, "— Wyczyść", "", grid, vm, month, dayHeader.Day);
+        AddMenuItem(menu, $"w — Wypoczynkowy{labelSuffix}", UrlopTypy.Wypoczynkowy, grid, targets);
+        AddMenuItem(menu, $"d — Dodatkowy{labelSuffix}", UrlopTypy.Dodatkowy, grid, targets);
+        AddMenuItem(menu, $"— Wyczyść{labelSuffix}", "", grid, targets);
         menu.PlacementTarget = cell;
         menu.IsOpen = true;
         e.Handled = true;
@@ -575,43 +660,43 @@ public partial class UrlopPlanView : UserControl
         string label,
         string typ,
         DataGrid grid,
-        UrlopPlanRowViewModel vm,
-        int month,
-        int day)
+        List<(UrlopPlanRowViewModel Vm, int Month, int Day)> targets)
     {
-        var item = new MenuItem
-        {
-            Header = label,
-            Tag = (grid, vm, month, day, typ)
-        };
-        item.Click += async (_, _) =>
-        {
-            if (item.Tag is ValueTuple<DataGrid, UrlopPlanRowViewModel, int, int, string> t)
-                await ApplyCellValueAsync(t.Item1, (t.Item2, t.Item3, t.Item4), t.Item5);
-        };
+        var item = new MenuItem { Header = label };
+        item.Click += async (_, _) => await ApplyCellsValueAsync(grid, targets, typ);
         menu.Items.Add(item);
     }
 
-    private async Task ApplyCellValueAsync(
+    private async Task ApplyCellsValueAsync(
         DataGrid? dataGrid,
-        (UrlopPlanRowViewModel Vm, int Month, int Day) cell,
+        IReadOnlyList<(UrlopPlanRowViewModel Vm, int Month, int Day)> cells,
         string typ)
     {
-        if (_controller is null || dataGrid is null)
+        if (_controller is null || dataGrid is null || cells.Count == 0)
             return;
 
-        var (vm, month, day) = cell;
         try
         {
-            if (string.IsNullOrEmpty(typ))
+            var affectedPersons = new HashSet<int>();
+            var month = cells[0].Month;
+
+            foreach (var (vm, cellMonth, day) in cells)
             {
-                await _controller.ClearWpisAsync(vm.FunkcjonariuszId!.Value, _year, month, day);
-                vm.ClearCell(day);
-            }
-            else
-            {
-                await _controller.SetWpisAsync(vm.FunkcjonariuszId!.Value, _year, month, day, typ);
-                vm.SetCell(day, typ);
+                if (!vm.FunkcjonariuszId.HasValue)
+                    continue;
+
+                if (string.IsNullOrEmpty(typ))
+                {
+                    await _controller.ClearWpisAsync(vm.FunkcjonariuszId.Value, _year, cellMonth, day);
+                    vm.ClearCell(day);
+                }
+                else
+                {
+                    await _controller.SetWpisAsync(vm.FunkcjonariuszId.Value, _year, cellMonth, day, typ);
+                    vm.SetCell(day, typ);
+                }
+
+                affectedPersons.Add(vm.FunkcjonariuszId.Value);
             }
 
             if (dataGrid.ItemsSource is IEnumerable<UrlopPlanRowViewModel> rows)
@@ -629,7 +714,8 @@ public partial class UrlopPlanView : UserControl
             }
 
             dataGrid.Items.Refresh();
-            await RefreshPersonYearCountsInAllGridsAsync(vm.FunkcjonariuszId!.Value);
+            foreach (var personId in affectedPersons)
+                await RefreshPersonYearCountsInAllGridsAsync(personId);
             await RefreshValidationAsync();
         }
         catch (Exception ex)

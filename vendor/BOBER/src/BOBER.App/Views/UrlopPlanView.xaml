@@ -97,7 +97,7 @@
                        Foreground="{StaticResource ForegroundMutedBrush}"
                        FontSize="11"
                        VerticalAlignment="Center"
-                       Text="Skróty klawiszowe: zaznacz komórkę dnia, następnie W — wypoczynkowy  |  D — dodatkowy  |  Spacja — wyczyść  |  Prawy przycisk — menu kontekstowe" />
+                       Text="Skróty: Shift/Ctrl+klik — zaznacz dni w wierszu, potem W — wypoczynkowy  |  D — dodatkowy  |  Spacja — wyczyść  |  Prawy przycisk — menu" />
         </Border>
     </Grid>
 </UserControl>
