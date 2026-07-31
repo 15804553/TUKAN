@@ -81,9 +81,10 @@ public sealed class BackupService
         var backupDir = PobierzKatalogBackupu();
         Directory.CreateDirectory(backupDir);
 
+        var bazaNazwa = Path.GetFileNameWithoutExtension(dstPath);
         var kopiaBezpieczenstwa = Path.Combine(
             backupDir,
-            $"SkrybekDatabase_przed_odzyskiem_{DateTime.Now:yyyy-MM-dd_HHmmss}.bck");
+            $"{bazaNazwa}_przed_odzyskiem_{DateTime.Now:yyyy-MM-dd_HHmmss}.bck");
 
         ZwolnijPolaczeniaOleDb();
 
@@ -135,13 +136,19 @@ public sealed class BackupService
         return data.Date.AddDays(-offset);
     }
 
-    private static string ZbudujNazwePlikuBackupu(DateTime kiedy, string czestotliwosc) =>
-        NormalizujCzestotliwosc(czestotliwosc) switch
+    private string ZbudujNazwePlikuBackupu(DateTime kiedy, string czestotliwosc)
+    {
+        var bazaNazwa = Path.GetFileNameWithoutExtension(_factory.DatabasePath);
+        if (string.IsNullOrWhiteSpace(bazaNazwa))
+            bazaNazwa = "TukanDatabase";
+
+        return NormalizujCzestotliwosc(czestotliwosc) switch
         {
-            CzestotliwoscBackupu.Codziennie => $"SkrybekDatabase_{kiedy:yyyy-MM-dd}.bck",
-            CzestotliwoscBackupu.CoTydzien => $"SkrybekDatabase_{kiedy:yyyy}-W{ISOWeek.GetWeekOfYear(kiedy):D2}.bck",
-            _ => $"SkrybekDatabase_{kiedy:yyyy-MM}.bck"
+            CzestotliwoscBackupu.Codziennie => $"{bazaNazwa}_{kiedy:yyyy-MM-dd}.bck",
+            CzestotliwoscBackupu.CoTydzien => $"{bazaNazwa}_{kiedy:yyyy}-W{ISOWeek.GetWeekOfYear(kiedy):D2}.bck",
+            _ => $"{bazaNazwa}_{kiedy:yyyy-MM}.bck"
         };
+    }
 
     private static void ZwolnijPolaczeniaOleDb()
     {

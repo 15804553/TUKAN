@@ -271,12 +271,31 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             samVm.OdswiezOznaczeniaRatownika();
     }
 
-    // ── Zmiana daty (wymaganie 5) — odświeża personel ────────────────────────
-    // NumerRozkazu NIE jest aktualizowany automatycznie przy zmianie daty,
-    // gdyż numer wskazuje dzień roku kiedy rozkaz był pisany (dziś), nie dzień służby.
+    // ── Zmiana daty — numer = dzień roku + odświeżenie personelu ─────────────
     partial void OnDataChanged(DateOnly value)
     {
-        _ = OdswiezPersonelNaDateAsync(value);
+        NumerRozkazu = value.DayOfYear;
+        _ = PoZmianieDatyAsync(value);
+    }
+
+    private async Task PoZmianieDatyAsync(DateOnly data)
+    {
+        await OdswiezPersonelNaDateAsync(data);
+        await SprawdzUnikalnoscPoZmianieDatyAsync(data);
+    }
+
+    private async Task SprawdzUnikalnoscPoZmianieDatyAsync(DateOnly data)
+    {
+        try
+        {
+            var konflikt = await ServiceProvider.Services.Rozkaz.SprawdzUnikalnoscAsync(
+                data, NumerRozkazu, data.Year, _rozkaz.Id);
+            StatusMessage = konflikt ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            SkrybekLog.Error("Błąd sprawdzania unikalności rozkazu po zmianie daty", ex);
+        }
     }
 
     private async Task OdswiezPersonelNaDateAsync(DateOnly data) =>

@@ -25,7 +25,8 @@ public sealed class RozkazService
 
     public async Task<RozkazDzienny> NowyRozkazAsync(DateOnly data, int nrZmiany)
     {
-        var numer = DateTime.Today.DayOfYear;
+        // Numer = dzień roku wybranej daty (umożliwia rozkaz z datą wsteczną)
+        var numer = data.DayOfYear;
         var samochody = await _samochodyRepo.GetAktywneAsync();
 
         var rozkaz = new RozkazDzienny
@@ -69,11 +70,46 @@ public sealed class RozkazService
         RozkazDzienny rozkaz,
         IReadOnlyList<Funkcjonariusz>? personel = null)
     {
+        await WalidujUnikalnoscAsync(rozkaz);
         var samochody = await _samochodyRepo.GetAktywneAsync();
         ValidatePodzialBojowy(rozkaz, samochody, personel);
         var id = await _repo.SaveAsync(rozkaz);
         SkrybekLog.Info($"Zapisano rozkaz nr {rozkaz.NumerRozkazu}/{rozkaz.Rok}, Id={id}");
         return id;
+    }
+
+    /// <summary>
+    /// Zwraca komunikat konfliktu, gdy istnieje już rozkaz o tej dacie lub numerze w roku; w przeciwnym razie null.
+    /// </summary>
+    public async Task<string?> SprawdzUnikalnoscAsync(
+        DateOnly data,
+        int numerRozkazu,
+        int rok,
+        int excludeId = 0)
+    {
+        var konflikt = await _repo.ZnajdzKonfliktAsync(data, numerRozkazu, rok, excludeId);
+        if (konflikt is null)
+            return null;
+
+        if (konflikt.Data == data && konflikt.NumerRozkazu == numerRozkazu && konflikt.Rok == rok)
+        {
+            return $"Rozkaz nr {konflikt.NumerFormatowany} na dzień {konflikt.DataFormatowana} już istnieje.";
+        }
+
+        if (konflikt.Data == data)
+        {
+            return $"Na dzień {data:dd.MM.yyyy} istnieje już rozkaz nr {konflikt.NumerFormatowany}.";
+        }
+
+        return $"Rozkaz nr {numerRozkazu}/{rok} już istnieje (data: {konflikt.DataFormatowana}).";
+    }
+
+    private async Task WalidujUnikalnoscAsync(RozkazDzienny rozkaz)
+    {
+        var komunikat = await SprawdzUnikalnoscAsync(
+            rozkaz.Data, rozkaz.NumerRozkazu, rozkaz.Rok, rozkaz.Id);
+        if (komunikat is not null)
+            throw new InvalidOperationException(komunikat);
     }
 
     public async Task UpdateStatusAsync(int id, StatusRozkazu status)

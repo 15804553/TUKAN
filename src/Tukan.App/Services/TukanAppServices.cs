@@ -1,8 +1,8 @@
 using System.IO;
 using BOBER.Services;
 using BOBER.Services.Logging;
-using Serilog;
 using BOBER.Services.Startup;
+using Serilog;
 using Chomik.Data;
 using Chomik.Services;
 using SKRYBEK.App;
@@ -121,19 +121,32 @@ public sealed class TukanAppServices : IDisposable
 
     private static void ConfigureLogging()
     {
-        var logDir = AppContext.BaseDirectory;
-        var boberLog = Path.Combine(logDir, "TUKAN-bober.log");
-        var skrybekLog = Path.Combine(logDir, "TUKAN-skrybek.log");
+        // katalog\LOG\TUKANyyyy-MM-dd.txt — tylko Warning / Error / wyjątki.
+        var logDir = Path.Combine(AppContext.BaseDirectory, "LOG");
+        Directory.CreateDirectory(logDir);
+        UsunStarePlikiLogow(logDir, DateTime.Now.AddMonths(-6));
 
-        Serilog.Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
-            .WriteTo.File(boberLog,
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: 14,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .CreateLogger();
+        var logPath = Path.Combine(logDir, $"TUKAN{DateTime.Now:yyyy-MM-dd}.txt");
+        SkrybekLog.Initialize(
+            logPath,
+            rollingInterval: RollingInterval.Infinite,
+            minimumLevel: Serilog.Events.LogEventLevel.Warning);
+    }
 
-        SkrybekLog.Initialize(skrybekLog);
-        SkrybekLog.Info("=== TUKAN START ===");
+    /// <summary>Usuwa pliki logów starsze niż podana data (wg daty ostatniej modyfikacji).</summary>
+    private static void UsunStarePlikiLogow(string logDir, DateTime starszeNiz)
+    {
+        foreach (var path in Directory.EnumerateFiles(logDir, "TUKAN*.txt"))
+        {
+            try
+            {
+                if (File.GetLastWriteTime(path) < starszeNiz)
+                    File.Delete(path);
+            }
+            catch
+            {
+                // Plik zajęty / brak uprawnień — pomijamy.
+            }
+        }
     }
 }

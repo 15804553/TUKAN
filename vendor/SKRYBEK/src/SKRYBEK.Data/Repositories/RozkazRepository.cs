@@ -141,6 +141,31 @@ public sealed class RozkazRepository
         return val is null or DBNull ? 1 : Convert.ToInt32(val) + 1;
     }
 
+    /// <summary>
+    /// Szuka innego rozkazu o tej samej dacie albo tym samym numerze w danym roku.
+    /// </summary>
+    public async Task<RozkazDzienny?> ZnajdzKonfliktAsync(
+        DateOnly data,
+        int numerRozkazu,
+        int rok,
+        int excludeId = 0)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync();
+
+        await using var cmd = new OleDbCommand(
+            "SELECT Id, NumerRozkazu, Rok, Data, ZmianaId, Zajecia, Uwagi, DataUtworzenia, Status " +
+            "FROM Rozkazy WHERE (Data=? OR (NumerRozkazu=? AND Rok=?)) AND Id<>?",
+            conn);
+        cmd.Parameters.AddDate(data.ToDateTime(TimeOnly.MinValue));
+        cmd.Parameters.AddInteger(numerRozkazu);
+        cmd.Parameters.AddInteger(rok);
+        cmd.Parameters.AddInteger(excludeId);
+
+        await using var r = await cmd.ExecuteReaderAsync();
+        return await r.ReadAsync() ? MapRozkaz(r) : null;
+    }
+
     // ── Sekcja SŁUŻBA ─────────────────────────────────────────────────────────
 
     private static async Task<List<PozycjaSluzby>> GetSluzbaAsync(OleDbConnection conn, int rozkazId)
