@@ -24,10 +24,13 @@ internal static class OleDbParameterExtensions
 
     public static void AddMemo(this OleDbParameterCollection parameters, string? value)
     {
+        // ACE wymaga Size dla LongVarWChar — bez tego MEMO bywa zapisywane jako puste.
+        var text = string.IsNullOrEmpty(value) ? null : value;
         parameters.Add(new OleDbParameter
         {
             OleDbType = OleDbType.LongVarWChar,
-            Value = string.IsNullOrEmpty(value) ? DBNull.Value : value
+            Size = text?.Length > 0 ? text.Length : 1,
+            Value = text is null ? DBNull.Value : text
         });
     }
 

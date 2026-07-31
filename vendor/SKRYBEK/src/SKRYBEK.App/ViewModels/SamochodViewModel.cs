@@ -287,7 +287,10 @@ public sealed class SamochodViewModel : ObservableObject
 
     public Samochod Samochod { get; }
     public ObservableCollection<PozycjaSamochoduViewModel> Pozycje { get; } = [];
-    public string Nazwa => Samochod.Nazwa;
+
+    /// <summary>Nazwa zamrożona przy budowie VM — nie podąża za późniejszymi zmianami w ustawieniach.</summary>
+    public string Nazwa { get; }
+
     public bool CzyPodstawowy => Samochod.CzyPodstawowy;
     public bool CzyPokazujIkoneWymagan => Samochod.LiczbaPozycji >= PozycjaSamochoduRules.PozycjaDowodca;
     public bool CzyWymaganiaSpelnione { get; private set; }
@@ -306,6 +309,7 @@ public sealed class SamochodViewModel : ObservableObject
         RozkazEditorViewModel editor)
     {
         Samochod = samochod;
+        Nazwa = samochod.Nazwa;
         _editor = editor;
         foreach (var m in modele.OrderBy(m => m.Pozycja))
             Pozycje.Add(new PozycjaSamochoduViewModel(m, this, editor, personel));
@@ -354,5 +358,12 @@ public sealed class SamochodViewModel : ObservableObject
     }
 
     public IEnumerable<PozycjaSamochodu> GetModele()
-        => Pozycje.Select(p => p.ToModel());
+    {
+        foreach (var pozycja in Pozycje)
+        {
+            var model = pozycja.ToModel();
+            model.NazwaSamochodu = Nazwa;
+            yield return model;
+        }
+    }
 }

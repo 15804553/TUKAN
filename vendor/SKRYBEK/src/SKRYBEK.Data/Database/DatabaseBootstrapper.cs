@@ -30,6 +30,8 @@ public sealed class DatabaseBootstrapper
         await using var conn = _factory.Create();
         await conn.OpenAsync();
         await EnsureColumnAsync(conn, "Samochody", "CzySprawdzajPoziomNurkowy", "BIT");
+        await EnsureColumnAsync(conn, "Rozkazy", "SamochodySnapshot", "MEMO");
+        await EnsureColumnAsync(conn, "RozkazPodzialBojowy", "NazwaSamochodu", "TEXT(100)");
     }
 
     private static async Task EnsureColumnAsync(
@@ -38,10 +40,13 @@ public sealed class DatabaseBootstrapper
         string columnName,
         string columnType)
     {
+        if (await ColumnExistsAsync(conn, tableName, columnName))
+            return;
+
         try
         {
             await using var command = new OleDbCommand(
-                $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnType}",
+                $"ALTER TABLE [{tableName}] ADD COLUMN [{columnName}] {columnType}",
                 conn);
             await command.ExecuteNonQueryAsync();
         }
@@ -53,6 +58,21 @@ public sealed class DatabaseBootstrapper
         {
             // Kolumna już dodana.
         }
+    }
+
+    private static async Task<bool> ColumnExistsAsync(
+        OleDbConnection conn,
+        string tableName,
+        string columnName)
+    {
+        var schema = await conn.GetSchemaAsync("Columns", [null, null, tableName, null]);
+        foreach (System.Data.DataRow row in schema.Rows)
+        {
+            if (string.Equals(row["COLUMN_NAME"]?.ToString(), columnName, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     private static void CreateAccessDatabase(string path)

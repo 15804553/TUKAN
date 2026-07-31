@@ -35,7 +35,8 @@ internal static class SchemaScripts
             Zajecia MEMO,
             Uwagi MEMO,
             DataUtworzenia DATETIME NOT NULL,
-            Status SHORT NOT NULL DEFAULT 0
+            Status SHORT NOT NULL DEFAULT 0,
+            SamochodySnapshot MEMO
         )
         """,
         """
@@ -54,7 +55,8 @@ internal static class SchemaScripts
             SamochodId LONG NOT NULL,
             Pozycja SHORT NOT NULL,
             FunkcjonariuszId LONG,
-            Nazwisko TEXT(150)
+            Nazwisko TEXT(150),
+            NazwaSamochodu TEXT(100)
         )
         """,
         """

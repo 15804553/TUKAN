@@ -54,6 +54,22 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 
     public bool IsNew => _isNew;
 
+    public int RozkazId => _rozkaz.Id;
+
+    /// <summary>Kopia katalogu pojazdów aktualnie wyświetlanego w edytorze (do snapshota).</summary>
+    public List<Samochod> PobierzSamochodyKatalogu() =>
+        _samochody.Select(s => new Samochod
+        {
+            Id = s.Id,
+            Nazwa = s.Nazwa,
+            LiczbaPozycji = s.LiczbaPozycji,
+            Typ = s.Typ,
+            Kolejnosc = s.Kolejnosc,
+            CzyAktywny = s.CzyAktywny,
+            CzySprawdzajPoziomNurkowy = s.CzySprawdzajPoziomNurkowy,
+            WymaganeUprawnieniaIds = s.WymaganeUprawnieniaIds.ToList()
+        }).ToList();
+
     // ── Akceptacja rozkazu (wymaganie 3) ──────────────────────────────────────
     public bool CzyZatwierdzony => _rozkaz.Status == StatusRozkazu.Zatwierdzony;
 
@@ -427,6 +443,11 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             WszystkieOsoby.ToList());
         await ServiceProvider.Services.Rozkaz.UpdateStatusAsync(_rozkaz.Id, StatusRozkazu.Zatwierdzony);
 
+        // Dodatkowo upewnij się, że snapshot MEMO trafił do bazy (ACE bywa zawodny przy UPDATE wielu pól).
+        _rozkaz.SamochodySnapshotJson = SamochodySnapshot.Serializuj(_samochody);
+        await ServiceProvider.Services.Rozkaz.UpdateSamochodySnapshotAsync(
+            _rozkaz.Id, _rozkaz.SamochodySnapshotJson);
+
         _rozkaz.Status = StatusRozkazu.Zatwierdzony;
         IsReadOnly = true;
         OnPropertyChanged(nameof(CzyZatwierdzony));
@@ -462,6 +483,10 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         string nrJrg,
         IReadOnlyList<RatownikMedycznyPozycjaUstawienie>? ustawieniaRatownikow = null)
     {
+        // Zablokowany meldunek zachowuje pojazdy i obsadę z chwili zatwierdzenia.
+        if (CzyZatwierdzony)
+            return;
+
         BuildModelFromViewModels();
 
         _samochody     = samochody;
@@ -606,6 +631,10 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
                 _rozkaz,
                 WszystkieOsoby.ToList());
 
+            // Osobny zapis snapshota — pewniejszy na ACE niż wyłącznie kolumna w UPDATE nagłówka.
+            await ServiceProvider.Services.Rozkaz.UpdateSamochodySnapshotAsync(
+                id, _rozkaz.SamochodySnapshotJson);
+
             // Po pierwszym zapisie nowego rozkazu odblokuj przycisk Akceptuj
             OnPropertyChanged(nameof(MozeAkceptowac));
             OnPropertyChanged(nameof(MozeOdblokować));
@@ -714,6 +743,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         _rozkaz.Rok          = Data.Year;
         _rozkaz.Zajecia      = Zajecia;
         _rozkaz.Uwagi        = Uwagi;
+        _rozkaz.SamochodySnapshotJson = SamochodySnapshot.Serializuj(_samochody);
 
         _rozkaz.Sluzba.Clear();
         foreach (var vm in Sluzba)

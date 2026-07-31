@@ -42,6 +42,12 @@ public sealed class RozkazDzienny : INotifyPropertyChanged
     public List<RatownikMedyczny> RatwnicyMedyczni { get; set; } = [];
     public List<NieobecnyWSluzbie> Nieobecni { get; set; } = [];
 
+    /// <summary>
+    /// JSON ze stanem pojazdów w chwili zapisu/zatwierdzenia — chroni zablokowany meldunek
+    /// przed późniejszą zmianą nazw lub liczby miejsc w ustawieniach.
+    /// </summary>
+    public string SamochodySnapshotJson { get; set; } = string.Empty;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>

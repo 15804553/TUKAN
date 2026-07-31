@@ -39,12 +39,12 @@ public sealed class RozkazRepository
         await conn.OpenAsync();
 
         await using var cmd = new OleDbCommand(
-            "SELECT Id, NumerRozkazu, Rok, Data, ZmianaId, Zajecia, Uwagi, DataUtworzenia, Status FROM Rozkazy WHERE Id=?", conn);
+            "SELECT Id, NumerRozkazu, Rok, Data, ZmianaId, Zajecia, Uwagi, DataUtworzenia, Status, SamochodySnapshot FROM Rozkazy WHERE Id=?", conn);
         cmd.Parameters.AddWithValue("Id", id);
         await using var r = await cmd.ExecuteReaderAsync();
         if (!await r.ReadAsync()) return null;
 
-        var rozkaz = MapRozkaz(r);
+        var rozkaz = MapRozkaz(r, zSnapshotem: true);
         await r.CloseAsync();
 
         rozkaz.Sluzba          = await GetSluzbaAsync(conn, id);
@@ -66,7 +66,7 @@ public sealed class RozkazRepository
             if (rozkaz.Id == 0)
             {
                 await using var cmd = new OleDbCommand(
-                    "INSERT INTO Rozkazy (NumerRozkazu, Rok, Data, ZmianaId, Zajecia, Uwagi, DataUtworzenia, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO Rozkazy (NumerRozkazu, Rok, Data, ZmianaId, Zajecia, Uwagi, DataUtworzenia, Status, SamochodySnapshot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     conn);
                 AddRozkazParams(cmd, rozkaz);
                 await cmd.ExecuteNonQueryAsync();
@@ -79,7 +79,7 @@ public sealed class RozkazRepository
             {
                 rozkazId = rozkaz.Id;
                 await using var cmd = new OleDbCommand(
-                    "UPDATE Rozkazy SET NumerRozkazu=?, Rok=?, Data=?, ZmianaId=?, Zajecia=?, Uwagi=?, DataUtworzenia=?, Status=? WHERE Id=?",
+                    "UPDATE Rozkazy SET NumerRozkazu=?, Rok=?, Data=?, ZmianaId=?, Zajecia=?, Uwagi=?, DataUtworzenia=?, Status=?, SamochodySnapshot=? WHERE Id=?",
                     conn);
                 AddRozkazParams(cmd, rozkaz);
                 cmd.Parameters.AddInteger(rozkaz.Id);
@@ -112,6 +112,17 @@ public sealed class RozkazRepository
         await conn.OpenAsync();
         await using var cmd = new OleDbCommand("UPDATE Rozkazy SET Status=? WHERE Id=?", conn);
         cmd.Parameters.AddSmallInt((int)status);
+        cmd.Parameters.AddInteger(id);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>Zapisuje wyłącznie snapshot pojazdów (np. backfill dla starszych zatwierdzonych rozkazów).</summary>
+    public async Task UpdateSamochodySnapshotAsync(int id, string snapshotJson)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync();
+        await using var cmd = new OleDbCommand("UPDATE Rozkazy SET SamochodySnapshot=? WHERE Id=?", conn);
+        cmd.Parameters.AddMemo(snapshotJson);
         cmd.Parameters.AddInteger(id);
         await cmd.ExecuteNonQueryAsync();
     }
@@ -214,7 +225,7 @@ public sealed class RozkazRepository
     {
         var list = new List<PozycjaSamochodu>();
         await using var cmd = new OleDbCommand(
-            "SELECT Id, RozkazId, SamochodId, Pozycja, FunkcjonariuszId, Nazwisko FROM RozkazPodzialBojowy WHERE RozkazId=? ORDER BY SamochodId, Pozycja",
+            "SELECT Id, RozkazId, SamochodId, Pozycja, FunkcjonariuszId, Nazwisko, NazwaSamochodu FROM RozkazPodzialBojowy WHERE RozkazId=? ORDER BY SamochodId, Pozycja",
             conn);
         cmd.Parameters.AddWithValue("RozkazId", rozkazId);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -227,7 +238,8 @@ public sealed class RozkazRepository
                 SamochodId       = r.GetIntSafe(2),
                 Pozycja          = r.GetIntSafe(3),
                 FunkcjonariuszId = r.GetIntOrNull(4),
-                Nazwisko         = r.GetStringSafe(5)
+                Nazwisko         = r.GetStringSafe(5),
+                NazwaSamochodu   = r.FieldCount > 6 ? r.GetStringSafe(6) : string.Empty
             });
         }
         return list;
@@ -242,12 +254,13 @@ public sealed class RozkazRepository
         foreach (var p in podział)
         {
             await using var ins = new OleDbCommand(
-                "INSERT INTO RozkazPodzialBojowy (RozkazId, SamochodId, Pozycja, FunkcjonariuszId, Nazwisko) VALUES (?, ?, ?, ?, ?)", conn);
+                "INSERT INTO RozkazPodzialBojowy (RozkazId, SamochodId, Pozycja, FunkcjonariuszId, Nazwisko, NazwaSamochodu) VALUES (?, ?, ?, ?, ?, ?)", conn);
             ins.Parameters.AddInteger(rozkazId);
             ins.Parameters.AddInteger(p.SamochodId);
             ins.Parameters.AddSmallInt(p.Pozycja);
             ins.Parameters.AddNullableInteger(p.FunkcjonariuszId);
             ins.Parameters.AddText(p.Nazwisko);
+            ins.Parameters.AddText(p.NazwaSamochodu);
             await ins.ExecuteNonQueryAsync();
         }
     }
@@ -338,10 +351,10 @@ public sealed class RozkazRepository
 
     // ── Mapowanie ─────────────────────────────────────────────────────────────
 
-    private static RozkazDzienny MapRozkaz(DbDataReader r)
+    private static RozkazDzienny MapRozkaz(DbDataReader r, bool zSnapshotem = false)
     {
         var data = r.GetDateTime(3);
-        return new RozkazDzienny
+        var rozkaz = new RozkazDzienny
         {
             Id             = r.GetIntSafe(0),
             NumerRozkazu   = r.GetIntSafe(1),
@@ -353,6 +366,21 @@ public sealed class RozkazRepository
             DataUtworzenia = r.IsDBNull(7) ? DateTime.Now : r.GetDateTime(7),
             Status         = (StatusRozkazu)r.GetIntSafe(8)
         };
+
+        if (zSnapshotem)
+        {
+            try
+            {
+                var ordinal = r.GetOrdinal("SamochodySnapshot");
+                rozkaz.SamochodySnapshotJson = r.GetStringSafe(ordinal);
+            }
+            catch (IndexOutOfRangeException)
+            {
+                // Kolumna jeszcze nie istnieje w starszym wyniku zapytania.
+            }
+        }
+
+        return rozkaz;
     }
 
     private static void AddRozkazParams(OleDbCommand cmd, RozkazDzienny rozkaz)
@@ -365,5 +393,6 @@ public sealed class RozkazRepository
         cmd.Parameters.AddMemo(rozkaz.Uwagi);
         cmd.Parameters.AddDate(rozkaz.DataUtworzenia);
         cmd.Parameters.AddSmallInt((int)rozkaz.Status);
+        cmd.Parameters.AddMemo(rozkaz.SamochodySnapshotJson);
     }
 }

@@ -95,12 +95,17 @@ public partial class SkrybekMainView : UserControl
 
     private async void RozkazyList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (RozkazyList.SelectedItem is RozkazDzienny rozkaz)
-        {
-            await _vm.OtworzRozkazCommand.ExecuteAsync(rozkaz);
-            ApplyEditorAccess();
-            _ = Dispatcher.BeginInvoke(ApplyEditorAccess, System.Windows.Threading.DispatcherPriority.Loaded);
-        }
+        if (RozkazyList.SelectedItem is not RozkazDzienny rozkaz)
+            return;
+
+        // LoadAsync po ustawieniach odświeża listę i odpala SelectionChanged —
+        // nie przeładowuj już otwartego (zwłaszcza zablokowanego) rozkazu.
+        if (_vm.EditorVm?.RozkazId == rozkaz.Id)
+            return;
+
+        await _vm.OtworzRozkazCommand.ExecuteAsync(rozkaz);
+        ApplyEditorAccess();
+        _ = Dispatcher.BeginInvoke(ApplyEditorAccess, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void DeleteRozkaz_Click(object sender, RoutedEventArgs e)

@@ -118,6 +118,9 @@ public sealed class RozkazService
         SkrybekLog.Info($"Status rozkazu Id={id} zmieniony na {status}");
     }
 
+    public async Task UpdateSamochodySnapshotAsync(int id, string snapshotJson)
+        => await _repo.UpdateSamochodySnapshotAsync(id, snapshotJson);
+
     public async Task UsunAsync(int id)
     {
         await _repo.DeleteAsync(id);

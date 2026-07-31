@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SKRYBEK.App.Helpers;
+using SKRYBEK.Core.Enums;
 using SKRYBEK.Core.Models;
 using SKRYBEK.Services.Logging;
 
@@ -119,7 +120,8 @@ public sealed partial class MainViewModel : ObservableObject
             var pelny = await ServiceProvider.Services.Rozkaz.GetByIdAsync(rozkaz.Id);
             if (pelny is null) return;
 
-            var samochody = await ServiceProvider.Services.SamochodyRepo.GetAktywneAsync();
+            var samochodyLive = await ServiceProvider.Services.SamochodyRepo.GetAktywneAsync();
+            var samochody = await ResolveSamochodyDlaRozkazuAsync(pelny, samochodyLive);
             var nrZmiany  = Session.CanEditAll ? pelny.ZmianaId : Session.NumerZmiany;
             var personel  = await ServiceProvider.Services.Personnel.GetDostepniAsync(pelny.Data, nrZmiany);
             var wszyscy   = await ServiceProvider.Services.Personnel.GetWszyscyZmianaAsync(nrZmiany);
@@ -199,8 +201,17 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Odświeża listę rozkazów i otwarty edytor po zamknięciu ustawień.</summary>
     public async Task OdswiezPoUstawieniachAsync()
     {
+        if (Session is null) return;
+
+        // Najpierw sprawdź blokadę — LoadAsync odświeża listę i może wywołać ponowne otwarcie.
+        if (EditorVm?.CzyZatwierdzony == true)
+        {
+            await LoadAsync();
+            return;
+        }
+
         await LoadAsync();
-        if (Session is null || EditorVm is null) return;
+        if (EditorVm is null) return;
 
         try
         {
@@ -224,6 +235,35 @@ public sealed partial class MainViewModel : ObservableObject
             SkrybekLog.Error("Błąd odświeżania po ustawieniach", ex);
             StatusMessage = $"Błąd odświeżania: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// Dla zatwierdzonego rozkazu przywraca nazwy pojazdów zamrożone w podziale bojowym.
+    /// Nie nadpisuje ich żywym katalogiem z ustawień.
+    /// </summary>
+    private Task<List<Samochod>> ResolveSamochodyDlaRozkazuAsync(
+        RozkazDzienny rozkaz,
+        List<Samochod> aktualne)
+    {
+        if (rozkaz.Status != StatusRozkazu.Zatwierdzony)
+            return Task.FromResult(aktualne);
+
+        var zNazwami = SamochodySnapshot.ZastosujZamrozoneNazwy(aktualne, rozkaz.PodzialBojowy);
+        if (zNazwami is not null)
+            return Task.FromResult(zNazwami);
+
+        var zMemo = SamochodySnapshot.Deserializuj(rozkaz.SamochodySnapshotJson);
+        if (zMemo is { Count: > 0 })
+            return Task.FromResult(zMemo);
+
+        if (EditorVm is not null
+            && EditorVm.RozkazId == rozkaz.Id
+            && EditorVm.PobierzSamochodyKatalogu() is { Count: > 0 } zEdytora)
+            return Task.FromResult(zEdytora);
+
+        // Legacy bez zamrożonych nazw — pokaż katalog bieżący, ale NIE zapisuj go jako snapshot
+        // (to wcześniej „zatruwało” zablokowany meldunek po zmianie ustawień).
+        return Task.FromResult(aktualne);
     }
 
     public void Logout()
