@@ -100,14 +100,17 @@ public sealed partial class PozycjaSluzbyViewModel : ObservableObject
             ? personel.FirstOrDefault(f => f.Id == model.FunkcjonariuszId)
             : PersonelSuggestFilter.ZnajdzDokladnie(personel, model.Nazwisko);
 
-        // Jeśli osoba rozpoznana po nazwisku (brak FunkcjonariuszId w modelu) — napraw FK,
-        // aby kolejny zapis zapisał poprawne powiązanie z bazą danych.
-        if (_wybranaOsoba is not null && !model.FunkcjonariuszId.HasValue)
-            model.FunkcjonariuszId = _wybranaOsoba.Id;
+        // Jeśli osoba rozpoznana — uzupełnij FK i tekst (ze stopniem, imieniem i nazwiskiem).
+        if (_wybranaOsoba is not null)
+        {
+            if (!model.FunkcjonariuszId.HasValue)
+                model.FunkcjonariuszId = _wybranaOsoba.Id;
+            model.Nazwisko = _wybranaOsoba.StopienINazwisko;
+        }
 
         _tekstOsoby = !string.IsNullOrWhiteSpace(model.Nazwisko)
             ? model.Nazwisko
-            : _wybranaOsoba?.StopienINazwisko ?? string.Empty;
+            : string.Empty;
 
         OdswiezDostepneOsoby();
     }
@@ -190,7 +193,7 @@ public sealed partial class PozycjaSluzbyViewModel : ObservableObject
 
         _model.FunkcjonariuszId = osoba?.Id;
         _model.Nazwisko = osoba is not null
-            ? $"{osoba.Stopien} {osoba.Nazwisko}"
+            ? osoba.StopienINazwisko
             : _tekstOsoby;
 
         if (!aktualizujTekst) return;

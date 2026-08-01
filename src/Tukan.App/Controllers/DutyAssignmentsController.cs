@@ -106,6 +106,7 @@ public sealed class DutyAssignmentsController
             var person = personnel[index];
             var row = rows[index];
             AddIfMissing(lookup, person.PelneImieNazwisko, row);
+            AddIfMissing(lookup, $"{person.Stopien} {person.Imie} {person.Nazwisko}".Trim(), row);
             AddIfMissing(lookup, $"{person.Stopien} {person.Nazwisko}".Trim(), row);
             AddIfMissing(lookup, person.Nazwisko, row);
         }

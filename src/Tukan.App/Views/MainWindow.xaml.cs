@@ -54,6 +54,7 @@ public partial class MainWindow : Window
 
         ApplyRoleUi();
         UpdateTitleBarAccount();
+        WindowState = WindowState.Maximized;
         Loaded += OnLoaded;
         Activated += OnActivated;
         StateChanged += OnStateChanged;
@@ -112,6 +113,7 @@ public partial class MainWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnLoaded;
+        WindowState = WindowState.Maximized;
         try
         {
             ShowGeneralView();

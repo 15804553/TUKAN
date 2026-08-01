@@ -25,7 +25,8 @@ public static class PersonelSuggestFilter
         var t = tekst.Trim();
         return personel.FirstOrDefault(p =>
             string.Equals(p.StopienINazwisko, t, StringComparison.OrdinalIgnoreCase)
-            || string.Equals($"{p.Stopien} {p.Nazwisko}".Trim(), t, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(p.StopienINazwiskoBezImienia, t, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(p.PelneImieNazwisko, t, StringComparison.OrdinalIgnoreCase)
             || string.Equals(p.Nazwisko, t, StringComparison.OrdinalIgnoreCase));
     }
 }

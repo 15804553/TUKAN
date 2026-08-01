@@ -1,3 +1,4 @@
+using System.Linq;
 using SKRYBEK.Core.Chomik;
 using SKRYBEK.Core.Rules;
 
@@ -17,7 +18,14 @@ public sealed class Funkcjonariusz
     public int? StazLat { get; set; }
 
     public string PelneImieNazwisko => $"{Imie} {Nazwisko}".Trim();
-    public string StopienINazwisko => $"{Stopien} {Nazwisko}".Trim();
+
+    /// <summary>Stopień, imię i nazwisko — format używany w kontrolkach i eksporcie Word.</summary>
+    public string StopienINazwisko =>
+        string.Join(" ", new[] { Stopien, Imie, Nazwisko }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+    /// <summary>Stary format bez imienia — dopasowanie zapisów sprzed uzupełnienia imion.</summary>
+    public string StopienINazwiskoBezImienia =>
+        string.Join(" ", new[] { Stopien, Nazwisko }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
     /// <summary>Id typów uprawnień z tabeli TypyUprawnien (CHOMIK).</summary>
     public List<int> IdUprawnien { get; set; } = [];

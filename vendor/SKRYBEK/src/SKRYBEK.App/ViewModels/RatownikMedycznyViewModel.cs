@@ -85,12 +85,16 @@ public sealed partial class RatownikMedycznyViewModel : ObservableObject
             ? personel.FirstOrDefault(f => f.Id == model.FunkcjonariuszId)
             : PersonelSuggestFilter.ZnajdzDokladnie(personel, model.Nazwisko);
 
-        if (_wybranaOsoba is not null && !model.FunkcjonariuszId.HasValue)
-            model.FunkcjonariuszId = _wybranaOsoba.Id;
+        if (_wybranaOsoba is not null)
+        {
+            if (!model.FunkcjonariuszId.HasValue)
+                model.FunkcjonariuszId = _wybranaOsoba.Id;
+            model.Nazwisko = _wybranaOsoba.StopienINazwisko;
+        }
 
         _tekstOsoby = !string.IsNullOrWhiteSpace(model.Nazwisko)
             ? model.Nazwisko
-            : _wybranaOsoba?.StopienINazwisko ?? string.Empty;
+            : string.Empty;
 
         OdswiezDostepneOsoby();
     }
@@ -183,7 +187,7 @@ public sealed partial class RatownikMedycznyViewModel : ObservableObject
 
         _model.FunkcjonariuszId = osoba?.Id;
         _model.Nazwisko = osoba is not null
-            ? $"{osoba.Stopien} {osoba.Nazwisko}"
+            ? osoba.StopienINazwisko
             : _tekstOsoby;
 
         if (!aktualizujTekst) return;

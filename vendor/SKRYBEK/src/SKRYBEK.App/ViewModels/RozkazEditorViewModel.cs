@@ -202,7 +202,8 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         foreach (TypNieobecnosci typ in Enum.GetValues<TypNieobecnosci>())
         {
             var group = new NieobecniGroupViewModel(typ,
-                rozkaz.Nieobecni.Where(n => n.TypNieobecnosci == typ).ToList());
+                rozkaz.Nieobecni.Where(n => n.TypNieobecnosci == typ).ToList(),
+                personel);
             NieobecniGrupy.Add(group);
         }
 
@@ -419,7 +420,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             foreach (var grp in NieobecniGrupy)
             {
                 var dlaTypu = nieobecni.Where(n => n.TypNieobecnosci == grp.Typ).ToList();
-                grp.ZaladujZBobera(dlaTypu);
+                grp.ZaladujZBobera(dlaTypu, _wszyscyZmiany);
             }
 
             SynchronizujDyzurZWolnaSluzba();

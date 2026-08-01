@@ -75,7 +75,7 @@ public sealed class PersonnelService
             {
                 FunkcjonariuszId = fid,
                 Nazwisko = osoba is not null
-                    ? $"{osoba.Stopien} {osoba.Nazwisko}".Trim()
+                    ? osoba.StopienINazwisko
                     : $"ID:{fid}",
                 TypNieobecnosci = typ
             });
