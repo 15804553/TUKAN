@@ -74,6 +74,23 @@ public sealed class SettingsService(IUstawieniaRepository ustawieniaRepository) 
     public Task SetExportPathGrafikNurkowyAsync(string path, CancellationToken cancellationToken = default) =>
         ustawieniaRepository.SetAsync("ExportPathGrafikNurkowy", path, cancellationToken);
 
+    public async Task<bool> GetLessColorAsync(CancellationToken cancellationToken = default)
+    {
+        var raw = await ustawieniaRepository.GetAsync("LessColor", cancellationToken);
+        if (raw is null)
+            return true;
+
+        if (bool.TryParse(raw, out var parsed))
+            return parsed;
+
+        return raw.Equals("1", StringComparison.OrdinalIgnoreCase)
+            || raw.Equals("yes", StringComparison.OrdinalIgnoreCase)
+            || raw.Equals("tak", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        ustawieniaRepository.SetAsync("LessColor", enabled ? "True" : "False", cancellationToken);
+
     public async Task<KalendarzAutoDeleteMode> GetKalendarzAutoDeleteModeAsync(
         int? shiftNumber,
         CancellationToken cancellationToken = default)

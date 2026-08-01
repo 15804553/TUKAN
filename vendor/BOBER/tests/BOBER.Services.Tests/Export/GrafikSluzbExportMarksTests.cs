@@ -13,8 +13,8 @@ public sealed class GrafikSluzbExportMarksTests
     [InlineData("Del", "Del")]
     [InlineData("D", "D")]
     [InlineData("U", "U")]
-    [InlineData("U/", "U—")]
-    [InlineData("D/", "D—")]
+    [InlineData("U/", "U")]
+    [InlineData("D/", "D")]
     [InlineData("WS/", "—")]
     [InlineData("WS", "")]
     [InlineData("U.", "U•")]
@@ -73,11 +73,16 @@ public sealed class GrafikSluzbExportMarksTests
             // Wiersz danych zaczyna się od 3; kolumna dnia 1 = 3 (D/N/K | Imię | dzień…).
             Assert.Equal("S", CellText(ws, 3, 3));
             Assert.Equal("C", CellText(ws, 4, 3));
-            Assert.Equal("U—", CellText(ws, 5, 3));
+            Assert.Equal("U", CellText(ws, 5, 3));
             Assert.Equal("U•", CellText(ws, 6, 3));
             Assert.Equal("?", CellText(ws, 7, 3));
             Assert.Equal("•", CellText(ws, 8, 3));
             Assert.Equal("—", CellText(ws, 9, 3));
+
+            // Oddaje przy U → przekreślenie; przy WS → „—” bez przekreślenia
+            Assert.True(ws.Cell(5, 3).Style.Font.Strikethrough);
+            Assert.False(ws.Cell(9, 3).Style.Font.Strikethrough);
+            Assert.False(ws.Cell(3, 3).Style.Font.Strikethrough);
 
             // WS ma tło nieobecności także przy kropce / Oddaje.
             Assert.True(ws.Cell(8, 3).Style.Fill.BackgroundColor.ColorType != XLColorType.Theme);
@@ -249,6 +254,164 @@ public sealed class GrafikSluzbExportMarksTests
             NazwyUprawnien = uprawnienia?.ToList() ?? []
         };
         Assert.Equal(expected, RoleClassifier.FormatExportRoleMarks(f));
+    }
+
+    [Fact]
+    public void ExportMonth_LessColor_BialeWierszeCzarnaCzcionkaZolteTylkoWs()
+    {
+        var funkcjonariusze = new List<Funkcjonariusz>
+        {
+            new() { Id = 1, Imie = "Anna", Nazwisko = "Nowak", Stanowisko = "Dowódca zmiany" },
+            new()
+            {
+                Id = 2, Imie = "Jan", Nazwisko = "Kowalski", Stanowisko = "Strażak",
+                NazwyUprawnien = ["Nurek"]
+            },
+            new()
+            {
+                Id = 3, Imie = "Piotr", Nazwisko = "Wiśniewski", Stanowisko = "Kierowca",
+                NazwyUprawnien = ["Prawo jazdy kat. C"]
+            },
+        };
+
+        var wpisy = new List<GrafikWpis>
+        {
+            Wpis(1, 1, "WS"),
+            Wpis(2, 1, "D"),
+            Wpis(3, 1, "Del"),
+        };
+
+        var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-lesscolor-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            new ExportService().ExportMonth(
+                path, 2026, 7, funkcjonariusze, wpisy,
+                stanZmiany: 3, stanMinimalny: 2,
+                kolory: DefaultKolory(),
+                workDays: [1],
+                lessColor: true);
+
+            using var wb = new XLWorkbook(path);
+            var ws = wb.Worksheet(1);
+
+            var white = XLColor.FromHtml("#FFFFFF");
+            var black = XLColor.FromHtml("#000000");
+            var wsYellow = XLColor.FromHtml(RoleKeys.DomyslneKoloryWpisow[RoleKeys.WolnaSluzba]);
+
+            // Dowódca: białe tło, czarna czcionka (bez pomarańczu roli)
+            Assert.Equal(white, ws.Cell(3, 1).Style.Fill.BackgroundColor);
+            Assert.Equal(black, ws.Cell(3, 1).Style.Font.FontColor);
+            Assert.Equal(white, ws.Cell(3, 2).Style.Fill.BackgroundColor);
+            Assert.Equal(black, ws.Cell(3, 2).Style.Font.FontColor);
+
+            // Nurek: czarna czcionka (bez czerwieni uprawnień)
+            Assert.Equal(white, ws.Cell(4, 2).Style.Fill.BackgroundColor);
+            Assert.Equal(black, ws.Cell(4, 2).Style.Font.FontColor);
+            Assert.Equal(black, ws.Cell(4, 1).Style.Font.FontColor);
+
+            // Kierowca: białe tło (bez szarości roli)
+            Assert.Equal(white, ws.Cell(5, 2).Style.Fill.BackgroundColor);
+            Assert.Equal(black, ws.Cell(5, 2).Style.Font.FontColor);
+
+            // WS — żółte; D i Del — białe (bez żółtego)
+            Assert.Equal(wsYellow, ws.Cell(3, 3).Style.Fill.BackgroundColor);
+            Assert.Equal(white, ws.Cell(4, 3).Style.Fill.BackgroundColor);
+            Assert.Equal(white, ws.Cell(5, 3).Style.Fill.BackgroundColor);
+
+            // Czcionka czarna w całym pliku: nagłówek, wiersze, stopka
+            Assert.Equal(black, ws.Cell(1, 2).Style.Font.FontColor);
+            Assert.Equal(black, ws.Cell(2, 3).Style.Font.FontColor);
+            Assert.Equal(black, ws.Cell(3, 3).Style.Font.FontColor);
+            // sumBase = 3 + 3 = 6
+            Assert.Equal(black, ws.Cell(6, 2).Style.Font.FontColor);
+            Assert.Equal(black, ws.Cell(6, 3).Style.Font.FontColor);
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void ExportMonth_BezLessColor_ZachowujeKoloryRolINurek()
+    {
+        var funkcjonariusze = new List<Funkcjonariusz>
+        {
+            new() { Id = 1, Imie = "Anna", Nazwisko = "Nowak", Stanowisko = "Dowódca zmiany" },
+            new()
+            {
+                Id = 2, Imie = "Jan", Nazwisko = "Kowalski", Stanowisko = "Strażak",
+                NazwyUprawnien = ["Nurek"]
+            },
+        };
+
+        var wpisy = new List<GrafikWpis>
+        {
+            Wpis(1, 1, "D"),
+        };
+
+        var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-fullcolor-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            new ExportService().ExportMonth(
+                path, 2026, 7, funkcjonariusze, wpisy,
+                stanZmiany: 2, stanMinimalny: 1,
+                kolory: DefaultKolory(),
+                workDays: [1],
+                lessColor: false);
+
+            using var wb = new XLWorkbook(path);
+            var ws = wb.Worksheet(1);
+
+            var dcaOrange = XLColor.FromHtml(RoleKeys.DomyslneKolory[RoleKeys.DowodcaZmiany]);
+            var nurekRed = XLColor.FromHtml(RoleKeys.DomyslneKoloryWpisow[RoleKeys.NurekCzcionka]);
+            var dYellow = XLColor.FromHtml(RoleKeys.DomyslneKoloryWpisow[RoleKeys.WolnaSluzba]);
+
+            Assert.Equal(dcaOrange, ws.Cell(3, 2).Style.Fill.BackgroundColor);
+            Assert.Equal(nurekRed, ws.Cell(4, 2).Style.Font.FontColor);
+            Assert.Equal(dYellow, ws.Cell(3, 3).Style.Fill.BackgroundColor);
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void ExportMonth_Stopka_ZawieraLegendeOznaczen()
+    {
+        var funkcjonariusze = new List<Funkcjonariusz>
+        {
+            new() { Id = 1, Imie = "Anna", Nazwisko = "Nowak", Stanowisko = "Strażak" },
+        };
+
+        var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-legend-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            new ExportService().ExportMonth(
+                path, 2026, 7, funkcjonariusze, wpisy: [],
+                stanZmiany: 1, stanMinimalny: 1,
+                kolory: DefaultKolory(),
+                workDays: [1]);
+
+            using var wb = new XLWorkbook(path);
+            var ws = wb.Worksheet(1);
+
+            // sumBase = 1+3 = 4; 5 wierszy sum → lastRow = 8; legenda od wiersza 10
+            Assert.Contains("Dyżur", CellText(ws, 10, 1));
+            Assert.Contains("Wolna służba", CellText(ws, 10, 1));
+            Assert.Contains("Urlop", CellText(ws, 10, 1));
+            Assert.Contains("Oddaje", CellText(ws, 11, 1));
+            Assert.Contains("Nurek", CellText(ws, 11, 1));
+            Assert.Contains("Kierowca", CellText(ws, 11, 1));
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
     }
 
     private static IReadOnlyDictionary<string, string> DefaultKolory()

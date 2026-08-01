@@ -18,10 +18,12 @@ public sealed class ExportService
         int stanZmiany,
         int stanMinimalny,
         IReadOnlyDictionary<string, string> kolory,
-        IReadOnlyCollection<int>? workDays = null)
+        IReadOnlyCollection<int>? workDays = null,
+        bool lessColor = true)
     {
         using var workbook = new XLWorkbook();
-        AddMonthWorksheet(workbook, rok, miesiac, funkcjonariusze, wpisy, stanZmiany, stanMinimalny, kolory, workDays);
+        AddMonthWorksheet(
+            workbook, rok, miesiac, funkcjonariusze, wpisy, stanZmiany, stanMinimalny, kolory, workDays, lessColor);
         workbook.SaveAs(filePath);
     }
 
@@ -34,7 +36,8 @@ public sealed class ExportService
         IReadOnlyDictionary<int, IReadOnlyCollection<int>> workDaysByMonth,
         int stanZmiany,
         int stanMinimalny,
-        IReadOnlyDictionary<string, string> kolory)
+        IReadOnlyDictionary<string, string> kolory,
+        bool lessColor = true)
     {
         using var workbook = new XLWorkbook();
         for (var miesiac = 1; miesiac <= 12; miesiac++)
@@ -48,7 +51,8 @@ public sealed class ExportService
                 stanZmiany,
                 stanMinimalny,
                 kolory,
-                workDays);
+                workDays,
+                lessColor);
         }
 
         workbook.SaveAs(filePath);
@@ -63,14 +67,18 @@ public sealed class ExportService
         int stanZmiany,
         int stanMinimalny,
         IReadOnlyDictionary<string, string> kolory,
-        IReadOnlyCollection<int>? workDays)
+        IReadOnlyCollection<int>? workDays,
+        bool lessColor)
     {
         var ws = workbook.Worksheets.Add(GetMonthName(miesiac));
 
         var nieobecnoscBg = ToXl(ResolveHex(kolory, RoleKeys.WolnaSluzba, RoleKeys.DomyslneKoloryWpisow));
         var appText = ToXl(AppColors.ForegroundHex);
         var bandBg = ToXl(ResolveHex(kolory, RoleKeys.EksportNaglowekStopkaTlo, RoleKeys.DomyslneKoloryEksportu));
-        var bandFg = ToXl(ResolveHex(kolory, RoleKeys.EksportNaglowekStopkaCzcionka, RoleKeys.DomyslneKoloryEksportu));
+        var lessColorText = ToXl("#000000");
+        var bandFg = lessColor
+            ? lessColorText
+            : ToXl(ResolveHex(kolory, RoleKeys.EksportNaglowekStopkaCzcionka, RoleKeys.DomyslneKoloryEksportu));
 
         var daysInMonth = DateTime.DaysInMonth(rok, miesiac);
         var workDaysList = (workDays is { Count: > 0 }
@@ -84,6 +92,9 @@ public sealed class ExportService
         var lastCol = workDaysList.Count + 2;
 
         var gridLineColor = XLColor.FromHtml("#505050");
+
+        if (lessColor)
+            ws.Style.Font.FontColor = lessColorText;
 
         // Wąska kolumna oznaczeń ról (D/N/K) — pusty nagłówek
         var marksHeader = ws.Range(1, colMarks, 2, colMarks);
@@ -121,16 +132,31 @@ public sealed class ExportService
 
         var funcLookup = funkcjonariusze.ToDictionary(f => f.Id);
 
+        var lessColorRowBg = ToXl("#FFFFFF");
+
         for (int i = 0; i < funkcjonariusze.Count; i++)
         {
             var f = funkcjonariusze[i];
             var row = i + 3;
-            var role = RoleClassifier.DetermineBackgroundRole(f);
-            var rowBgHex = ResolveHex(kolory, role, RoleKeys.DomyslneKolory);
-            var rowBg = ToXl(rowBgHex);
-            var nameText = RoleClassifier.IsNurek(f)
-                ? ToXl(ResolveHex(kolory, RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow))
-                : ToXl(AppColors.ContrastTextHex(rowBgHex));
+            string rowBgHex;
+            XLColor rowBg;
+            XLColor nameText;
+
+            if (lessColor)
+            {
+                rowBgHex = "#FFFFFF";
+                rowBg = lessColorRowBg;
+                nameText = lessColorText;
+            }
+            else
+            {
+                var role = RoleClassifier.DetermineBackgroundRole(f);
+                rowBgHex = ResolveHex(kolory, role, RoleKeys.DomyslneKolory);
+                rowBg = ToXl(rowBgHex);
+                nameText = RoleClassifier.IsNurek(f)
+                    ? ToXl(ResolveHex(kolory, RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow))
+                    : ToXl(AppColors.ContrastTextHex(rowBgHex));
+            }
 
             // Kolumna oznaczeń D/N/K
             var marksCell = ws.Cell(row, colMarks);
@@ -155,7 +181,7 @@ public sealed class ExportService
                 var cell = ws.Cell(row, d + firstDayCol);
                 cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                 cell.Style.Fill.BackgroundColor = rowBg;
-                cell.Style.Font.FontColor = appText;
+                cell.Style.Font.FontColor = lessColor ? lessColorText : appText;
 
                 if (!wpisyLookup.TryGetValue((f.Id, day), out var wpis)) continue;
 
@@ -166,6 +192,9 @@ public sealed class ExportService
                 {
                     cell.Style.Fill.BackgroundColor = nieobecnoscBg;
                     cell.Value = GrafikWpisTypy.TekstWyswietlany(wpis);
+                    if (lessColor)
+                        cell.Style.Font.FontColor = lessColorText;
+                    ApplyOddajeStrikethrough(cell, wpis);
                     continue;
                 }
 
@@ -176,13 +205,17 @@ public sealed class ExportService
                 }
 
                 cell.Value = GrafikWpisTypy.TekstWyswietlany(wpis);
-                cell.Style.Fill.BackgroundColor = bazowy switch
-                {
-                    GrafikWpisTypy.Dyzur => nieobecnoscBg,
-                    GrafikWpisTypy.Delegacja => nieobecnoscBg,
-                    _ => rowBg
-                };
-                cell.Style.Font.FontColor = appText;
+                // LessColor: żółte tło tylko dla WS; D i Del bez dodatkowego koloru.
+                cell.Style.Fill.BackgroundColor = lessColor
+                    ? rowBg
+                    : bazowy switch
+                    {
+                        GrafikWpisTypy.Dyzur => nieobecnoscBg,
+                        GrafikWpisTypy.Delegacja => nieobecnoscBg,
+                        _ => rowBg
+                    };
+                cell.Style.Font.FontColor = lessColor ? lessColorText : appText;
+                ApplyOddajeStrikethrough(cell, wpis);
             }
         }
 
@@ -246,6 +279,8 @@ public sealed class ExportService
         dataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
         dataRange.Style.Border.OutsideBorderColor = XLColor.FromHtml("#707070");
 
+        AddFooterLegend(ws, lastRow + 2, lastCol, lessColor ? lessColorText : appText);
+
         ws.SheetView.FreezeRows(2);
         ws.SheetView.FreezeColumns(2);
 
@@ -259,6 +294,33 @@ public sealed class ExportService
         ws.PageSetup.FitToPages(1, 0);
     }
 
+    private static readonly string[] LegendLines =
+    [
+        "Legenda komórek: (puste) — w pracy | D — Dyżur | żółte tło — Wolna służba | U — Urlop | U na żółtym — Urlop z WS | Del — Delegacja | S — Szkolenie | C — Chory",
+        "? — potrzebuje wolne | • — chętna oddać | przekreślenie lub — — Oddaje | Oznaczenia: D — Dowódca | N — Nurek | K — Kierowca"
+    ];
+
+    private static void AddFooterLegend(IXLWorksheet ws, int startRow, int lastCol, XLColor textColor)
+    {
+        for (var i = 0; i < LegendLines.Length; i++)
+        {
+            var row = startRow + i;
+            var range = ws.Range(row, 1, row, lastCol);
+            range.Merge();
+            var cell = range.FirstCell();
+            cell.Value = LegendLines[i];
+            cell.Style.Font.FontColor = textColor;
+            cell.Style.Font.FontSize = LegendFontSize;
+            cell.Style.Font.Bold = false;
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+            cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            cell.Style.Alignment.WrapText = true;
+            ws.Row(row).Height = LegendRowHeight;
+        }
+    }
+
+    private const double LegendFontSize = 9;
+    private const double LegendRowHeight = 16;
     private const double RoleMarkFontSize = 8;
     private const double MarksColumnWidth = 4.5;
     private const double PreferredDayColumnWidth = 9;
@@ -326,6 +388,19 @@ public sealed class ExportService
     }
 
     private static XLColor ToXl(string hex) => XLColor.FromHtml(hex);
+
+    private static void ApplyOddajeStrikethrough(IXLCell cell, string? typWpisu)
+    {
+        if (!GrafikWpisTypy.MaOddal(typWpisu))
+            return;
+
+        // Przy WS Oddaje w komórce zostaje „—” (bez przekreślenia).
+        var bazowy = GrafikWpisTypy.BazowyKod(typWpisu);
+        if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        cell.Style.Font.Strikethrough = true;
+    }
 
     private static string ResolveHex(
         IReadOnlyDictionary<string, string> kolory,

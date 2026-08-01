@@ -232,14 +232,11 @@ public static class GrafikWpisTypy
         return string.Empty;
     }
 
-    /// <summary>Tekst do eksportu Excel (główny + znaczek).</summary>
+    /// <summary>Tekst do eksportu Excel (główny + znaczek). Oddaje przy U/D → przekreślenie; przy WS → „—”.</summary>
     public static string TekstWyswietlany(string? typWpisu)
     {
         var glowny = TekstGlowny(typWpisu);
         var znaczek = TekstZnaczka(typWpisu);
-
-        if (MaOddal(typWpisu) && !string.IsNullOrEmpty(glowny) && glowny != OddalZnak)
-            glowny += OddalZnak;
 
         if (string.IsNullOrEmpty(znaczek))
             return glowny;

@@ -168,37 +168,44 @@
                         CornerRadius="6"
                         Padding="14,12"
                         Margin="0,0,0,16">
-                    <ItemsControl x:Name="KoloryItemsControl">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
-                                        <ColumnDefinition Width="130" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Etykieta}"
-                                               Foreground="{StaticResource ForegroundBrush}"
-                                               VerticalAlignment="Center"
-                                               FontSize="12" />
-                                    <TextBox Grid.Column="1"
-                                             Text="{Binding KolorHex, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource DarkTextBox}"
-                                             Margin="8,0,8,0" />
-                                    <Border Grid.Column="2"
-                                            CornerRadius="4"
-                                            Height="22"
-                                            Cursor="Hand"
-                                            ToolTip="Kliknij, aby wybrać kolor"
-                                            MouseLeftButtonDown="OnColorPreviewClick">
-                                        <Border.Background>
-                                            <SolidColorBrush Color="{Binding PreviewColor}" />
-                                        </Border.Background>
-                                    </Border>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <StackPanel>
+                        <CheckBox x:Name="LessColorCheckBox"
+                                  Content="LessColor — eksport grafiku bez kolorów ról (białe wiersze, czarna czcionka, żółte tylko WS)"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  IsChecked="True"
+                                  Margin="0,0,0,12" />
+                        <ItemsControl x:Name="KoloryItemsControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="200" />
+                                            <ColumnDefinition Width="130" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Etykieta}"
+                                                   Foreground="{StaticResource ForegroundBrush}"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12" />
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding KolorHex, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource DarkTextBox}"
+                                                 Margin="8,0,8,0" />
+                                        <Border Grid.Column="2"
+                                                CornerRadius="4"
+                                                Height="22"
+                                                Cursor="Hand"
+                                                ToolTip="Kliknij, aby wybrać kolor"
+                                                MouseLeftButtonDown="OnColorPreviewClick">
+                                            <Border.Background>
+                                                <SolidColorBrush Color="{Binding PreviewColor}" />
+                                            </Border.Background>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </Border>
 
                 <TextBlock Text="ZARZĄDZANIE GRAFIKIEM" Style="{StaticResource SectionHeader}" />

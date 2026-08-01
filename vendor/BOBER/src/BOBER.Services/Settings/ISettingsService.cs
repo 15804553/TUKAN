@@ -25,6 +25,13 @@ public interface ISettingsService
     Task<string> GetExportPathGrafikNurkowyAsync(CancellationToken cancellationToken = default);
     Task SetExportPathGrafikNurkowyAsync(string path, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// LessColor: eksport grafiku służb bez kolorów ról/nurek — białe wiersze, czarna czcionka,
+    /// żółte tło tylko dla WS. Domyślnie włączone.
+    /// </summary>
+    Task<bool> GetLessColorAsync(CancellationToken cancellationToken = default);
+    Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default);
+
     Task<KalendarzAutoDeleteMode> GetKalendarzAutoDeleteModeAsync(
         int? shiftNumber,
         CancellationToken cancellationToken = default);

@@ -69,6 +69,12 @@ public sealed class SettingsController(AppServices services)
     public Task SetMaxUrlopowNaSluzbieAsync(int zmianaId, int max, CancellationToken ct = default) =>
         services.Settings.SetMaxUrlopowNaSluzbieAsync(zmianaId, max, ct);
 
+    public Task<bool> GetLessColorAsync(CancellationToken ct = default) =>
+        services.Settings.GetLessColorAsync(ct);
+
+    public Task SetLessColorAsync(bool enabled, CancellationToken ct = default) =>
+        services.Settings.SetLessColorAsync(enabled, ct);
+
     public async Task ClearHalfYearAsync(int polrocze, bool alsoClearUrlopPlan = false, CancellationToken ct = default)
     {
         await services.Grafik.ClearHalfYearAsync(ZmianaId, DateTime.Today.Year, polrocze, ct);

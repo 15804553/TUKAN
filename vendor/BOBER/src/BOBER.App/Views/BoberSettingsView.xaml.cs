@@ -97,6 +97,7 @@ public partial class BoberSettingsView : UserControl
             StanMinimalnyTextBox.Text = (await _controller.GetStanMinimalnyAsync(_controller.ZmianaId)).ToString();
             MaxUrlopowNaSluzbieTextBox.Text =
                 (await _controller.GetMaxUrlopowNaSluzbieAsync(_controller.ZmianaId)).ToString();
+            LessColorCheckBox.IsChecked = await _controller.GetLessColorAsync();
         }
         catch (Exception ex)
         {
@@ -211,6 +212,7 @@ public partial class BoberSettingsView : UserControl
                 KolorHex = k.KolorHex
             }).ToList();
             await _controller.SaveKoloryAsync(kolory);
+            await _controller.SetLessColorAsync(LessColorCheckBox.IsChecked == true);
 
             var chomikWarning = await _controller.TrySyncNrToChomikAsync(kolejnosc);
             if (chomikWarning is not null)
