@@ -33,6 +33,7 @@ public sealed class FunkcjonariuszRowViewModel : INotifyPropertyChanged
         set => SetField(ref _stopien, value);
     }
     public string PelneImieNazwisko { get; init; } = string.Empty;
+    public string Nazwisko { get; init; } = string.Empty;
     public string Stanowisko { get; init; } = string.Empty;
     public string? Telefon { get; init; }
     public DateTime? DataWstepieniaDoSluzby { get; init; }

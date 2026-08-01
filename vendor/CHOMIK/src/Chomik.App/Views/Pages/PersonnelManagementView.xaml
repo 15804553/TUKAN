@@ -72,7 +72,10 @@
                             <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Imię i nazwisko" Binding="{Binding PelneImieNazwisko}" Width="180">
+                    <DataGridTextColumn Header="Imię i nazwisko"
+                                        Binding="{Binding PelneImieNazwisko}"
+                                        SortMemberPath="Nazwisko"
+                                        Width="180">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
                         </DataGridTextColumn.ElementStyle>

@@ -208,6 +208,7 @@ public sealed class DashboardController(AppServices services)
                 StopienId = f.StopienId,
                 Stopien = f.Stopien,
                 PelneImieNazwisko = f.PelneImieNazwisko,
+                Nazwisko = f.Nazwisko,
                 Stanowisko = f.Stanowisko,
                 Telefon = f.Telefon,
                 DataWstepieniaDoSluzby = f.DataWstepieniaDoSluzby,

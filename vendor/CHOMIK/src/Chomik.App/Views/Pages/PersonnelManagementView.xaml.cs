@@ -182,6 +182,7 @@ public partial class PersonnelManagementView : UserControl
         public int NumerPorzadkowy => Entity.NumerPorzadkowy;
         public string Stopien => Entity.Stopien;
         public string PelneImieNazwisko => Entity.PelneImieNazwisko;
+        public string Nazwisko => Entity.Nazwisko;
         public string Stanowisko => Entity.Stanowisko;
         public string? Telefon => Entity.Telefon;
         public string UprawnieniaSkrot => string.Join(", ", Entity.Uprawnienia.Select(u =>

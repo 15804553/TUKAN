@@ -543,6 +543,7 @@
                         <DataGridTextColumn x:Name="PelneImieNazwiskoColumn"
                                             Header="Imię i nazwisko"
                                             Binding="{Binding PelneImieNazwisko}"
+                                            SortMemberPath="Nazwisko"
                                             Width="2*"
                                             MinWidth="140"
                                             IsReadOnly="True">
