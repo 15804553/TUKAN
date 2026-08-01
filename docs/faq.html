@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TUKAN — FAQ</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --paper: #ffffff;
+      --ink: #1a2332;
+      --muted: #5a6778;
+      --line: #d5dce6;
+      --accent: #1e4d7b;
+      --accent-soft: #e8f0f7;
+      --nav: #14233a;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    a { color: var(--accent); }
+    header.app-bar {
+      background: linear-gradient(135deg, #14233a 0%, #1e4d7b 100%);
+      color: #fff;
+      padding: 1.25rem 1.5rem 1.5rem;
+      border-bottom: 4px solid #c45c26;
+    }
+    header.app-bar h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.75rem;
+      letter-spacing: 0.04em;
+    }
+    header.app-bar p { margin: 0; opacity: 0.9; max-width: 52rem; }
+    header.app-bar .links { margin-top: 0.85rem; }
+    header.app-bar .links a {
+      color: #fff;
+      margin-right: 1rem;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255,255,255,0.45);
+      padding-bottom: 1px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 16rem 1fr;
+      gap: 0;
+      max-width: 68rem;
+      margin: 0 auto;
+      min-height: calc(100vh - 8rem);
+    }
+    nav.toc {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      max-height: 100vh;
+      overflow: auto;
+      padding: 1.25rem 1rem;
+      background: var(--nav);
+      color: #dce6f2;
+    }
+    nav.toc h2 {
+      margin: 0 0 0.75rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #8fa3bc;
+    }
+    nav.toc a {
+      display: block;
+      color: #dce6f2;
+      text-decoration: none;
+      padding: 0.35rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.92rem;
+    }
+    nav.toc a:hover { background: rgba(255,255,255,0.08); }
+    main {
+      padding: 1.5rem 1.75rem 3rem;
+      background: var(--paper);
+      border-left: 1px solid var(--line);
+    }
+    .group {
+      margin-bottom: 2rem;
+    }
+    .group > h2 {
+      margin: 0 0 0.85rem;
+      font-size: 1.35rem;
+      color: var(--accent);
+      scroll-margin-top: 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--accent-soft);
+    }
+    details.faq {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      margin-bottom: 0.55rem;
+      background: #fff;
+    }
+    details.faq[open] { border-color: #b7c8db; }
+    details.faq summary {
+      cursor: pointer;
+      padding: 0.7rem 0.9rem;
+      font-weight: 600;
+      list-style: none;
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-start;
+    }
+    details.faq summary::-webkit-details-marker { display: none; }
+    details.faq summary::before {
+      content: "+";
+      flex: 0 0 auto;
+      width: 1.25rem;
+      height: 1.25rem;
+      line-height: 1.15rem;
+      text-align: center;
+      border-radius: 3px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    details.faq[open] summary::before { content: "−"; }
+    details.faq .answer {
+      padding: 0 0.9rem 0.9rem 2.75rem;
+      color: var(--ink);
+    }
+    details.faq .answer p { margin: 0 0 0.55rem; }
+    details.faq .answer p:last-child { margin-bottom: 0; }
+    details.faq .answer ul { margin: 0.35rem 0 0.55rem; padding-left: 1.2rem; }
+    kbd {
+      font-family: Consolas, monospace;
+      font-size: 0.88em;
+      background: #eef1f5;
+      border: 1px solid #c8d0db;
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+    }
+    .search-wrap {
+      margin-bottom: 1.25rem;
+    }
+    .search-wrap input {
+      width: 100%;
+      max-width: 28rem;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font: inherit;
+    }
+    .search-wrap input:focus {
+      outline: 2px solid #8eb0d4;
+      border-color: var(--accent);
+    }
+    footer {
+      max-width: 68rem;
+      margin: 0 auto;
+      padding: 1rem 1.5rem 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.toc { position: static; max-height: none; }
+      details.faq .answer { padding-left: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-bar">
+    <h1>TUKAN — FAQ</h1>
+    <p>Często zadawane pytania o logowanie, personel, plan urlopów, grafik służb, rozkazy i ustawienia.</p>
+    <div class="links">
+      <a href="pomoc.html">Pełna pomoc (rozdziały)</a>
+      <a href="#start">Do góry</a>
+    </div>
+  </header>
+
+  <div class="layout" id="start">
+    <nav class="toc" aria-label="Tematy FAQ">
+      <h2>Tematy</h2>
+      <a href="#ogolne">Ogólne</a>
+      <a href="#logowanie">Logowanie</a>
+      <a href="#personel">Personel</a>
+      <a href="#urlopy">Plan urlopów</a>
+      <a href="#grafik">Grafik służb</a>
+      <a href="#nurkowy">Grafik nurkowy</a>
+      <a href="#kalendarz">Kalendarz</a>
+      <a href="#obsada">Obsada funkcji</a>
+      <a href="#rozkazy">Rozkazy</a>
+      <a href="#ustawienia">Ustawienia</a>
+    </nav>
+
+    <main>
+      <div class="search-wrap">
+        <label for="q" class="visually-hidden" style="position:absolute;left:-9999px">Szukaj w FAQ</label>
+        <input id="q" type="search" placeholder="Szukaj w pytaniach…" autocomplete="off" />
+      </div>
+
+      <div class="group" id="ogolne">
+        <h2>Ogólne</h2>
+
+        <details class="faq">
+          <summary>Czym jest TUKAN?</summary>
+          <div class="answer">
+            <p>Jedna aplikacja desktopowa łącząca personel, grafik służb/urlopów oraz rozkazy dzienne. Po zalogowaniu przełączasz się między widokami w lewym menu.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Gdzie są dane programu?</summary>
+          <div class="answer">
+            <p>W pliku bazy Access <code>TukanDatabase.accdb</code> w katalogu programu. Ścieżka może być zapisana w <code>databasepath.txt</code>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Nie widzę pozycji w menu — dlaczego?</summary>
+          <div class="answer">
+            <p>Menu zależy od roli konta (PA, Zmiana 1–4, DCA JRG, Administrator). Np. PA nie ma grafiku służb; Administrator ma głównie narzędzia administracyjne. Pełny opis: <a href="pomoc.html#role">Pomoc → Role</a>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jak zwinąć lewy panel?</summary>
+          <div class="answer">
+            <p>Kliknij przycisk <kbd>☰</kbd> (dymek: „Zwiń / rozwiń panel”).</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="group" id="logowanie">
+        <h2>Logowanie</h2>
+
+        <details class="faq">
+          <summary>Jak się zalogować?</summary>
+          <div class="answer">
+            <p>Wybierz użytkownika z listy, wpisz hasło (jeśli wymagane) i kliknij <strong>Zaloguj</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Dlaczego PA nie wymaga hasła?</summary>
+          <div class="answer">
+            <p>Tak jest zaprojektowane konto PA — w oknie logowania jest informacja „PA - bez hasła”.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Zapomniałem hasła — co robić?</summary>
+          <div class="answer">
+            <p>Poproś DCA JRG lub Administratora o wejście w <strong>Zarządzanie hasłami</strong> i użycie <strong>Ustaw hasło</strong> albo <strong>Reset do domyślnego</strong>.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="group" id="personel">
+        <h2>Personel</h2>
+
+        <details class="faq">
+          <summary>Jak znaleźć konkretną osobę?</summary>
+          <div class="answer">
+            <p>W <strong>Widoku ogólnym</strong> użyj pola wyszukiwania lub filtrów: zmiana, uprawnienie/kurs. Potem <strong>Odśwież</strong>, jeśli dane się zmieniły.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jak dodać nowego funkcjonariusza?</summary>
+          <div class="answer">
+            <p>Wejdź w <strong>Edycja personelu</strong> → <strong>Dodaj funkcjonariusza</strong> → uzupełnij dane, uprawnienia i odznaczenia → <strong>Zapisz</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Czym różni się kliknięcie wiersza u DCA od kliknięcia na zmianie?</summary>
+          <div class="answer">
+            <p>Konto zmiany otwiera edycję; DCA JRG zwykle otwiera <strong>profil</strong> (podgląd terminów i uprawnień).</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jak wyeksportować listę nazwisk?</summary>
+          <div class="answer">
+            <p>Menu <strong>Utwórz listę osób</strong> → zapisz plik Excel w dialogu „Zapisz listę osób”.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="group" id="urlopy">
+        <h2>Plan urlopów</h2>
+
+        <details class="faq">
+          <summary>Jak wpisać urlop w planie?</summary>
+          <div class="answer">
+            <p>Zaznacz dni w wierszu osoby (<kbd>Shift</kbd>/<kbd>Ctrl</kbd>+klik), potem naciśnij <kbd>W</kbd> (wypoczynkowy) lub <kbd>D</kbd> (dodatkowy). <kbd>Spacja</kbd> czyści zaznaczenie.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Ile dni mogę zaplanować?</summary>
+          <div class="answer">
+            <ul>
+              <li>wypoczynkowy (<strong>w</strong>): 20 dni z 26 w roku</li>
+              <li>dodatkowy (<strong>d</strong>): 13 dni, max 2 części po min. 6 dni</li>
+              <li>czerwiec–wrzesień: max 15 dni wypoczynkowych</li>
+            </ul>
+            <p>Szczegóły w zakładce <strong>Instrukcja</strong> w planie urlopów oraz w <a href="pomoc.html#plan-urlopow">Pomocy</a>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Dlaczego program nie pozwala zapisać planu?</summary>
+          <div class="answer">
+            <p>Najczęściej złamana jest reguła walidacji (limit dni, limit osób na służbie, święta, podział urlopu dodatkowego). Sprawdź komunikat i wiersz „Na urlopie” (kolory ostrzegawcze).</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jak przenieść plan na grafik służb?</summary>
+          <div class="answer">
+            <p>Po zaplanowaniu użyj <strong>Zastosuj na grafiku</strong>. To wpisuje urlopy do grafiku służb.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Czy mogę importować plan z Excela?</summary>
+          <div class="answer">
+            <p>Tak — <strong>Importuj z Excel</strong> / <strong>Eksportuj do Excel</strong> na pasku planu urlopów.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jak wyczyścić cały rok urlopów?</summary>
+          <div class="answer">
+            <p><strong>Wyczyść plan roku</strong> → potwierdź w dialogu „Plan urlopów — usuwanie danych” przyciskiem <strong>Usuń plan roku</strong>.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="group" id="grafik">
+        <h2>Grafik służb</h2>
+
+        <details class="faq">
+          <summary>Jak zmienić status dnia w grafiku?</summary>
+          <div class="answer">
+            <p>Kliknij komórkę i użyj skrótu klawiszowego albo menu kontekstowego (PPM). Lista skrótów jest w stopce widoku oraz w <a href="pomoc.html#grafik-sluzb">Pomocy</a>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Co oznaczają skróty D, W, U, O, „.” i „/”?</summary>
+          <div class="answer">
+            <ul>
+              <li><kbd>D</kbd> — dyżur</li>
+              <li><kbd>W</kbd> — wolna służba</li>
+              <li><kbd>U</kbd> — urlop</li>
+              <li><kbd>O</kbd> — oddaje</li>
+              <li><kbd>.</kbd> — chętna oddać</li>
+              <li><kbd>/</kbd> — potrzebuje wolne (?)</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jak wyeksportować grafik do Excela?</summary>
+          <div class="answer">
+            <p>Użyj <strong>Eksportuj {miesiąc} do Excel</strong> albo <strong>Eksportuj wszystkie miesiące do Excel</strong> na pasku widoku.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jak dodać notatkę do komórki?</summary>
+          <div class="answer">
+            <p>PPM na komórce → <strong>Notatka</strong> (lub Uwagi). Zapisz w dialogu notatki.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="group" id="nurkowy">
+        <h2>Grafik nurkowy</h2>
+
+        <details class="faq">
+          <summary>Skąd bierze się grafik nurkowy?</summary>
+          <div class="answer">
+            <p>Można go wygenerować / zaktualizować z grafiku służb (przycisk dla miesiąca) albo przeglądać w widoku <strong>Grafik nurkowy</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Kto zatwierdza grafik nurkowy?</summary>
+          <div class="answer">
+            <p>Zazwyczaj DCA JRG przyciskami <strong>Zatwierdź grafik</strong> / <strong>Cofnij zatwierdzenie</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Co oznacza „1” i „U” w grafiku nurkowym?</summary>
+          <div class="answer">
+            <p><strong>1</strong> = dostępny w pracy, <strong>U</strong> = urlop, puste = wolne lub inny status.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="group" id="kalendarz">
+        <h2>Kalendarz</h2>
+
+        <details class="faq">
+          <summary>Do czego służy kalendarz?</summary>
+          <div class="answer">
+            <p>Do wymiany notatek między zmianami (i DCA): wysyłanie, odczyt, odpowiedź, potwierdzenie przeczytania.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Widzę znacznik przy pozycji Kalendarz — co to znaczy?</summary>
+          <div class="answer">
+            <p>Masz nieprzeczytane notatki. Otwórz kalendarz, kliknij dzień i użyj <strong>Przeczytałem</strong> lub <strong>Odpowiedz</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jak napisać notatkę do innej zmiany?</summary>
+          <div class="answer">
+            <p>Kliknij dzień → <strong>Nowa prywatna notatka</strong> (lub odpowiednia akcja w oknie dnia) → wybierz odbiorcę: wybraną zmianę / wszystkie / zmianę I–III.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="group" id="obsada">
+        <h2>Obsada funkcji</h2>
+
+        <details class="faq">
+          <summary>Jak wpisać funkcję na dzień?</summary>
+          <div class="answer">
+            <p>W siatce obsady wpisz skrót (np. DZ, PA, SZ). Lista skrótów jest w stopce widoku.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Dlaczego nie mam Obsady funkcji w menu?</summary>
+          <div class="answer">
+            <p>Obsada jest dostępna dla zmian 1–3 (nie dla PA). Sprawdź, na które konto jesteś zalogowany.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="group" id="rozkazy">
+        <h2>Rozkazy dzienne</h2>
+
+        <details class="faq">
+          <summary>Jak utworzyć nowy rozkaz?</summary>
+          <div class="answer">
+            <p><strong>＋ Nowy rozkaz</strong> → ustaw datę → <strong>↻ Odśwież z grafiku</strong> → uzupełnij sekcje → <strong>Zapisz</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Dlaczego nie mogę edytować rozkazu?</summary>
+          <div class="answer">
+            <p>Rozkaz może być zablokowany po zatwierdzeniu przez DCA (ikona kłódki). DCA może użyć <strong>Odblokuj</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jak wyeksportować rozkaz do Worda?</summary>
+          <div class="answer">
+            <p>W edytorze rozkazu kliknij <strong>📄 Eksport Word</strong>. Katalog docelowy możesz ustawić w Ustawieniach → Ścieżki eksportu (Administrator).</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Personel w rozkazie jest nieaktualny — co zrobić?</summary>
+          <div class="answer">
+            <p>Użyj <strong>↻ Odśwież z grafiku</strong>, żeby uzupełnić dane według aktualnego grafiku służb.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="group" id="ustawienia">
+        <h2>Ustawienia</h2>
+
+        <details class="faq">
+          <summary>Gdzie zmienić limit osób na urlopie w dniu służby?</summary>
+          <div class="answer">
+            <p>Ustawienia → zakładka <strong>Grafik</strong> → parametry zmiany (m.in. max ilość urlopów) → <strong>Zapisz</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jak przygotować pusty grafik na rok?</summary>
+          <div class="answer">
+            <p>Ustawienia → Grafik → <strong>Przygotuj grafik bazowy na bieżący rok</strong>. Dostępne są też opcje czyszczenia półrocza.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Gdzie ustawić katalogi eksportu?</summary>
+          <div class="answer">
+            <p>Konto Administrator → Ustawienia → <strong>Ścieżki eksportu</strong> → Przeglądaj… → <strong>Zapisz ścieżki</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>Jak zrobić kopię zapasową bazy?</summary>
+          <div class="answer">
+            <p>Ustawienia → zakładka Rozkazy (wg roli) → <strong>Wykonaj backup teraz</strong>. Odzyskanie: <strong>Odzyskaj bazę z backupu…</strong>.</p>
+          </div>
+        </details>
+      </div>
+    </main>
+  </div>
+
+  <footer>
+    TUKAN — FAQ · plik do otwarcia w przeglądarce ·
+    <a href="pomoc.html">Pełna pomoc</a>
+  </footer>
+
+  <script>
+    (function () {
+      var input = document.getElementById("q");
+      if (!input) return;
+      input.addEventListener("input", function () {
+        var q = (input.value || "").trim().toLowerCase();
+        document.querySelectorAll("details.faq").forEach(function (el) {
+          var text = el.textContent.toLowerCase();
+          var show = !q || text.indexOf(q) !== -1;
+          el.style.display = show ? "" : "none";
+          if (q && show) el.open = true;
+          if (!q) el.open = false;
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

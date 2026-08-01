@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TUKAN — Pomoc</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --paper: #ffffff;
+      --ink: #1a2332;
+      --muted: #5a6778;
+      --line: #d5dce6;
+      --accent: #1e4d7b;
+      --accent-soft: #e8f0f7;
+      --nav: #14233a;
+      --ok: #1b6b3a;
+      --warn: #8a5a00;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    a { color: var(--accent); }
+    header.app-bar {
+      background: linear-gradient(135deg, #14233a 0%, #1e4d7b 100%);
+      color: #fff;
+      padding: 1.25rem 1.5rem 1.5rem;
+      border-bottom: 4px solid #c45c26;
+    }
+    header.app-bar h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.75rem;
+      letter-spacing: 0.04em;
+    }
+    header.app-bar p { margin: 0; opacity: 0.9; max-width: 52rem; }
+    header.app-bar .links { margin-top: 0.85rem; }
+    header.app-bar .links a {
+      color: #fff;
+      margin-right: 1rem;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255,255,255,0.45);
+      padding-bottom: 1px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 16rem 1fr;
+      gap: 0;
+      max-width: 68rem;
+      margin: 0 auto;
+      min-height: calc(100vh - 8rem);
+    }
+    nav.toc {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      max-height: 100vh;
+      overflow: auto;
+      padding: 1.25rem 1rem;
+      background: var(--nav);
+      color: #dce6f2;
+    }
+    nav.toc h2 {
+      margin: 0 0 0.75rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #8fa3bc;
+    }
+    nav.toc a {
+      display: block;
+      color: #dce6f2;
+      text-decoration: none;
+      padding: 0.35rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.92rem;
+    }
+    nav.toc a:hover { background: rgba(255,255,255,0.08); }
+    main {
+      padding: 1.5rem 1.75rem 3rem;
+      background: var(--paper);
+      border-left: 1px solid var(--line);
+    }
+    section {
+      margin-bottom: 2.5rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--line);
+    }
+    section:last-of-type { border-bottom: none; }
+    h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.45rem;
+      color: var(--accent);
+      scroll-margin-top: 1rem;
+    }
+    h3 {
+      margin: 1.25rem 0 0.5rem;
+      font-size: 1.05rem;
+      color: var(--ink);
+    }
+    p, li { color: var(--ink); }
+    .muted { color: var(--muted); }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin-bottom: 0.35rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0 1rem;
+      font-size: 0.95rem;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.45rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--accent-soft); }
+    .box {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      padding: 0.75rem 1rem;
+      margin: 0.85rem 0;
+      border-radius: 0 6px 6px 0;
+    }
+    .box.warn {
+      background: #fff6e8;
+      border-left-color: #c45c26;
+    }
+    kbd {
+      font-family: Consolas, monospace;
+      font-size: 0.88em;
+      background: #eef1f5;
+      border: 1px solid #c8d0db;
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+    }
+    footer {
+      max-width: 68rem;
+      margin: 0 auto;
+      padding: 1rem 1.5rem 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.toc {
+        position: static;
+        max-height: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-bar">
+    <h1>TUKAN — Pomoc</h1>
+    <p>Instrukcja obsługi programu do zarządzania personelem, grafikiem służb i rozkazami dziennymi. Otwórz ten plik w przeglądarce.</p>
+    <div class="links">
+      <a href="#spis">Spis treści</a>
+      <a href="faq.html">FAQ — często zadawane pytania</a>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" id="spis" aria-label="Spis treści">
+      <h2>Spis treści</h2>
+      <a href="#wstep">1. Wstęp</a>
+      <a href="#logowanie">2. Logowanie</a>
+      <a href="#nawigacja">3. Nawigacja</a>
+      <a href="#widok-ogolny">4. Widok ogólny</a>
+      <a href="#edycja-personelu">5. Edycja personelu</a>
+      <a href="#hasla">6. Zarządzanie hasłami</a>
+      <a href="#lista-osob">7. Lista osób</a>
+      <a href="#plan-urlopow">8. Plan urlopów</a>
+      <a href="#grafik-sluzb">9. Grafik służb</a>
+      <a href="#grafik-nurkowy">10. Grafik nurkowy</a>
+      <a href="#kalendarz">11. Kalendarz</a>
+      <a href="#obsada">12. Obsada funkcji</a>
+      <a href="#rozkazy">13. Rozkazy dzienne</a>
+      <a href="#ustawienia">14. Ustawienia</a>
+      <a href="#role">15. Role i uprawnienia</a>
+    </nav>
+
+    <main>
+      <section id="wstep">
+        <h2>1. Wstęp</h2>
+        <p><strong>TUKAN</strong> łączy w jednym oknie trzy obszary pracy:</p>
+        <ul>
+          <li><strong>Personel</strong> — kartoteka funkcjonariuszy, terminy, uprawnienia</li>
+          <li><strong>Grafik</strong> — służby, urlopy, grafik nurkowy, kalendarz notatek</li>
+          <li><strong>Rozkazy</strong> — rozkazy dzienne, obsada, eksport do Word</li>
+        </ul>
+        <p>Dane trzymane są w jednej wspólnej bazie Access (<code>TukanDatabase.accdb</code>). Widoczność pozycji w menu zależy od konta, na które się zalogujesz.</p>
+      </section>
+
+      <section id="logowanie">
+        <h2>2. Logowanie</h2>
+        <p>Okno <strong>TUKAN — logowanie</strong>: wybierz użytkownika z listy, wpisz hasło (jeśli wymagane) i kliknij <strong>Zaloguj</strong>.</p>
+        <div class="box">
+          Konto <strong>PA</strong> loguje się bez hasła (informacja widoczna w oknie logowania).
+        </div>
+        <p>Jedno logowanie otwiera dostęp do personelu, grafiku i rozkazów zgodnie z rolą konta.</p>
+      </section>
+
+      <section id="nawigacja">
+        <h2>3. Nawigacja — główne okno</h2>
+        <p>Po zalogowaniu pracujesz w jednym oknie z <strong>lewym panelem menu</strong>. Przycisk <kbd>☰</kbd> zwija lub rozwija panel.</p>
+        <table>
+          <thead>
+            <tr><th>Pozycja menu</th><th>Do czego służy</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Widok ogólny</td><td>Przegląd personelu i terminów</td></tr>
+            <tr><td>Edycja personelu</td><td>Dodawanie i edycja osób na zmianie</td></tr>
+            <tr><td>Zarządzanie hasłami</td><td>Ustawianie i reset haseł kont</td></tr>
+            <tr><td>Utwórz listę osób</td><td>Eksport listy do Excela</td></tr>
+            <tr><td>Plan urlopów</td><td>Planowanie urlopów na rok</td></tr>
+            <tr><td>Grafik nurkowy</td><td>Dostępność nurków w miesiącu</td></tr>
+            <tr><td>Kalendarz</td><td>Notatki między zmianami</td></tr>
+            <tr><td>Grafik służb</td><td>Miesięczny grafik statusów służby</td></tr>
+            <tr><td>Rozkazy dzienne</td><td>Tworzenie i eksport rozkazów</td></tr>
+            <tr><td>Obsada funkcji</td><td>Przypisanie ról służbowych</td></tr>
+            <tr><td>Ustawienia</td><td>Parametry programu (wg roli)</td></tr>
+            <tr><td>Wyloguj</td><td>Zakończenie sesji</td></tr>
+          </tbody>
+        </table>
+        <p class="muted">Przy pozycji <strong>Kalendarz</strong> może pojawić się znacznik nieprzeczytanych notatek.</p>
+      </section>
+
+      <section id="widok-ogolny">
+        <h2>4. Widok ogólny — personel</h2>
+        <p>Domyślny widok po zalogowaniu. Pokazuje tabelę funkcjonariuszy z terminami (badania, uprawnienia, odznaczenia itd.).</p>
+        <h3>Filtry i akcje</h3>
+        <ul>
+          <li>filtr po <strong>zmianie</strong></li>
+          <li>filtr po <strong>uprawnieniu / kursie</strong></li>
+          <li>wyszukiwanie osoby po nazwisku</li>
+          <li>przycisk <strong>Odśwież</strong></li>
+        </ul>
+        <h3>Jak korzystać</h3>
+        <ol>
+          <li>Ustaw filtry lub wyszukaj osobę.</li>
+          <li>Kliknij wiersz — otworzy się edycja (konto zmiany) albo profil (DCA JRG).</li>
+          <li>Konto PA może w tabeli poprawiać wybrane daty i stopień.</li>
+        </ol>
+      </section>
+
+      <section id="edycja-personelu">
+        <h2>5. Edycja personelu</h2>
+        <p>Widok dla kont zmian — zarządzanie funkcjonariuszami własnej zmiany.</p>
+        <p><strong>Przyciski:</strong> Dodaj funkcjonariusza · Edytuj · Usuń</p>
+        <h3>Okno funkcjonariusza</h3>
+        <ul>
+          <li>Dane podstawowe (stopień, imię i nazwisko, stanowisko, telefon…)</li>
+          <li>Terminy ważności</li>
+          <li>Dane wrażliwe (wg uprawnień)</li>
+          <li>Zakładki: <strong>Uprawnienia i kursy</strong>, <strong>Odznaczenia i medale</strong></li>
+        </ul>
+        <p>Po zmianach kliknij <strong>Zapisz</strong> (lub Anuluj, by wyjść bez zapisu).</p>
+      </section>
+
+      <section id="hasla">
+        <h2>6. Zarządzanie hasłami</h2>
+        <p>Dostępne dla DCA JRG oraz Administratora.</p>
+        <ol>
+          <li>Wybierz użytkownika (konto).</li>
+          <li>Wpisz nowe hasło i kliknij <strong>Ustaw hasło</strong>, albo</li>
+          <li>użyj <strong>Reset do domyślnego</strong>.</li>
+        </ol>
+      </section>
+
+      <section id="lista-osob">
+        <h2>7. Utwórz listę osób</h2>
+        <p>Eksport nazwisk do pliku Excel (<code>*.xlsx</code>). Zakres zależy od konta (własna zmiana lub filtr zmiany). W dialogu „Zapisz listę osób” wybierz lokalizację pliku.</p>
+      </section>
+
+      <section id="plan-urlopow">
+        <h2>8. Plan urlopów</h2>
+        <p>Planowanie urlopów wypoczynkowych (<strong>w</strong>) i dodatkowych (<strong>d</strong>) na wybrany rok dla zmiany. Po zatwierdzeniu planu można go przenieść na grafik służb.</p>
+
+        <h3>Główne akcje</h3>
+        <ul>
+          <li>wybór <strong>roku planu</strong></li>
+          <li><strong>Importuj z Excel</strong> / <strong>Eksportuj do Excel</strong></li>
+          <li><strong>Wyczyść plan roku</strong></li>
+          <li><strong>Zastosuj na grafiku</strong> — wpisuje urlopy do grafiku służb</li>
+        </ul>
+        <p>Miesiące są w zakładkach. Ostatnia zakładka <strong>Instrukcja</strong> zawiera reguły planowania (również w programie).</p>
+
+        <h3>Reguły planowania</h3>
+        <ol>
+          <li>Urlopy planujemy „służbami” — w interwale 3-dniowym cyklu zmiany.</li>
+          <li>Urlop zaczyna się w dniu służby i kończy w dniu bezpośrednio przed następną służbą.</li>
+          <li>Urlop wypoczynkowy (<strong>w</strong>): planujemy <strong>20</strong> dni z 26 przysługujących w roku.</li>
+          <li>Urlop dodatkowy (<strong>d</strong>): planujemy <strong>13</strong> dni; można podzielić maksymalnie na <strong>2</strong> części, każda min. <strong>6</strong> dni.</li>
+          <li>Nie wpisujemy w plan urlopów urlopów zaległych.</li>
+          <li>W sezonie czerwiec–wrzesień maksymalnie <strong>15</strong> dni wypoczynkowych.</li>
+          <li>W jednym dniu służby na urlopie może być ograniczona liczba osób (domyślnie 5; wartość w Ustawieniach).</li>
+          <li>Nie planujemy urlopów w święta Wielkanocne oraz Bożego Narodzenia.</li>
+        </ol>
+
+        <h3>Skróty w siatce</h3>
+        <ul>
+          <li><kbd>Shift</kbd>+klik lub <kbd>Ctrl</kbd>+klik — zaznacz kilka dni w wierszu</li>
+          <li><kbd>W</kbd> — urlop wypoczynkowy</li>
+          <li><kbd>D</kbd> — urlop dodatkowy</li>
+          <li><kbd>Spacja</kbd> — wyczyść zaznaczone komórki</li>
+          <li>Prawy przycisk myszy — menu kontekstowe</li>
+        </ul>
+
+        <h3>Kolory i oznaczenia</h3>
+        <ul>
+          <li>Kolumna W/D: zielony = limit zaplanowany w całości, czerwony = przekroczono limit</li>
+          <li>Żółte tło w nagłówku kolumny — dzień służby zmiany</li>
+          <li>Wiersz „Na urlopie”: zielony / pomarańczowy / czerwony — zbliżanie się do limitu osób na urlopie</li>
+        </ul>
+
+        <div class="box warn">
+          <strong>Typowy przebieg:</strong> zaznacz dni → <kbd>W</kbd> lub <kbd>D</kbd> → sprawdź komunikaty walidacji → <strong>Zastosuj na grafiku</strong>.
+        </div>
+      </section>
+
+      <section id="grafik-sluzb">
+        <h2>9. Grafik służb</h2>
+        <p>Miesięczny grafik obecności i statusów służby dla zmiany. Można eksportować pojedynczy miesiąc lub wszystkie miesiące do Excela. Dla zmian dostępne jest też generowanie / aktualizacja grafiku nurkowego na dany miesiąc.</p>
+
+        <h3>Statusy (menu kontekstowe i skróty)</h3>
+        <table>
+          <thead>
+            <tr><th>Skrót</th><th>Znaczenie</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><kbd>Spacja</kbd></td><td>W pracy</td></tr>
+            <tr><td><kbd>D</kbd></td><td>Dyżur</td></tr>
+            <tr><td><kbd>W</kbd></td><td>Wolna służba (WS)</td></tr>
+            <tr><td><kbd>U</kbd></td><td>Urlop</td></tr>
+            <tr><td><kbd>U</kbd>+<kbd>W</kbd></td><td>Urlop z WS</td></tr>
+            <tr><td><kbd>E</kbd></td><td>Delegacja</td></tr>
+            <tr><td><kbd>S</kbd></td><td>Szkolenie</td></tr>
+            <tr><td><kbd>C</kbd></td><td>Chory</td></tr>
+            <tr><td><kbd>O</kbd></td><td>Oddaje</td></tr>
+            <tr><td><kbd>.</kbd></td><td>Chętna oddać</td></tr>
+            <tr><td><kbd>/</kbd></td><td>Potrzebuje wolne (?)</td></tr>
+          </tbody>
+        </table>
+        <p>Dodatkowo w menu komórki: <strong>Wyczyść</strong>, <strong>Notatka</strong>, <strong>Uwagi</strong>.</p>
+      </section>
+
+      <section id="grafik-nurkowy">
+        <h2>10. Grafik nurkowy</h2>
+        <p>Podgląd dostępności nurków w wybranym roku i miesiącu.</p>
+        <ul>
+          <li><strong>Odśwież</strong> — przeładuj dane</li>
+          <li><strong>Zatwierdź grafik</strong> / <strong>Cofnij zatwierdzenie</strong> — zwykle DCA JRG</li>
+        </ul>
+        <h3>Legenda</h3>
+        <ul>
+          <li><strong>1</strong> — dostępny w pracy</li>
+          <li><strong>U</strong> — urlop</li>
+          <li>puste — wolne / inny status</li>
+        </ul>
+        <p class="muted">Grafik nurkowy można też wygenerować z poziomu grafiku służb dla konkretnego miesiąca.</p>
+      </section>
+
+      <section id="kalendarz">
+        <h2>11. Kalendarz</h2>
+        <p>Notatki między zmianami (oraz DCA). Strzałki ◀ ▶ i wybór roku służą do nawigacji; <strong>Odśwież</strong> przeładowuje dane.</p>
+        <h3>Dzień w kalendarzu</h3>
+        <ol>
+          <li>Kliknij dzień.</li>
+          <li>Przeglądaj notatki <strong>Wysłane</strong> / <strong>Odebrane</strong>.</li>
+          <li>Użyj <strong>Nowa prywatna notatka</strong>, <strong>Otwórz</strong> lub <strong>Usuń zaznaczone</strong>.</li>
+        </ol>
+        <h3>Notatka</h3>
+        <p>Adresaci: wybrana zmiana, wszystkie zmiany albo konkretna zmiana I–III. Akcje: <strong>Usuń</strong>, <strong>Odpowiedz</strong>, <strong>Przeczytałem</strong>.</p>
+      </section>
+
+      <section id="obsada">
+        <h2>12. Obsada funkcji</h2>
+        <p>Przypisywanie ról służbowych na dni miesiąca (zmiany 1–3). Edycja skrótów w siatce; zakładki miesięcy; <strong>Odśwież</strong>.</p>
+        <table>
+          <thead>
+            <tr><th>Skrót</th><th>Funkcja</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>DZ</td><td>Dowódca zmiany</td></tr>
+            <tr><td>PA</td><td>Punkt alarmowy</td></tr>
+            <tr><td>SZ</td><td>Szef zmiany</td></tr>
+            <tr><td>GA</td><td>Garażomistrz</td></tr>
+            <tr><td>KPP</td><td>Dowódca działań SGRW-N</td></tr>
+            <tr><td>BO</td><td>Bosman</td></tr>
+            <tr><td>SO</td><td>Sonarzysta</td></tr>
+            <tr><td>PD</td><td>Podoficer dyżurny</td></tr>
+            <tr><td>SD</td><td>Strażak dyżurny</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="rozkazy">
+        <h2>13. Rozkazy dzienne</h2>
+        <p>Tworzenie, edycja, zatwierdzanie i eksport rozkazów dziennych JRG.</p>
+
+        <h3>Lista rozkazów</h3>
+        <ul>
+          <li><strong>＋ Nowy rozkaz</strong></li>
+          <li>filtr roku</li>
+          <li>usuwanie rozkazu (✕)</li>
+          <li>ikona kłódki — rozkaz zablokowany przez DCA</li>
+        </ul>
+
+        <h3>Edytor rozkazu — sekcje</h3>
+        <ol>
+          <li>Służba</li>
+          <li>Podział bojowy</li>
+          <li>Dyżurni ratownicy medyczni PSP</li>
+          <li>Zajęcia</li>
+          <li>Nieobecni w służbie (+ Dodaj)</li>
+          <li>Uwagi</li>
+        </ol>
+
+        <h3>Przyciski</h3>
+        <ul>
+          <li><strong>↻ Odśwież z grafiku</strong> — uzupełnia personel według grafiku</li>
+          <li>filtr uprawnień / <strong>Wyczyść filtry</strong></li>
+          <li><strong>💾 Zapisz</strong></li>
+          <li><strong>✔ Zatwierdź rozkaz</strong> / <strong>🔓 Odblokuj</strong> (DCA)</li>
+          <li><strong>📄 Eksport Word</strong></li>
+        </ul>
+
+        <div class="box">
+          <strong>Przebieg:</strong> Nowy rozkaz → ustaw datę → odśwież z grafiku → uzupełnij obsadę i sekcje → Zapisz → zatwierdź (DCA) → eksport Word.
+        </div>
+      </section>
+
+      <section id="ustawienia">
+        <h2>14. Ustawienia</h2>
+        <p>Zakładki zależą od roli konta.</p>
+        <table>
+          <thead>
+            <tr><th>Zakładka</th><th>Zawartość</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Personel / Uprawnienia</td><td>Kolumny widoku ogólnego, słownik uprawnień, dyżurni ratownicy medyczni</td></tr>
+            <tr><td>Grafik</td><td>Parametry zmiany (stan, min., max urlopów), kolejność osób, kolory ról, przygotowanie/czyszczenie grafiku</td></tr>
+            <tr><td>Pojazdy</td><td>Lista pojazdów, wymagane kursy, poziom A/AB</td></tr>
+            <tr><td>Rozkazy</td><td>Nr JRG, backup bazy</td></tr>
+            <tr><td>Kalendarz</td><td>Kolory zmian, auto-usuwanie notatek</td></tr>
+            <tr><td>Ścieżki eksportu</td><td>Katalogi eksportu rozkazów i grafików (Administrator)</td></tr>
+          </tbody>
+        </table>
+        <p>Po zmianach używaj przycisków <strong>Zapisz</strong> / <strong>Zapisz zmiany</strong> / <strong>Zapisz ścieżki</strong> w danej zakładce.</p>
+      </section>
+
+      <section id="role">
+        <h2>15. Role i uprawnienia (skrót)</h2>
+        <table>
+          <thead>
+            <tr><th>Rola</th><th>Typowy dostęp</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>PA</td><td>Widok ogólny (edycja wybranych pól), lista osób; bez grafiku służb</td></tr>
+            <tr><td>Zmiana 1–4</td><td>Personel zmiany, grafik, plan urlopów, obsada (1–3), rozkazy, kalendarz, grafik nurkowy</td></tr>
+            <tr><td>DCA JRG</td><td>Profile personelu, zatwierdzanie rozkazów i grafiku nurkowego, kalendarz, ustawienia uprawnień/rozkazów/pojazdów</td></tr>
+            <tr><td>Administrator</td><td>Hasła, ścieżki eksportu i administracja</td></tr>
+          </tbody>
+        </table>
+        <p>Szczegółowe pytania — zobacz <a href="faq.html">FAQ</a>.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    TUKAN — pomoc użytkownika · plik do otwarcia w przeglądarce ·
+    <a href="faq.html">FAQ</a>
+  </footer>
+</body>
+</html>
