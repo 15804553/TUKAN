@@ -98,6 +98,19 @@ public partial class BoberSettingsView : UserControl
             MaxUrlopowNaSluzbieTextBox.Text =
                 (await _controller.GetMaxUrlopowNaSluzbieAsync(_controller.ZmianaId)).ToString();
             LessColorCheckBox.IsChecked = await _controller.GetLessColorAsync();
+
+            var rowColors = await _controller.GetGrafikRowColorSettingsAsync();
+            if (generation != _loadGeneration)
+            {
+                return;
+            }
+
+            AlternatingColorsCheckBox.IsChecked = rowColors.Mode == GrafikRowColorMode.Alternating;
+            AltColorATextBox.Text = rowColors.ColorA;
+            AltColorBTextBox.Text = rowColors.ColorB;
+            UpdateAlternatingColorsPanel();
+            RefreshAltColorPreview(AltColorAPreview, AltColorATextBox.Text);
+            RefreshAltColorPreview(AltColorBPreview, AltColorBTextBox.Text);
         }
         catch (Exception ex)
         {
@@ -105,6 +118,73 @@ public partial class BoberSettingsView : UserControl
             {
                 UiErrorReporter.Show(GetOwnerWindow(), ex, "Błąd ładowania ustawień");
             }
+        }
+    }
+
+    private void OnAlternatingColorsChanged(object sender, RoutedEventArgs e) =>
+        UpdateAlternatingColorsPanel();
+
+    private void UpdateAlternatingColorsPanel() =>
+        AlternatingColorsPanel.IsEnabled = AlternatingColorsCheckBox.IsChecked == true;
+
+    private void OnAltColorTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender == AltColorATextBox)
+            RefreshAltColorPreview(AltColorAPreview, AltColorATextBox.Text);
+        else if (sender == AltColorBTextBox)
+            RefreshAltColorPreview(AltColorBPreview, AltColorBTextBox.Text);
+    }
+
+    private void OnAltColorPreviewClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string tag })
+            return;
+
+        var textBox = tag == "B" ? AltColorBTextBox : AltColorATextBox;
+        var preview = tag == "B" ? AltColorBPreview : AltColorAPreview;
+        var chosen = PickColor(textBox.Text);
+        if (chosen is null)
+            return;
+
+        textBox.Text = chosen;
+        RefreshAltColorPreview(preview, chosen);
+    }
+
+    private string? PickColor(string currentHex)
+    {
+        var dialog = new System.Windows.Forms.ColorDialog
+        {
+            FullOpen = true,
+            SolidColorOnly = true
+        };
+
+        try
+        {
+            var color = (MediaColor)WpfColorConverter.ConvertFromString(currentHex)!;
+            dialog.Color = System.Drawing.Color.FromArgb(color.R, color.G, color.B);
+        }
+        catch
+        {
+            dialog.Color = System.Drawing.Color.FromArgb(0x2D, 0x2D, 0x2D);
+        }
+
+        if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+            return null;
+
+        var wybrany = dialog.Color;
+        return $"#{wybrany.R:X2}{wybrany.G:X2}{wybrany.B:X2}";
+    }
+
+    private static void RefreshAltColorPreview(Border preview, string hex)
+    {
+        try
+        {
+            var color = (MediaColor)WpfColorConverter.ConvertFromString(hex)!;
+            preview.Background = new SolidColorBrush(color);
+        }
+        catch
+        {
+            preview.Background = new SolidColorBrush(MediaColor.FromRgb(0x2D, 0x2D, 0x2D));
         }
     }
 
@@ -159,29 +239,11 @@ public partial class BoberSettingsView : UserControl
             return;
         }
 
-        var dialog = new System.Windows.Forms.ColorDialog
-        {
-            FullOpen = true,
-            SolidColorOnly = true
-        };
-
-        try
-        {
-            var color = (MediaColor)WpfColorConverter.ConvertFromString(vm.KolorHex)!;
-            dialog.Color = System.Drawing.Color.FromArgb(color.R, color.G, color.B);
-        }
-        catch
-        {
-            dialog.Color = System.Drawing.Color.FromArgb(0x2D, 0x2D, 0x2D);
-        }
-
-        if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
+        var chosen = PickColor(vm.KolorHex);
+        if (chosen is null)
             return;
-        }
 
-        var wybrany = dialog.Color;
-        vm.KolorHex = $"#{wybrany.R:X2}{wybrany.G:X2}{wybrany.B:X2}";
+        vm.KolorHex = chosen;
     }
 
     private async void OnSaveClick(object sender, RoutedEventArgs e)
@@ -213,6 +275,18 @@ public partial class BoberSettingsView : UserControl
             }).ToList();
             await _controller.SaveKoloryAsync(kolory);
             await _controller.SetLessColorAsync(LessColorCheckBox.IsChecked == true);
+            await _controller.SetGrafikRowColorSettingsAsync(new GrafikRowColorSettings
+            {
+                Mode = AlternatingColorsCheckBox.IsChecked == true
+                    ? GrafikRowColorMode.Alternating
+                    : GrafikRowColorMode.Role,
+                ColorA = string.IsNullOrWhiteSpace(AltColorATextBox.Text)
+                    ? GrafikRowColorSettings.DefaultColorA
+                    : AltColorATextBox.Text.Trim(),
+                ColorB = string.IsNullOrWhiteSpace(AltColorBTextBox.Text)
+                    ? GrafikRowColorSettings.DefaultColorB
+                    : AltColorBTextBox.Text.Trim()
+            });
 
             var chomikWarning = await _controller.TrySyncNrToChomikAsync(kolejnosc);
             if (chomikWarning is not null)

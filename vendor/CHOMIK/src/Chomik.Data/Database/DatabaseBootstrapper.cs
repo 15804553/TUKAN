@@ -1,6 +1,5 @@
 using System.Data.OleDb;
 using System.Runtime.InteropServices;
-using Chomik.Core.Slowniki;
 
 namespace Chomik.Data.Database;
 
@@ -35,17 +34,14 @@ public sealed class DatabaseBootstrapper(DatabaseOptions options)
         await FunkcjeDodatkoweRemovalMigration.ApplyAsync(connection, cancellationToken);
         await Zmiana4RemovalMigration.ApplyAsync(connection, cancellationToken);
         await PaPasswordMigration.ApplyAsync(connection, cancellationToken);
-
-        var databaseDirectory = Path.GetDirectoryName(fullPath);
-        SlownikTextFiles.EnsureFilesExist(databaseDirectory);
+        await DuplicateStanowiskaMigration.ApplyAsync(connection, cancellationToken);
 
         if (!await HasUsersAsync(connection, cancellationToken))
         {
-            await DatabaseSeed.ApplyAsync(connection, databaseDirectory, cancellationToken);
+            await DatabaseSeed.ApplyAsync(connection, cancellationToken);
         }
         else
         {
-            await SlownikTextFileSynchronizer.SyncAsync(connection, options, cancellationToken);
             await MlodszyNurekUprawnienieMigration.ApplyAsync(connection, cancellationToken);
             await GoscUsersMigration.ApplyAsync(connection, cancellationToken);
         }

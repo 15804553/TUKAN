@@ -723,6 +723,27 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         return false;
     }
 
+    /// <summary>
+    /// Zwraca true, gdy osoba jest wpisana w rozkazie jako dyżurny PA JRG.
+    /// Taka osoba nie może być obsadzana na pojeździe podstawowym (dodatkowy — tak).
+    /// </summary>
+    public bool CzyOsobaJestPa(int funkcjonariuszId) =>
+        Sluzba.Any(s => s.Stanowisko == StanowiskoSluzby.DyzurnyPAJRG
+                     && s.WybranaOsoba?.Id == funkcjonariuszId);
+
+    /// <summary>Usuwa osobę z obsady wszystkich pojazdów podstawowych (np. po wpisaniu na PA).</summary>
+    public void WyczyscOsobeZPojazdowPodstawowych(int funkcjonariuszId)
+    {
+        foreach (var samVm in PodzialBojowy.Where(s => s.CzyPodstawowy))
+        {
+            foreach (var poz in samVm.Pozycje)
+            {
+                if (poz.WybranaOsoba?.Id == funkcjonariuszId)
+                    poz.WybranaOsoba = null;
+            }
+        }
+    }
+
     /// <summary>Odświeża listy comboboxów na pozostałych pojazdach podstawowych (konflikt obsady).</summary>
     public void OdswiezInnePojazdyPodstawowe(int pomijanySamochodId)
     {

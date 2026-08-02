@@ -32,6 +32,17 @@ public interface ISettingsService
     Task<bool> GetLessColorAsync(CancellationToken cancellationToken = default);
     Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Kolorowanie wierszy grafiku służb w UI (role vs dwa kolory naprzemiennie).
+    /// Nie wpływa na eksport Excel. Dotyczy wszystkich zmian.
+    /// </summary>
+    Task<GrafikRowColorSettings> GetGrafikRowColorSettingsAsync(
+        CancellationToken cancellationToken = default);
+
+    Task SetGrafikRowColorSettingsAsync(
+        GrafikRowColorSettings settings,
+        CancellationToken cancellationToken = default);
+
     Task<KalendarzAutoDeleteMode> GetKalendarzAutoDeleteModeAsync(
         int? shiftNumber,
         CancellationToken cancellationToken = default);

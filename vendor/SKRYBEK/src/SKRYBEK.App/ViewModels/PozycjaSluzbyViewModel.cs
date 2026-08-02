@@ -196,6 +196,14 @@ public sealed partial class PozycjaSluzbyViewModel : ObservableObject
             ? osoba.StopienINazwisko
             : _tekstOsoby;
 
+        // PA nie może być na pojeździe podstawowym — usuń z obsady i odśwież listy.
+        if (Stanowisko == StanowiskoSluzby.DyzurnyPAJRG)
+        {
+            if (osoba is not null)
+                _editor.WyczyscOsobeZPojazdowPodstawowych(osoba.Id);
+            _editor.OdswiezPozycjePodstawowe();
+        }
+
         if (!aktualizujTekst) return;
         UstawTekstProgramowo(_model.Nazwisko);
     }

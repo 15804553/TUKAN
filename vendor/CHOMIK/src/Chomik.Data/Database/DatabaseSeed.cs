@@ -2,7 +2,6 @@ using System.Data.OleDb;
 using Chomik.Core.Constants;
 using Chomik.Core.Enums;
 using Chomik.Core.Security;
-using Chomik.Core.Slowniki;
 using Chomik.Data;
 
 namespace Chomik.Data.Database;
@@ -11,11 +10,10 @@ internal static class DatabaseSeed
 {
     public static async Task ApplyAsync(
         OleDbConnection connection,
-        string? databaseDirectory = null,
         CancellationToken cancellationToken = default)
     {
-        await InsertStopnieAsync(connection, databaseDirectory, cancellationToken);
-        await InsertStanowiskaAsync(connection, databaseDirectory, cancellationToken);
+        await InsertStopnieAsync(connection, cancellationToken);
+        await InsertStanowiskaAsync(connection, cancellationToken);
         await InsertTypyUprawnienAsync(connection, cancellationToken);
         await InsertUsersAsync(connection, cancellationToken);
         await InsertTypyOdznaczenAsync(connection, cancellationToken);
@@ -37,38 +35,24 @@ internal static class DatabaseSeed
 
     private static async Task<Dictionary<string, int>> InsertStopnieAsync(
         OleDbConnection connection,
-        string? databaseDirectory,
         CancellationToken cancellationToken)
     {
         return await InsertSlownikAsync(
             connection,
             "StopnieSlownik",
-            ResolveStopnieNames(databaseDirectory),
+            StopnieSlownikDefaults.NazwyPoKolei,
             cancellationToken);
     }
 
     private static async Task<Dictionary<string, int>> InsertStanowiskaAsync(
         OleDbConnection connection,
-        string? databaseDirectory,
         CancellationToken cancellationToken)
     {
         return await InsertSlownikAsync(
             connection,
             "StanowiskaSlownik",
-            ResolveStanowiskaNames(databaseDirectory),
+            StanowiskaSlownikDefaults.NazwyPoKolei,
             cancellationToken);
-    }
-
-    private static IReadOnlyList<string> ResolveStopnieNames(string? databaseDirectory)
-    {
-        var fromFile = SlownikTextFiles.ReadStopnie(databaseDirectory);
-        return fromFile.Count > 0 ? fromFile : StopnieSlownikDefaults.NazwyPoKolei;
-    }
-
-    private static IReadOnlyList<string> ResolveStanowiskaNames(string? databaseDirectory)
-    {
-        var fromFile = SlownikTextFiles.ReadStanowiska(databaseDirectory);
-        return fromFile.Count > 0 ? fromFile : StanowiskaSlownikDefaults.NazwyPoKolei;
     }
 
     private static async Task<Dictionary<string, int>> InsertTypyUprawnienAsync(

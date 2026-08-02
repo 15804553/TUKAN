@@ -93,11 +93,6 @@
                                     Click="OnCreatePersonnelListClick"
                                     Visibility="Collapsed" />
 
-                            <Button x:Name="BoberViewButton"
-                                    Content="Grafik służb"
-                                    Style="{StaticResource TukanSidebarButton}"
-                                    Click="OnBoberViewClick" />
-
                             <Button x:Name="UrlopPlanButton"
                                     Content="Plan urlopów"
                                     Style="{StaticResource TukanSidebarButton}"
@@ -108,6 +103,22 @@
                                     Content="Grafik nurkowy"
                                     Style="{StaticResource TukanSidebarButton}"
                                     Click="OnGrafikNurkowyClick"
+                                    Visibility="Collapsed" />
+
+                            <Button x:Name="BoberViewButton"
+                                    Content="Grafik służb"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnBoberViewClick" />
+
+                            <Button x:Name="SkrybekViewButton"
+                                    Content="Rozkazy dzienne"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnSkrybekViewClick" />
+
+                            <Button x:Name="DutyAssignmentsButton"
+                                    Content="Obsada funkcji"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnDutyAssignmentsClick"
                                     Visibility="Collapsed" />
 
                             <Grid x:Name="KalendarzNavItem" Visibility="Collapsed">
@@ -127,17 +138,6 @@
                                            IsHitTestVisible="False"
                                            ToolTip="Masz nieprzeczytane notatki w kalendarzu" />
                             </Grid>
-
-                            <Button x:Name="SkrybekViewButton"
-                                    Content="Rozkazy dzienne"
-                                    Style="{StaticResource TukanSidebarButton}"
-                                    Click="OnSkrybekViewClick" />
-
-                            <Button x:Name="DutyAssignmentsButton"
-                                    Content="Obsada funkcji"
-                                    Style="{StaticResource TukanSidebarButton}"
-                                    Click="OnDutyAssignmentsClick"
-                                    Visibility="Collapsed" />
 
                             <Button x:Name="SettingsButton"
                                     Content="Ustawienia"

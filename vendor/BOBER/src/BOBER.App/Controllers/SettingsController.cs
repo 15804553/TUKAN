@@ -75,6 +75,12 @@ public sealed class SettingsController(AppServices services)
     public Task SetLessColorAsync(bool enabled, CancellationToken ct = default) =>
         services.Settings.SetLessColorAsync(enabled, ct);
 
+    public Task<GrafikRowColorSettings> GetGrafikRowColorSettingsAsync(CancellationToken ct = default) =>
+        services.Settings.GetGrafikRowColorSettingsAsync(ct);
+
+    public Task SetGrafikRowColorSettingsAsync(GrafikRowColorSettings settings, CancellationToken ct = default) =>
+        services.Settings.SetGrafikRowColorSettingsAsync(settings, ct);
+
     public async Task ClearHalfYearAsync(int polrocze, bool alsoClearUrlopPlan = false, CancellationToken ct = default)
     {
         await services.Grafik.ClearHalfYearAsync(ZmianaId, DateTime.Today.Year, polrocze, ct);

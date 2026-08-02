@@ -11,3 +11,4 @@ Ratownik specjalista
 Dowódca sekcji
 Zastępca dowódcy zmiany
 Dowódca zmiany
+Ratownik kierowca

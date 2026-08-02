@@ -396,6 +396,10 @@ public sealed class KalendarzServiceTests
         public Task SetExportPathGrafikNurkowyAsync(string path, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<bool> GetLessColorAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<GrafikRowColorSettings> GetGrafikRowColorSettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new GrafikRowColorSettings());
+        public Task SetGrafikRowColorSettingsAsync(GrafikRowColorSettings settings, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
         public Task<KalendarzAutoDeleteMode> GetKalendarzAutoDeleteModeAsync(int? shiftNumber, CancellationToken cancellationToken = default) =>
             Task.FromResult(AutoDeleteModes.TryGetValue(BuildKey(shiftNumber), out var mode) ? mode : KalendarzAutoDeleteMode.Nigdy);
         public Task SetKalendarzAutoDeleteModeAsync(int? shiftNumber, KalendarzAutoDeleteMode mode, CancellationToken cancellationToken = default)

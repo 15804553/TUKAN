@@ -40,9 +40,4 @@
     <PackageReference Include="ClosedXML" Version="0.104.2" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="..\..\Data\Stopnie.txt" CopyToOutputDirectory="PreserveNewest" Link="Stopnie.txt" />
-    <Content Include="..\..\Data\Stanowiska.txt" CopyToOutputDirectory="PreserveNewest" Link="Stanowiska.txt" />
-  </ItemGroup>
-
 </Project>

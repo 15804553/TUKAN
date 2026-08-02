@@ -2,6 +2,7 @@ namespace SKRYBEK.Core.Chomik;
 
 /// <summary>
 /// Identyfikatory rekordów w słownikach bazy CHOMIK (StanowiskaSlownik, TypyUprawnien).
+/// Kolejność zgodna z aktualną bazą TUKAN (słownik stanowisk).
 /// </summary>
 public static class ChomikSlowniki
 {
@@ -11,13 +12,12 @@ public static class ChomikSlowniki
         9,  // Dowódca zastępu
         11, // Dowódca sekcji
         12, // Zastępca dowódcy zmiany
-        13, // Dowódca zmiany
-        14  // Dowódca zmiany
+        13  // Dowódca zmiany
     ];
 
     /// <summary>Grupy stanowisk do mapowania kolorów ról w TUKAN.</summary>
-    public static readonly HashSet<int> StanowiskaDowodcyZmiany  = [13, 14];
-    public static readonly HashSet<int> StanowiskaDowodcySekcji  = [11, 12];
+    public static readonly HashSet<int> StanowiskaDowodcyZmiany = [12, 13]; // zastępca + dowódca zmiany
+    public static readonly HashSet<int> StanowiskaDowodcySekcji = [10, 11]; // ratownik specjalista + dowódca sekcji
     public const int StanowiskoDowodcaZastepu = 9;
 
     /// <summary>
@@ -28,8 +28,7 @@ public static class ChomikSlowniki
         9,  // Dowódca zastępu
         11, // Dowódca sekcji
         12, // Zastępca dowódcy zmiany
-        13, // Dowódca zmiany
-        14  // Dowódca zmiany
+        13  // Dowódca zmiany
     ];
 
     public static bool CzyMozeNaMiejsce1DPojazdu(int stanowiskoId) =>

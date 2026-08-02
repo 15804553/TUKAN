@@ -1,14 +1,12 @@
-using Chomik.Core.Slowniki;
-
 namespace Chomik.Core.Constants;
 
 /// <summary>
-/// Stopnie służbowe w kolejności rosnących Id (1–17) w tabeli StopnieSlownik.
-/// Preferowany plik: <see cref="SlownikTextFiles.StopnieFileName"/> (jedna pozycja na wiersz).
+/// Stopnie służbowe w kolejności rosnących Id — seed nowej bazy.
+/// Bieżąca edycja: Ustawienia (DCA).
 /// </summary>
 public static class StopnieSlownikDefaults
 {
-    private static readonly IReadOnlyList<string> EmbeddedNazwyPoKolei =
+    public static IReadOnlyList<string> NazwyPoKolei { get; } =
     [
         "str.",       // 1
         "st.str.",    // 2
@@ -28,13 +26,4 @@ public static class StopnieSlownikDefaults
         "bryg.",      // 16
         "st.bryg."    // 17
     ];
-
-    public static IReadOnlyList<string> NazwyPoKolei
-    {
-        get
-        {
-            var fromFile = SlownikTextFiles.ReadStopnie();
-            return fromFile.Count > 0 ? fromFile : EmbeddedNazwyPoKolei;
-        }
-    }
 }

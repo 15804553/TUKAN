@@ -23,7 +23,8 @@ Przy pierwszym uruchomieniu TUKAN tworzy wspólną bazę `TukanDatabase.accdb` (
 |------|------|
 | **`TukanDatabase.accdb`** | Wspólna baza — personel, grafik i rozkazy |
 | `databasepath.txt` | Ścieżka do bazy (tworzona/aktualizowana automatycznie) |
-| `Stopnie.txt`, `Stanowiska.txt` | Słowniki personelu (gdy obecne) |
+
+Słowniki stopni, stanowisk, uprawnień oraz medali/odznaczeń zarządza użytkownik **DCA JRG** w **Ustawieniach**.
 
 ## Logowanie
 

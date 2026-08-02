@@ -1,14 +1,12 @@
-using Chomik.Core.Slowniki;
-
 namespace Chomik.Core.Constants;
 
 /// <summary>
-/// Stanowiska służbowe w kolejności rosnących Id (1–14) w tabeli StanowiskaSlownik.
-/// Preferowany plik: <see cref="SlownikTextFiles.StanowiskaFileName"/> (jedna pozycja na wiersz).
+/// Stanowiska służbowe w kolejności rosnących Id — seed nowej bazy.
+/// Bieżąca edycja: Ustawienia (DCA). Nowe pozycje dopisuj przez UI (zachowuje Id).
 /// </summary>
 public static class StanowiskaSlownikDefaults
 {
-    private static readonly IReadOnlyList<string> EmbeddedNazwyPoKolei =
+    public static IReadOnlyList<string> NazwyPoKolei { get; } =
     [
         "Młodszy ratownik-kierowca",   // 1
         "Ratownik",                    // 2
@@ -19,19 +17,10 @@ public static class StanowiskaSlownikDefaults
         "Operator sprzętu",            // 7
         "Starszy operator sprzętu",    // 8
         "Dowódca zastępu",             // 9
-        "Dowódca zastępu",             // 10
-        "Ratownik specjalista",        // 11
-        "Dowódca sekcji",              // 12
-        "Zastępca dowódcy zmiany",     // 13
-        "Dowódca zmiany"               // 14
+        "Ratownik specjalista",        // 10
+        "Dowódca sekcji",              // 11
+        "Zastępca dowódcy zmiany",     // 12
+        "Dowódca zmiany",              // 13
+        "Ratownik kierowca"            // 14
     ];
-
-    public static IReadOnlyList<string> NazwyPoKolei
-    {
-        get
-        {
-            var fromFile = SlownikTextFiles.ReadStanowiska();
-            return fromFile.Count > 0 ? fromFile : EmbeddedNazwyPoKolei;
-        }
-    }
 }

@@ -23,6 +23,7 @@ public sealed class AppServices
 
         Settings = new SettingsService(settingsRepository);
         UprawnieniaSlownik = new UprawnieniaSlownikService(slownikRepository);
+        PersonelSlowniki = new PersonelSlownikiService(slownikRepository);
         Auth = new AuthService(userRepository);
         UserAccounts = new UserAccountService(userRepository);
         Funkcjonariusze = new FunkcjonariuszService(funkcjonariuszRepository, slownikRepository);
@@ -32,6 +33,7 @@ public sealed class AppServices
 
     public ISettingsService Settings { get; }
     public UprawnieniaSlownikService UprawnieniaSlownik { get; }
+    public PersonelSlownikiService PersonelSlowniki { get; }
     public IAuthService Auth { get; }
     public IUserAccountService UserAccounts { get; }
     public IFunkcjonariuszService Funkcjonariusze { get; }

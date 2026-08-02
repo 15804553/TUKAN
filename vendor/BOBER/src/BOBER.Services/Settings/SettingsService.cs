@@ -91,6 +91,45 @@ public sealed class SettingsService(IUstawieniaRepository ustawieniaRepository) 
     public Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default) =>
         ustawieniaRepository.SetAsync("LessColor", enabled ? "True" : "False", cancellationToken);
 
+    public async Task<GrafikRowColorSettings> GetGrafikRowColorSettingsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var modeRaw = await ustawieniaRepository.GetAsync("GrafikRowColorMode", cancellationToken);
+        var mode = Enum.TryParse<GrafikRowColorMode>(modeRaw, ignoreCase: true, out var parsed)
+            ? parsed
+            : GrafikRowColorMode.Role;
+
+        var colorA = await ustawieniaRepository.GetAsync("GrafikAltColorA", cancellationToken);
+        var colorB = await ustawieniaRepository.GetAsync("GrafikAltColorB", cancellationToken);
+
+        return new GrafikRowColorSettings
+        {
+            Mode = mode,
+            ColorA = NormalizeHex(colorA, GrafikRowColorSettings.DefaultColorA),
+            ColorB = NormalizeHex(colorB, GrafikRowColorSettings.DefaultColorB)
+        };
+    }
+
+    public async Task SetGrafikRowColorSettingsAsync(
+        GrafikRowColorSettings settings,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        await ustawieniaRepository.SetAsync(
+            "GrafikRowColorMode",
+            settings.Mode.ToString(),
+            cancellationToken);
+        await ustawieniaRepository.SetAsync(
+            "GrafikAltColorA",
+            NormalizeHex(settings.ColorA, GrafikRowColorSettings.DefaultColorA),
+            cancellationToken);
+        await ustawieniaRepository.SetAsync(
+            "GrafikAltColorB",
+            NormalizeHex(settings.ColorB, GrafikRowColorSettings.DefaultColorB),
+            cancellationToken);
+    }
+
     public async Task<KalendarzAutoDeleteMode> GetKalendarzAutoDeleteModeAsync(
         int? shiftNumber,
         CancellationToken cancellationToken = default)
@@ -115,4 +154,16 @@ public sealed class SettingsService(IUstawieniaRepository ustawieniaRepository) 
         shiftNumber is >= 1 and <= 3
             ? $"KalendarzAutoDelete_Zmiana_{shiftNumber.Value}"
             : "KalendarzAutoDelete_DCA";
+
+    private static string NormalizeHex(string? hex, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(hex))
+            return fallback;
+
+        var trimmed = hex.Trim();
+        if (!trimmed.StartsWith('#'))
+            trimmed = "#" + trimmed;
+
+        return trimmed.Length is 7 or 9 ? trimmed.ToUpperInvariant() : fallback;
+    }
 }

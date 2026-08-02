@@ -185,8 +185,8 @@ public partial class MainWindow : Window
         foreach (var button in new[]
         {
             GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
-            BoberViewButton, UrlopPlanButton, GrafikNurkowyButton, KalendarzButton, SkrybekViewButton,
-            DutyAssignmentsButton, SettingsButton, LogoutButton
+            UrlopPlanButton, GrafikNurkowyButton, BoberViewButton, SkrybekViewButton,
+            DutyAssignmentsButton, KalendarzButton, SettingsButton, LogoutButton
         })
         {
             button.Content = _sidebarExpanded ? GetButtonLabel(button) : GetButtonIcon(button);
@@ -674,8 +674,8 @@ public partial class MainWindow : Window
         foreach (var button in new[]
         {
             GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
-            BoberViewButton, UrlopPlanButton, GrafikNurkowyButton, KalendarzButton, SkrybekViewButton,
-            DutyAssignmentsButton, SettingsButton
+            UrlopPlanButton, GrafikNurkowyButton, BoberViewButton, SkrybekViewButton,
+            DutyAssignmentsButton, KalendarzButton, SettingsButton
         })
         {
             if (button.Visibility != Visibility.Visible)

@@ -249,5 +249,24 @@ public sealed class RozkazService
                 $"Osoba {nazwisko} jest przypisana do więcej niż jednego pojazdu podstawowego. " +
                 "Ta sama osoba nie może siedzieć na dwóch pojazdach podstawowych.");
         }
+
+        var paIds = rozkaz.Sluzba
+            .Where(s => s.Stanowisko == StanowiskoSluzby.DyzurnyPAJRG && s.FunkcjonariuszId.HasValue)
+            .Select(s => s.FunkcjonariuszId!.Value)
+            .ToHashSet();
+
+        if (paIds.Count > 0)
+        {
+            var konfliktPa = rozkaz.PodzialBojowy.FirstOrDefault(p =>
+                p.FunkcjonariuszId.HasValue
+                && paIds.Contains(p.FunkcjonariuszId.Value)
+                && podstawoweIds.Contains(p.SamochodId));
+
+            if (konfliktPa is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Osoba {konfliktPa.Nazwisko} jest dyżurnym PA JRG i nie może być przypisana do pojazdu podstawowego.");
+            }
+        }
     }
 }

@@ -176,6 +176,19 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
                     UstawTekstProgramowo(_model.Nazwisko);
                 return;
             }
+
+            if (_samochod.CzyPodstawowy && _editor.CzyOsobaJestPa(value.Id))
+            {
+                SkrybekMessageBox.ShowWarning(
+                    $"{value.StopienINazwisko} jest dyżurnym PA JRG.\n" +
+                    "Osoba na stanowisku PA nie może być przypisana do pojazdu podstawowego.",
+                    "Konflikt ze stanowiskiem PA");
+                OnPropertyChanged(nameof(WybranaOsoba));
+                OnPropertyChanged(nameof(WybranyItem));
+                if (aktualizujTekst)
+                    UstawTekstProgramowo(_model.Nazwisko);
+                return;
+            }
         }
 
         SetProperty(ref _wybranaOsoba, value);
@@ -226,7 +239,8 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
 
     /// <summary>
     /// Odświeża listę dostępnych osób — tylko osoby spełniające wymagania pozycji (1.D / 2.K).
-    /// Na pojazdach podstawowych ukrywa osoby już przypisane do innego pojazdu podstawowego.
+    /// Na pojazdach podstawowych ukrywa osoby już przypisane do innego pojazdu podstawowego
+    /// oraz osobę wpisaną na stanowisko PA.
     /// </summary>
     public void OdswiezDostepneOsoby()
     {
@@ -242,6 +256,9 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
 
                 if (_samochod.CzyPodstawowy &&
                     _editor.CzyKonfliktPodstawowy(osoba.Id, _samochod.Samochod.Id, Pozycja))
+                    continue;
+
+                if (_samochod.CzyPodstawowy && _editor.CzyOsobaJestPa(osoba.Id))
                     continue;
 
                 _dostepneOsobyRaw.Add(new OsobaComboBoxItem(osoba, czySugerowana: true));

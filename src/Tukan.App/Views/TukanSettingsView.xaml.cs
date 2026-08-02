@@ -75,7 +75,7 @@ public partial class TukanSettingsView : UserControl
 
     private void ConfigureDcaJrgTabs()
     {
-        ChomikTab.Header = "Uprawnienia/Kursy";
+        ChomikTab.Header = "Słowniki";
         GrafikTab.Visibility = Visibility.Collapsed;
         RozkazyTab.Visibility = Visibility.Visible;
         KalendarzTab.Visibility = Visibility.Visible;

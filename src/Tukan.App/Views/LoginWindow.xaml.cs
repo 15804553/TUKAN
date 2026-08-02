@@ -35,9 +35,8 @@ public partial class LoginWindow : Window
             LoginComboBox.ItemsSource = items;
 
             var paItem = items.FirstOrDefault(i =>
-                !i.IsSeparator &&
                 string.Equals(i.Login, "PA", StringComparison.OrdinalIgnoreCase));
-            LoginComboBox.SelectedItem = paItem ?? items.FirstOrDefault(i => !i.IsSeparator);
+            LoginComboBox.SelectedItem = paItem ?? items.FirstOrDefault();
             FocusPasswordField();
         }
         catch (Exception ex)
@@ -48,7 +47,8 @@ public partial class LoginWindow : Window
     }
 
     /// <summary>
-    /// Grupy: PA | DCA | Zmiana N + Gość N | Administrator — z liniami poziomymi między grupami.
+    /// Grupy: PA | DCA | Zmiana N + Gość N | Administrator.
+    /// Konta poza Gość mają pogrubioną czcionkę.
     /// </summary>
     internal static IReadOnlyList<LoginListItem> BuildLoginList(IReadOnlyList<string> logins)
     {
@@ -70,52 +70,16 @@ public partial class LoginWindow : Window
             return 6;
         }
 
-        var ordered = logins
+        return logins
             .OrderBy(GroupKey)
             .ThenBy(l => l, StringComparer.OrdinalIgnoreCase)
+            .Select(LoginListItem.Account)
             .ToList();
-
-        var result = new List<LoginListItem>();
-        int? previousGroup = null;
-        foreach (var login in ordered)
-        {
-            var group = GroupKey(login);
-            if (previousGroup is not null && previousGroup != group)
-            {
-                result.Add(LoginListItem.Separator());
-            }
-
-            result.Add(LoginListItem.Account(login));
-            previousGroup = group;
-        }
-
-        return result;
     }
 
     private void OnLoginSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!IsLoaded)
-        {
-            return;
-        }
-
-        if (LoginComboBox.SelectedItem is LoginListItem { IsSeparator: true })
-        {
-            // Separator nie jest wybieralny — wróć do poprzedniego konta.
-            if (e.RemovedItems.Count > 0 && e.RemovedItems[0] is LoginListItem previous && !previous.IsSeparator)
-            {
-                LoginComboBox.SelectedItem = previous;
-            }
-            else
-            {
-                LoginComboBox.SelectedItem = (LoginComboBox.ItemsSource as IEnumerable<LoginListItem>)
-                    ?.FirstOrDefault(i => !i.IsSeparator);
-            }
-
-            return;
-        }
-
-        if (LoginComboBox.SelectedItem is null)
+        if (!IsLoaded || LoginComboBox.SelectedItem is null)
         {
             return;
         }
@@ -150,8 +114,8 @@ public partial class LoginWindow : Window
     {
         try
         {
-            var login = LoginComboBox.SelectedItem is LoginListItem item && !item.IsSeparator
-                ? item.Login ?? string.Empty
+            var login = LoginComboBox.SelectedItem is LoginListItem item
+                ? item.Login
                 : LoginComboBox.SelectedItem?.ToString() ?? string.Empty;
             var password = PasswordBox.Password;
 

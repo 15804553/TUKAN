@@ -68,23 +68,11 @@
                                   IsEditable="False"
                                   SelectionChanged="OnLoginSelectionChanged"
                                   PreviewKeyDown="OnLoginComboPreviewKeyDown">
-                            <ComboBox.ItemContainerStyle>
-                                <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsSeparator}" Value="True">
-                                            <Setter Property="IsEnabled" Value="False" />
-                                            <Setter Property="Focusable" Value="False" />
-                                            <Setter Property="Foreground" Value="#95A5A6" />
-                                            <Setter Property="HorizontalContentAlignment" Value="Center" />
-                                            <Setter Property="FontSize" Value="10" />
-                                            <Setter Property="Padding" Value="4,2" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ComboBox.ItemContainerStyle>
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Display}" />
+                                    <TextBlock Text="{Binding Display}"
+                                               FontWeight="{Binding FontWeight}"
+                                               Foreground="{StaticResource TextBrush}" />
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>

@@ -1,6 +1,7 @@
 <UserControl x:Class="Chomik.App.Views.Pages.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Chomik.App.Views.Controls">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel MaxWidth="720">
             <Border x:Name="GeneralViewColumnsPanel"
@@ -59,6 +60,18 @@
                             Click="OnSaveColumnsClick" />
                 </StackPanel>
             </Border>
+
+            <StackPanel x:Name="PersonelSlownikiPanel" Visibility="Collapsed">
+                <controls:NazwaSlownikPanel x:Name="StopniePanel"
+                                            Title="Stopnie"
+                                            Description="Dodawaj, edytuj i usuwaj stopnie służbowe. Usunięcie możliwe tylko, gdy żaden funkcjonariusz nie ma przypisanego stopnia." />
+                <controls:NazwaSlownikPanel x:Name="StanowiskaPanel"
+                                            Title="Stanowiska"
+                                            Description="Dodawaj, edytuj i usuwaj stanowiska. Usunięcie możliwe tylko, gdy żaden funkcjonariusz nie ma przypisanego stanowiska." />
+                <controls:NazwaSlownikPanel x:Name="OdznaczeniaPanel"
+                                            Title="Medale i odznaczenia"
+                                            Description="Dodawaj, edytuj i usuwaj typy medali oraz odznaczeń widoczne przy edycji personelu." />
+            </StackPanel>
 
             <Border x:Name="UprawnieniaPanel"
                     Background="{StaticResource CardBrush}"

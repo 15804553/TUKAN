@@ -58,12 +58,20 @@ public sealed class MainController(AppServices services)
             .GroupBy(u => u.FunkcjonariuszId)
             .ToDictionary(g => g.Key, g => g.Last().Tresc);
 
+        var rowColors = await services.Settings.GetGrafikRowColorSettingsAsync(cancellationToken);
+        var useAlternating = rowColors.Mode == GrafikRowColorMode.Alternating;
+        var altBrushA = ParseBrush(rowColors.ColorA, Color.FromRgb(0xFF, 0xFF, 0xFF));
+        var altBrushB = ParseBrush(rowColors.ColorB, Color.FromRgb(0xD9, 0xE2, 0xF3));
+
         var daysInMonth = DateTime.DaysInMonth(rok, miesiac);
         var rows = new List<GrafikRowViewModel>();
 
         for (int i = 0; i < _funkcjonariusze!.Count; i++)
         {
             var f = _funkcjonariusze[i];
+            var rowBackground = useAlternating
+                ? (i % 2 == 0 ? altBrushA : altBrushB)
+                : GetRoleBrush(f);
             var row = new GrafikRowViewModel
             {
                 FunkcjonariuszId = f.Id,
@@ -72,8 +80,8 @@ public sealed class MainController(AppServices services)
                 Stanowisko = f.Stanowisko,
                 KluczRoli = RoleClassifier.DetermineRole(f),
                 IsNurek = RoleClassifier.IsNurek(f),
-                RowBackground = GetRoleBrush(f),
-                RowForeground = GetRoleForeground(f),
+                RowBackground = rowBackground,
+                RowForeground = GetForegroundForBackground(rowBackground),
                 NameBorderBrush = GetNurekBorderBrush(f),
                 UwagaMiesieczna = uwagiLookup.TryGetValue(f.Id, out var uwaga) ? uwaga : string.Empty
             };
@@ -322,10 +330,9 @@ public sealed class MainController(AppServices services)
         return new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x2D));
     }
 
-    private SolidColorBrush GetRoleForeground(Funkcjonariusz f)
+    private static SolidColorBrush GetForegroundForBackground(SolidColorBrush background)
     {
-        var bg = GetRoleBrush(f).Color;
-        return IsLightColor(bg)
+        return IsLightColor(background.Color)
             ? new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E))
             : new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0));
     }
@@ -405,7 +412,10 @@ public sealed class MainController(AppServices services)
         return domyslne.TryGetValue(klucz, out var defaultHex) ? defaultHex : "#6A5C00";
     }
 
-    private static SolidColorBrush ParseBrush(string hex)
+    private SolidColorBrush ParseBrush(string hex) =>
+        ParseBrush(hex, Color.FromRgb(0x6A, 0x5C, 0x00));
+
+    private static SolidColorBrush ParseBrush(string hex, Color fallback)
     {
         try
         {
@@ -414,7 +424,7 @@ public sealed class MainController(AppServices services)
         }
         catch
         {
-            return new SolidColorBrush(Color.FromRgb(0x6A, 0x5C, 0x00));
+            return new SolidColorBrush(fallback);
         }
     }
 }

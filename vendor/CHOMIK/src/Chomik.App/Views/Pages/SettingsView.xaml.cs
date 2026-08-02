@@ -13,6 +13,9 @@ public partial class SettingsView : UserControl
     private readonly SettingsController _controller;
     private TypUprawnienia? _selectedTypUprawnienia;
     private List<GeneralViewColumnOptionViewModel> _columnOptions = [];
+    private int? _selectedStopienId;
+    private int? _selectedStanowiskoId;
+    private int? _selectedOdznaczenieId;
 
     public event EventHandler? SettingsSaved;
 
@@ -23,18 +26,93 @@ public partial class SettingsView : UserControl
         GeneralViewColumnsPanel.Visibility = _controller.CanCustomizeGeneralViewColumns
             ? Visibility.Visible
             : Visibility.Collapsed;
-        UprawnieniaPanel.Visibility = _controller.CanManagePermissionTypes || _controller.CanManageSettings
+        var canManageSlowniki = _controller.CanManageSettings;
+        PersonelSlownikiPanel.Visibility = canManageSlowniki ? Visibility.Visible : Visibility.Collapsed;
+        UprawnieniaPanel.Visibility = _controller.CanManagePermissionTypes || canManageSlowniki
             ? Visibility.Visible
             : Visibility.Collapsed;
+
+        if (canManageSlowniki)
+        {
+            WirePersonelSlownikiPanels();
+        }
+
         Loaded += OnLoaded;
     }
 
     private Window? OwnerWindow => Window.GetWindow(this);
 
+    private void WirePersonelSlownikiPanels()
+    {
+        StopniePanel.AddRequested += async nazwa =>
+        {
+            await _controller.AddStopienAsync(nazwa);
+            await ReloadStopnieAsync();
+        };
+        StopniePanel.UpdateRequested += async (id, nazwa) =>
+        {
+            await _controller.UpdateStopienAsync(id, nazwa);
+            _selectedStopienId = id;
+            await ReloadStopnieAsync();
+        };
+        StopniePanel.DeleteRequested += async id =>
+        {
+            await _controller.DeleteStopienAsync(id);
+            _selectedStopienId = null;
+            await ReloadStopnieAsync();
+        };
+        StopniePanel.Changed += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+
+        StanowiskaPanel.AddRequested += async nazwa =>
+        {
+            await _controller.AddStanowiskoAsync(nazwa);
+            await ReloadStanowiskaAsync();
+        };
+        StanowiskaPanel.UpdateRequested += async (id, nazwa) =>
+        {
+            await _controller.UpdateStanowiskoAsync(id, nazwa);
+            _selectedStanowiskoId = id;
+            await ReloadStanowiskaAsync();
+        };
+        StanowiskaPanel.DeleteRequested += async id =>
+        {
+            await _controller.DeleteStanowiskoAsync(id);
+            _selectedStanowiskoId = null;
+            await ReloadStanowiskaAsync();
+        };
+        StanowiskaPanel.Changed += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+
+        OdznaczeniaPanel.AddRequested += async nazwa =>
+        {
+            await _controller.AddTypOdznaczeniaAsync(nazwa);
+            await ReloadOdznaczeniaAsync();
+        };
+        OdznaczeniaPanel.UpdateRequested += async (id, nazwa) =>
+        {
+            await _controller.UpdateTypOdznaczeniaAsync(id, nazwa);
+            _selectedOdznaczenieId = id;
+            await ReloadOdznaczeniaAsync();
+        };
+        OdznaczeniaPanel.DeleteRequested += async id =>
+        {
+            await _controller.DeleteTypOdznaczeniaAsync(id);
+            _selectedOdznaczenieId = null;
+            await ReloadOdznaczeniaAsync();
+        };
+        OdznaczeniaPanel.Changed += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+    }
+
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         try
         {
+            if (_controller.CanManageSettings)
+            {
+                await ReloadStopnieAsync();
+                await ReloadStanowiskaAsync();
+                await ReloadOdznaczeniaAsync();
+            }
+
             if (_controller.CanManagePermissionTypes || _controller.CanManageSettings)
             {
                 await LoadTypyUprawnienAsync();
@@ -49,6 +127,24 @@ public partial class SettingsView : UserControl
         {
             ChomikMessageBox.Show(OwnerWindow, ex.Message, "Chomik");
         }
+    }
+
+    private async Task ReloadStopnieAsync()
+    {
+        var items = await _controller.LoadStopnieAsync();
+        StopniePanel.BindItems(items, i => i.Id, i => i.Nazwa, _selectedStopienId);
+    }
+
+    private async Task ReloadStanowiskaAsync()
+    {
+        var items = await _controller.LoadStanowiskaAsync();
+        StanowiskaPanel.BindItems(items, i => i.Id, i => i.Nazwa, _selectedStanowiskoId);
+    }
+
+    private async Task ReloadOdznaczeniaAsync()
+    {
+        var items = await _controller.LoadTypyOdznaczenAsync();
+        OdznaczeniaPanel.BindItems(items, i => i.Id, i => i.Nazwa, _selectedOdznaczenieId);
     }
 
     private async Task LoadColumnOptionsAsync()
