@@ -1,5 +1,3 @@
-using Tukan.App.Services.GuestAudit;
-
 namespace Tukan.App.Services.GuestAudit;
 
 /// <summary>Fasada audytu Gościa — używana z hooków po zalogowaniu.</summary>

@@ -54,25 +54,12 @@
                         Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Margin="24,0,24,24">
-                <Button x:Name="NoButton"
-                        Content="Nie"
-                        MinWidth="88"
-                        Margin="0,0,8,0"
-                        Style="{StaticResource SecondaryButton}"
-                        Visibility="Collapsed"
-                        Click="OnNoClick" />
-                <Button x:Name="YesButton"
-                        Content="Tak"
-                        MinWidth="88"
-                        Style="{StaticResource PrimaryButton}"
-                        Margin="0,0,8,0"
-                        Visibility="Collapsed"
-                        Click="OnYesClick" />
                 <Button x:Name="OkButton"
                         Content="OK"
                         MinWidth="88"
                         Style="{StaticResource PrimaryButton}"
-                        Click="OnOkClick" />
+                        Click="OnOkClick"
+                        IsDefault="True" />
             </StackPanel>
         </Grid>
     </Border>

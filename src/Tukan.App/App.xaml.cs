@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media.Imaging;
-using System.Windows.Threading;
 using BOBER.App.Views.Chrome;
 using Chomik.App.Controls;
 using Chomik.App.Views.Branding;

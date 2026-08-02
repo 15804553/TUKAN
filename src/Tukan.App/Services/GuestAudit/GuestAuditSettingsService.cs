@@ -1,6 +1,5 @@
 using System.Text.Json;
 using BOBER.Data.Repositories;
-using Tukan.App.Services.GuestAudit;
 
 namespace Tukan.App.Services.GuestAudit;
 

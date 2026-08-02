@@ -78,19 +78,20 @@ public sealed class AppServices
     public static async Task<AppServices> CreateAsync(
         string dbPath,
         string? sharedDatabasePath = null,
-        bool ensureCreated = true)
+        bool ensureCreated = true,
+        string? databasePassword = null)
     {
         var databasePatch = DatabasePatch.FromUnifiedDatabase(sharedDatabasePath ?? dbPath);
 
-        var skrybek = new SkrybekConnectionFactory(dbPath);
+        var skrybek = new SkrybekConnectionFactory(dbPath, databasePassword);
         if (ensureCreated)
         {
             var bootstrapper = new DatabaseBootstrapper(skrybek);
             await bootstrapper.EnsureCreatedAsync();
         }
 
-        var bober  = new BoberConnectionFactory(databasePatch.BoberDatabasePath);
-        var chomik = new ChomikConnectionFactory(databasePatch.ChomikDatabasePath);
+        var bober  = new BoberConnectionFactory(databasePatch.BoberDatabasePath, databasePassword);
+        var chomik = new ChomikConnectionFactory(databasePatch.ChomikDatabasePath, databasePassword);
         var calendar = new ShiftCalendarEngine(bober);
 
         SkrybekLog.Info($"Baza personelu/grafiku: {databasePatch.ChomikDatabasePath}");

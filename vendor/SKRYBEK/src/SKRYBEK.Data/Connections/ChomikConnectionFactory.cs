@@ -4,12 +4,15 @@ namespace SKRYBEK.Data.Connections;
 
 public sealed class ChomikConnectionFactory
 {
-    private readonly string _databasePath;
-    private static readonly string[] DatabasePasswords = ["5359", "5393"];
+    private static readonly string[] DefaultMigrationPasswords = ["5359", "5393"];
 
-    public ChomikConnectionFactory(string databasePath)
+    private readonly string _databasePath;
+    private readonly string[] _passwordCandidates;
+
+    public ChomikConnectionFactory(string databasePath, string? preferredPassword = null)
     {
         _databasePath = databasePath;
+        _passwordCandidates = BuildCandidates(preferredPassword);
     }
 
     public OleDbConnection Create()
@@ -19,13 +22,12 @@ public sealed class ChomikConnectionFactory
                 "Nie ustawiono ścieżki bazy personelu (CHOMIK / TukanDatabase).");
 
         Exception? lastError = null;
-        foreach (var pwd in DatabasePasswords)
+        foreach (var pwd in _passwordCandidates)
         {
             try
             {
-                var conn = new OleDbConnection(BuildConnectionString(pwd));
-                conn.Open();
-                conn.Close();
+                using var probe = new OleDbConnection(BuildConnectionString(pwd));
+                probe.Open();
                 return new OleDbConnection(BuildConnectionString(pwd));
             }
             catch (Exception ex)
@@ -37,6 +39,20 @@ public sealed class ChomikConnectionFactory
         throw new InvalidOperationException(
             $"Nie można otworzyć bazy CHOMIK:\n{_databasePath}",
             lastError);
+    }
+
+    private static string[] BuildCandidates(string? preferred)
+    {
+        var list = new List<string>();
+        if (!string.IsNullOrEmpty(preferred))
+            list.Add(preferred);
+        foreach (var p in DefaultMigrationPasswords)
+        {
+            if (!list.Contains(p, StringComparer.Ordinal))
+                list.Add(p);
+        }
+
+        return list.ToArray();
     }
 
     private string BuildConnectionString(string databasePassword) =>

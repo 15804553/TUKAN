@@ -2,25 +2,12 @@ using System.Windows;
 
 namespace Tukan.App.Views.Chrome;
 
-public enum TukanMessageButtons
-{
-    Ok,
-    YesNo
-}
-
 public static class TukanMessageBox
 {
-    public static void Show(Window? owner, string message, string title = "TUKAN") =>
-        Show(owner, message, title, TukanMessageButtons.Ok);
-
-    public static MessageBoxResult Show(
-        Window? owner,
-        string message,
-        string title,
-        TukanMessageButtons buttons)
+    public static void Show(Window? owner, string message, string title = "TUKAN")
     {
         var window = new TukanMessageWindow();
-        window.Configure(message, title, buttons);
+        window.Configure(message, title);
 
         if (owner is not null)
         {
@@ -33,6 +20,5 @@ public static class TukanMessageBox
         }
 
         window.ShowDialog();
-        return window.Result;
     }
 }

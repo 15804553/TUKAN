@@ -1,5 +1,6 @@
 using System.Data.OleDb;
 using BOBER.Core.Constants;
+using BOBER.Core.Enums;
 using BOBER.Core.Security;
 
 namespace BOBER.Data.Database;
@@ -23,16 +24,16 @@ internal static class DatabaseSeed
         if (count > 0)
             return;
 
-        var users = new (string Login, int Zmiana)[]
+        var users = new (string Login, int Zmiana, UserRole Role)[]
         {
-            ("Zmiana 1", 1),
-            ("Zmiana 2", 2),
-            ("Zmiana 3", 3)
+            ("Zmiana 1", 1, UserRole.Zmiana1),
+            ("Zmiana 2", 2, UserRole.Zmiana2),
+            ("Zmiana 3", 3, UserRole.Zmiana3)
         };
 
-        foreach (var (login, zmiana) in users)
+        foreach (var (login, zmiana, role) in users)
         {
-            var defaultPwd = $"zmiana{zmiana}";
+            var defaultPwd = DefaultCredentials.DefaultPasswords[role];
             var (hash, salt) = PasswordHasher.HashPassword(defaultPwd);
 
             await using var cmd = new OleDbCommand(

@@ -9,6 +9,10 @@ namespace SKRYBEK.Services.Auth;
 
 public sealed class AuthService
 {
+    private const string Pbkdf2Prefix = "pbkdf2$";
+    private const int Pbkdf2Iterations = 210_000;
+    private const int Pbkdf2KeySize = 32;
+
     private readonly ChomikAuthRepository _chomikAuth;
 
     public AuthService(ChomikAuthRepository chomikAuth)
@@ -70,7 +74,6 @@ public sealed class AuthService
         var hash = user.HasloHash.Trim();
         var salt = user.HasloSol.Trim();
 
-        // Konto PA — puste hasło w bazie CHOMIK
         if (string.IsNullOrEmpty(hash))
         {
             if (!string.IsNullOrEmpty(password))
@@ -81,8 +84,7 @@ public sealed class AuthService
         }
         else if (!VerifyChomikPassword(password, hash, salt))
         {
-            SkrybekLog.Warning(
-                $"Błędne hasło dla użytkownika: {user.Login} (długość wpisanego hasła: {password.Length}, hash w bazie: {hash.Length} znaków)");
+            SkrybekLog.Warning($"Błędne hasło dla użytkownika: {user.Login}");
             return null;
         }
 
@@ -97,45 +99,52 @@ public sealed class AuthService
             IsReadOnly  = user.IsReadOnly,
             CanEditAll  = user.Role == UserRole.DCAJRG,
             CanEditPojazdy = user.Role is UserRole.DCAJRG
-                or UserRole.Zmiana1 or UserRole.Zmiana2 or UserRole.Zmiana3
-                or UserRole.Gosc1 or UserRole.Gosc2 or UserRole.Gosc3,
+                or UserRole.Zmiana1 or UserRole.Zmiana2 or UserRole.Zmiana3,
             IsPaAccount = user.Role == UserRole.PA
         };
         session.NormalizePaFlags();
         return session;
     }
 
-    /// <summary>CHOMIK: Base64(SHA256(UTF8(password + salt))). Obsługuje też legacy hex z lokalnej bazy SKRYBEK.</summary>
+    /// <summary>
+    /// CHOMIK: PBKDF2 (prefix pbkdf2$), legacy Base64(SHA256), legacy HEX(SHA256) ze starego seeda SKRYBEK.
+    /// </summary>
     public static bool VerifyChomikPassword(string password, string hash, string salt)
     {
-        if (string.IsNullOrEmpty(hash)) return string.IsNullOrEmpty(password);
+        if (string.IsNullOrEmpty(hash) || string.IsNullOrEmpty(salt))
+            return false;
 
         var p = password.Trim();
         var h = hash.Trim();
         var s = salt.Trim();
 
-        if (ComputeChomikHash(p, s) == h) return true;
+        try
+        {
+            if (h.StartsWith(Pbkdf2Prefix, StringComparison.Ordinal))
+            {
+                var expected = Convert.FromBase64String(h[Pbkdf2Prefix.Length..]);
+                var saltBytes = Convert.FromBase64String(s);
+                var actual = Rfc2898DeriveBytes.Pbkdf2(
+                    p, saltBytes, Pbkdf2Iterations, HashAlgorithmName.SHA256, Pbkdf2KeySize);
+                return CryptographicOperations.FixedTimeEquals(actual, expected);
+            }
 
-        // Starszy format SKRYBEK bootstrappera: HEX(SHA256)
+            var legacyExpected = Convert.FromBase64String(h);
+            var legacyActual = SHA256.HashData(Encoding.UTF8.GetBytes(p + s));
+            if (CryptographicOperations.FixedTimeEquals(legacyActual, legacyExpected))
+                return true;
+        }
+        catch (FormatException)
+        {
+            // Może być legacy HEX
+        }
+
         return ComputeLegacyHexHash(p, s).Equals(h, StringComparison.OrdinalIgnoreCase);
-    }
-
-    public static string ComputeChomikHash(string password, string salt)
-    {
-        var bytes = Encoding.UTF8.GetBytes(password.Trim() + salt.Trim());
-        var hashBytes = SHA256.HashData(bytes);
-        return Convert.ToBase64String(hashBytes);
     }
 
     private static string ComputeLegacyHexHash(string password, string salt)
     {
         var bytes = Encoding.UTF8.GetBytes(password.Trim() + salt.Trim());
         return Convert.ToHexString(SHA256.HashData(bytes));
-    }
-
-    public static string GenerateSalt()
-    {
-        var saltBytes = RandomNumberGenerator.GetBytes(16);
-        return Convert.ToBase64String(saltBytes);
     }
 }

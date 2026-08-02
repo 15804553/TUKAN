@@ -1,0 +1,40 @@
+<Window x:Class="Tukan.App.Views.DutyAssignmentsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="clr-namespace:Tukan.App.Views.Chrome"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="TUKAN — Obsada funkcji"
+        Height="900"
+        Width="1400"
+        MinHeight="500"
+        MinWidth="900"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        ShowInTaskbar="True"
+        Icon="pack://application:,,,/Assets/tukan.ico"
+        Background="{StaticResource SurfaceBrush}">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0"
+                            CornerRadius="0"
+                            GlassFrameThickness="0"
+                            ResizeBorderThickness="8"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <chrome:TukanTitleBar x:Name="TitleBar"
+                              Grid.Row="0"
+                              Title="Obsada funkcji"
+                              ShowMinimizeButton="True"
+                              ShowMaximizeButton="True" />
+
+        <ContentControl x:Name="ContentHost"
+                        Grid.Row="1" />
+    </Grid>
+</Window>

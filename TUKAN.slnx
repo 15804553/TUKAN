@@ -1,6 +1,10 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Tukan.App/Tukan.App.csproj" />
+    <Project Path="src/Tukan.App.Tests/Tukan.App.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="vendor/BOBER/tests/BOBER.Services.Tests/BOBER.Services.Tests.csproj" />
   </Folder>
   <Folder Name="/vendor/CHOMIK/">
     <Project Path="vendor/CHOMIK/src/Chomik.App/Chomik.App.csproj" />

@@ -4,23 +4,12 @@ using System.Windows.Media;
 namespace Tukan.App.Infrastructure;
 
 /// <summary>
-/// Jednolita paleta kolorystyczna aplikacji TUKAN (domyślny motyw klasyczny).
+/// Jednolita paleta kolorystyczna aplikacji TUKAN (motyw klasyczny).
 /// </summary>
-public enum TukanAppThemeKind
-{
-    TukanKlasyczny
-}
-
 public static class TukanAppTheme
 {
-    public static TukanAppThemeKind DefaultKind => TukanAppThemeKind.TukanKlasyczny;
-
-    public static TukanAppThemeKind Active { get; private set; } = DefaultKind;
-
-    public static void Apply(TukanAppThemeKind kind = TukanAppThemeKind.TukanKlasyczny)
+    public static void Apply()
     {
-        Active = kind;
-
         if (Application.Current?.Resources is not ResourceDictionary root)
         {
             return;

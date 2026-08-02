@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -32,6 +31,7 @@ public partial class MainWindow : Window
     private GrafikNurkowyView? _grafikNurkowyView;
     private KalendarzView? _kalendarzView;
     private DutyAssignmentsView? _dutyAssignmentsView;
+    private DutyAssignmentsWindow? _dutyAssignmentsWindow;
     private SkrybekMainView? _skrybekView;
 
     private MainController? _boberController;
@@ -46,6 +46,7 @@ public partial class MainWindow : Window
 
         Closing += (_, _) =>
         {
+            _dutyAssignmentsWindow?.Close();
             if (DialogResult is null)
             {
                 DialogResult = false;
@@ -89,9 +90,11 @@ public partial class MainWindow : Window
             ? Visibility.Visible : Visibility.Collapsed;
         CreatePersonnelListButton.Visibility = _dashboardController.CanCreatePersonnelList
             ? Visibility.Visible : Visibility.Collapsed;
-        BoberViewButton.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.IsPaUser == true
-            ? Visibility.Collapsed
-            : Visibility.Visible;
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        // Grafik służb: tylko zmiany/goście — ukryty dla PA i DCA JRG.
+        BoberViewButton.Visibility = user is { IsPaUser: false, IsDcaJrgUser: false }
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         UrlopPlanButton.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.CanManageUrlopPlan == true
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -321,7 +324,8 @@ public partial class MainWindow : Window
 
     private void OnBoberViewClick(object sender, RoutedEventArgs e)
     {
-        if (_tukanServices.Chomik.Auth.CurrentUser?.IsPaUser == true)
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        if (user is null || user.IsPaUser || user.IsDcaJrgUser)
         {
             return;
         }
@@ -409,11 +413,44 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_dutyAssignmentsWindow is { IsLoaded: true })
+        {
+            if (_dutyAssignmentsWindow.WindowState == WindowState.Minimized)
+            {
+                _dutyAssignmentsWindow.WindowState = WindowState.Normal;
+            }
+
+            _dutyAssignmentsWindow.Activate();
+            return;
+        }
+
         var shiftName = $"Zmiana {shiftNumber}";
         _dutyAssignmentsController ??= new DutyAssignmentsController(_tukanServices, shiftNumber, shiftName);
         _dutyAssignmentsView ??= new DutyAssignmentsView();
+        DetachFromVisualParent(_dutyAssignmentsView);
         _dutyAssignmentsView.Initialize(_dutyAssignmentsController);
-        NavigateTo(_dutyAssignmentsView, "Obsada funkcji", DutyAssignmentsButton);
+
+        var title = $"Obsada funkcji — {shiftName}";
+        _dutyAssignmentsWindow = new DutyAssignmentsWindow(_dutyAssignmentsView, title);
+        // Bez Owner — okno niezależne, można przenieść na drugi monitor obok Rozkazów.
+        _dutyAssignmentsWindow.Closed += (_, _) => _dutyAssignmentsWindow = null;
+        _dutyAssignmentsWindow.Show();
+    }
+
+    private static void DetachFromVisualParent(FrameworkElement element)
+    {
+        switch (element.Parent)
+        {
+            case ContentControl contentControl:
+                contentControl.Content = null;
+                break;
+            case Decorator decorator:
+                decorator.Child = null;
+                break;
+            case Panel panel:
+                panel.Children.Remove(element);
+                break;
+        }
     }
 
     private async void OnSkrybekViewClick(object sender, RoutedEventArgs e)

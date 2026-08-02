@@ -101,7 +101,7 @@ public sealed class GuestAuditLogService
             var headerMatch = MonthHeaderRegex.Match(line);
             if (headerMatch.Success)
             {
-                FlushHeader(result, ref currentHeader, ref monthHasEntries);
+                FlushHeader(ref currentHeader, ref monthHasEntries);
                 currentHeader = line;
                 monthHasEntries = false;
                 continue;
@@ -151,11 +151,10 @@ public sealed class GuestAuditLogService
         return result.ToString().TrimEnd() + (result.Length > 0 ? Environment.NewLine : string.Empty);
     }
 
-    private static void FlushHeader(StringBuilder result, ref string? currentHeader, ref bool monthHasEntries)
+    private static void FlushHeader(ref string? currentHeader, ref bool monthHasEntries)
     {
         currentHeader = null;
         monthHasEntries = false;
-        _ = result;
     }
 
     internal static string AppendLineWithMonthSection(string content, DateTime now, string line)

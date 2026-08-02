@@ -7,7 +7,8 @@ public sealed class DatabaseOptions
     public const string DatabaseFileName = "ChomikDatabase.accdb";
 
     public string FilePath { get; set; } = DatabaseFileName;
-    public string DatabasePassword { get; set; } = DefaultCredentials.DatabasePassword;
+    public string DatabasePassword { get; set; } =
+        DefaultCredentials.DatabasePasswordMigrationCandidates[0];
     public bool UseDatabasePassword { get; set; } = true;
 
     public string GetApplicationDirectory() => AppContext.BaseDirectory;

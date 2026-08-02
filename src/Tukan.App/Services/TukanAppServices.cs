@@ -1,11 +1,8 @@
 using System.IO;
-using BOBER.Services;
 using BOBER.Services.Logging;
 using BOBER.Services.Startup;
 using Serilog;
-using Chomik.Services;
 using SKRYBEK.App;
-using SKRYBEK.Services;
 using SKRYBEK.Services.Logging;
 using Tukan.App.Services.GuestAudit;
 
@@ -38,25 +35,31 @@ public sealed class TukanAppServices : IDisposable
 
         var unifiedPath = TukanDatabaseOptions.GetFullPath();
 
+        await TukanUnifiedDatabaseBootstrapper.EnsureSchemaAsync(unifiedPath);
+        var databasePassword = TukanDatabaseOptions.ResolvePassword();
+
         var chomik = new Chomik.Services.AppServices();
         chomik.DatabaseOptions.FilePath = unifiedPath;
-        chomik.DatabaseOptions.DatabasePassword = TukanDatabaseOptions.Password;
+        chomik.DatabaseOptions.DatabasePassword = databasePassword;
         chomik.DatabaseOptions.UseDatabasePassword = true;
 
         var bober = new BOBER.Services.AppServices();
         bober.BoberOptions.FilePath = unifiedPath;
+        bober.BoberOptions.DatabasePassword = databasePassword;
+        bober.BoberOptions.UseDatabasePassword = true;
         bober.ChomikOptions.FilePath = unifiedPath;
+        bober.ChomikOptions.DatabasePassword = databasePassword;
+        bober.ChomikOptions.UseDatabasePassword = true;
         DatabasePathFile.Write(unifiedPath);
-
-        await TukanUnifiedDatabaseBootstrapper.EnsureSchemaAsync(unifiedPath);
 
         var skrybek = await SKRYBEK.Services.AppServices.CreateAsync(
             unifiedPath,
             unifiedPath,
-            ensureCreated: false);
+            ensureCreated: false,
+            databasePassword: databasePassword);
         ServiceProvider.Services = skrybek;
 
-        BoberLog.Information("TUKAN: wspólna baza={UnifiedPath}", unifiedPath);
+        BoberLog.Information("TUKAN: wspólna baza skonfigurowana");
 
         var guestAudit = new GuestAuditFacade(
             new GuestAuditLogService(),

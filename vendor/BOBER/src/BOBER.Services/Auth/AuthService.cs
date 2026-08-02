@@ -45,7 +45,7 @@ public sealed class AuthService(IAuthRepository authRepository, IChomikRepositor
 
         if (account is null)
         {
-            errorMessage = "Nieprawidłowy login.";
+            errorMessage = "Nieprawidłowy login lub hasło.";
             return false;
         }
 
@@ -59,7 +59,7 @@ public sealed class AuthService(IAuthRepository authRepository, IChomikRepositor
         }
         else if (!PasswordHasher.Verify(password, account.HasloHash, account.HasloSol))
         {
-            errorMessage = "Nieprawidłowe hasło.";
+            errorMessage = "Nieprawidłowy login lub hasło.";
             return false;
         }
 

@@ -38,16 +38,24 @@ public sealed class DatabaseService(
             lastError);
     }
 
-    private static IEnumerable<string> GetPasswordCandidates() =>
-        new[] { DefaultCredentials.DatabasePassword, DefaultCredentials.LegacyDatabasePassword }
-            .Distinct(StringComparer.Ordinal);
+    private IEnumerable<string> GetPasswordCandidates()
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        if (!string.IsNullOrEmpty(options.DatabasePassword) && seen.Add(options.DatabasePassword))
+            yield return options.DatabasePassword;
+
+        foreach (var candidate in DefaultCredentials.DatabasePasswordMigrationCandidates)
+        {
+            if (seen.Add(candidate))
+                yield return candidate;
+        }
+    }
 
     private string BuildConnectionErrorMessage(Exception? inner) =>
         "Nie można otworzyć bazy danych CHOMIK.\n\n" +
-        $"Plik: {options.GetFullPath()}\n" +
-        $"Hasło w aplikacji: {DefaultCredentials.DatabasePassword}\n\n" +
-        "Jeśli zmieniłeś hasło w programie Access, upewnij się, że edytujesz ten sam plik " +
-        "oraz że hasło w Accessie jest takie samo jak w aplikacji.\n\n" +
+        $"Plik: {options.GetFullPath()}\n\n" +
+        "Sprawdź, czy plik istnieje i czy hasło bazy Access jest zgodne z konfiguracją aplikacji.\n" +
+        "Hasło nie jest wyświetlane w komunikacie z powodów bezpieczeństwa.\n\n" +
         $"Szczegóły: {inner?.Message}";
 
     private static bool IsInvalidPasswordError(Exception ex)

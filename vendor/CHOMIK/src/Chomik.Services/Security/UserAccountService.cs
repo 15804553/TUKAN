@@ -54,13 +54,18 @@ public sealed class UserAccountService(IUserRepository userRepository) : IUserAc
             throw new InvalidOperationException("Hasło nie może być puste.");
         }
 
+        if (user.Role != UserRole.Pa && newPassword.Trim().Length < 4)
+        {
+            throw new InvalidOperationException("Hasło musi mieć co najmniej 4 znaki.");
+        }
+
         if (user.Role == UserRole.Pa)
         {
             await userRepository.UpdatePasswordAsync(userId, string.Empty, string.Empty, cancellationToken);
             return;
         }
 
-        var (hash, salt) = PasswordHasher.HashPassword(newPassword);
+        var (hash, salt) = PasswordHasher.HashPassword(newPassword.Trim());
         await userRepository.UpdatePasswordAsync(userId, hash, salt, cancellationToken);
     }
 

@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using Chomik.App.Controllers;
 using Chomik.App.Views.Chrome;
-using Chomik.Core.Constants;
 using Chomik.Core.Enums;
 using Chomik.Core.Models;
 
@@ -19,6 +18,7 @@ public partial class PasswordManagementView : UserControl
         _controller = controller;
         SubtitleTextBlock.Text =
             $"Zakres: {controller.ScopeDescription} (zalogowany: {controller.ManagerDescription})";
+        HintTextBlock.Text = controller.BuildDefaultPasswordsSummary();
         Loaded += async (_, _) => await LoadUsersAsync();
     }
 
@@ -45,6 +45,13 @@ public partial class PasswordManagementView : UserControl
 
     private void UpdateHint()
     {
+        // DCA: zawsze pełna lista haseł domyślnych na dole panelu.
+        if (_controller.CanRevealDefaultPasswords)
+        {
+            HintTextBlock.Text = _controller.BuildDefaultPasswordsSummary();
+            return;
+        }
+
         if (UsersListBox.SelectedItem is not UserAccount user)
         {
             HintTextBlock.Text = string.Empty;
@@ -63,10 +70,7 @@ public partial class PasswordManagementView : UserControl
             return;
         }
 
-        var defaultPassword = DefaultCredentials.DefaultPasswords[user.Role];
-        HintTextBlock.Text = defaultPassword is null
-            ? "Brak hasła domyślnego."
-            : $"Hasło domyślne: {defaultPassword}";
+        HintTextBlock.Text = _controller.BuildDefaultPasswordsSummary();
     }
 
     private UserAccount? GetSelectedUser() => UsersListBox.SelectedItem as UserAccount;

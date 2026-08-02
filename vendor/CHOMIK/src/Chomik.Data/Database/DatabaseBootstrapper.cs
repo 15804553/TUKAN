@@ -34,6 +34,7 @@ public sealed class DatabaseBootstrapper(DatabaseOptions options)
         await NumerPorzadkowyMigration.ApplyAsync(connection, cancellationToken);
         await FunkcjeDodatkoweRemovalMigration.ApplyAsync(connection, cancellationToken);
         await Zmiana4RemovalMigration.ApplyAsync(connection, cancellationToken);
+        await PaPasswordMigration.ApplyAsync(connection, cancellationToken);
 
         var databaseDirectory = Path.GetDirectoryName(fullPath);
         SlownikTextFiles.EnsureFilesExist(databaseDirectory);

@@ -53,7 +53,7 @@ public sealed class AuthService(IUserRepository userRepository) : IAuthService
         var account = await userRepository.GetByLoginAsync(login.Trim(), cancellationToken);
         if (account is null)
         {
-            return (false, "Nieprawidłowy login.");
+            return (false, "Nieprawidłowy login lub hasło.");
         }
 
         if ((int)account.Role == LegacyZmiana4Role)
@@ -70,7 +70,7 @@ public sealed class AuthService(IUserRepository userRepository) : IAuthService
         }
         else if (!PasswordHasher.Verify(password ?? string.Empty, account.HasloHash, account.HasloSol))
         {
-            return (false, "Nieprawidłowe hasło.");
+            return (false, "Nieprawidłowy login lub hasło.");
         }
 
         CurrentUser = new SessionUser

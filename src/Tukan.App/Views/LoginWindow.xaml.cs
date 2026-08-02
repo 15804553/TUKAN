@@ -31,14 +31,13 @@ public partial class LoginWindow : Window
         try
         {
             var logins = await _loginController.GetLoginsAsync();
-            LoginComboBox.ItemsSource = logins;
+            var items = BuildLoginList(logins);
+            LoginComboBox.ItemsSource = items;
 
-            const string defaultLogin = "PA";
-            var paIndex = logins
-                .ToList()
-                .FindIndex(login => string.Equals(login, defaultLogin, StringComparison.OrdinalIgnoreCase));
-
-            LoginComboBox.SelectedIndex = paIndex >= 0 ? paIndex : logins.Count > 0 ? 0 : -1;
+            var paItem = items.FirstOrDefault(i =>
+                !i.IsSeparator &&
+                string.Equals(i.Login, "PA", StringComparison.OrdinalIgnoreCase));
+            LoginComboBox.SelectedItem = paItem ?? items.FirstOrDefault(i => !i.IsSeparator);
             FocusPasswordField();
         }
         catch (Exception ex)
@@ -48,9 +47,75 @@ public partial class LoginWindow : Window
         }
     }
 
+    /// <summary>
+    /// Grupy: PA | DCA | Zmiana N + Gość N | Administrator — z liniami poziomymi między grupami.
+    /// </summary>
+    internal static IReadOnlyList<LoginListItem> BuildLoginList(IReadOnlyList<string> logins)
+    {
+        static int GroupKey(string login)
+        {
+            if (login.Equals("PA", StringComparison.OrdinalIgnoreCase)) return 0;
+            if (login.Contains("DCA", StringComparison.OrdinalIgnoreCase)) return 1;
+            if (login.StartsWith("Zmiana 1", StringComparison.OrdinalIgnoreCase)
+                || login.StartsWith("Gość 1", StringComparison.OrdinalIgnoreCase)
+                || login.StartsWith("Gosc 1", StringComparison.OrdinalIgnoreCase)) return 2;
+            if (login.StartsWith("Zmiana 2", StringComparison.OrdinalIgnoreCase)
+                || login.StartsWith("Gość 2", StringComparison.OrdinalIgnoreCase)
+                || login.StartsWith("Gosc 2", StringComparison.OrdinalIgnoreCase)) return 3;
+            if (login.StartsWith("Zmiana 3", StringComparison.OrdinalIgnoreCase)
+                || login.StartsWith("Gość 3", StringComparison.OrdinalIgnoreCase)
+                || login.StartsWith("Gosc 3", StringComparison.OrdinalIgnoreCase)) return 4;
+            if (login.Contains("Administrator", StringComparison.OrdinalIgnoreCase)
+                || login.Equals("Admin", StringComparison.OrdinalIgnoreCase)) return 5;
+            return 6;
+        }
+
+        var ordered = logins
+            .OrderBy(GroupKey)
+            .ThenBy(l => l, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var result = new List<LoginListItem>();
+        int? previousGroup = null;
+        foreach (var login in ordered)
+        {
+            var group = GroupKey(login);
+            if (previousGroup is not null && previousGroup != group)
+            {
+                result.Add(LoginListItem.Separator());
+            }
+
+            result.Add(LoginListItem.Account(login));
+            previousGroup = group;
+        }
+
+        return result;
+    }
+
     private void OnLoginSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!IsLoaded || LoginComboBox.SelectedItem is null)
+        if (!IsLoaded)
+        {
+            return;
+        }
+
+        if (LoginComboBox.SelectedItem is LoginListItem { IsSeparator: true })
+        {
+            // Separator nie jest wybieralny — wróć do poprzedniego konta.
+            if (e.RemovedItems.Count > 0 && e.RemovedItems[0] is LoginListItem previous && !previous.IsSeparator)
+            {
+                LoginComboBox.SelectedItem = previous;
+            }
+            else
+            {
+                LoginComboBox.SelectedItem = (LoginComboBox.ItemsSource as IEnumerable<LoginListItem>)
+                    ?.FirstOrDefault(i => !i.IsSeparator);
+            }
+
+            return;
+        }
+
+        if (LoginComboBox.SelectedItem is null)
         {
             return;
         }
@@ -85,7 +150,9 @@ public partial class LoginWindow : Window
     {
         try
         {
-            var login = LoginComboBox.SelectedItem?.ToString() ?? string.Empty;
+            var login = LoginComboBox.SelectedItem is LoginListItem item && !item.IsSeparator
+                ? item.Login ?? string.Empty
+                : LoginComboBox.SelectedItem?.ToString() ?? string.Empty;
             var password = PasswordBox.Password;
 
             var (success, error) = await _tukanServices.TryLoginAsync(login, password);

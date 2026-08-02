@@ -4,9 +4,14 @@ namespace Chomik.Core.Constants;
 
 public static class DefaultCredentials
 {
-    public const string DatabasePassword = "5359";
-    public const string LegacyDatabasePassword = "5393";
+    /// <summary>
+    /// Kandydaci hasła pliku Access używani wyłącznie przy migracji / pierwszym otwarciu.
+    /// Preferuj przechowywanie aktywnego hasła poza kodem (DPAPI / opcje runtime).
+    /// </summary>
+    public static IReadOnlyList<string> DatabasePasswordMigrationCandidates { get; } =
+        ["5359", "5393"];
 
+    /// <summary>Hasło startowe kont — używane przy seed/reset; nie ujawniać w UI. PA = null (bez hasła).</summary>
     public static readonly IReadOnlyDictionary<UserRole, string?> DefaultPasswords =
         new Dictionary<UserRole, string?>
         {
@@ -20,5 +25,4 @@ public static class DefaultCredentials
             [UserRole.Gosc2] = "0002",
             [UserRole.Gosc3] = "0003"
         };
-
 }

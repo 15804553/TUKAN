@@ -17,7 +17,7 @@ public static class TukanUnifiedDatabaseBootstrapper
     /// <summary>
     /// Podbij przy każdej zmianie schematu CHOMIK/BOBER/SKRYBEK, która wymaga EnsureReady.
     /// </summary>
-    public const string SchemaVersion = "20260802-gosc-users";
+    public const string SchemaVersion = "20260802-pa-no-password";
 
     private const string SchemaVersionKey = "TukanSchemaVersion";
 
@@ -29,7 +29,9 @@ public static class TukanUnifiedDatabaseBootstrapper
             Directory.CreateDirectory(directory);
         }
 
-        if (File.Exists(unifiedPath) && await IsSchemaCurrentAsync(unifiedPath, cancellationToken))
+        var workingPassword = await ResolveWorkingPasswordAsync(unifiedPath, cancellationToken);
+
+        if (File.Exists(unifiedPath) && await IsSchemaCurrentAsync(unifiedPath, workingPassword, cancellationToken))
         {
             return;
         }
@@ -37,7 +39,7 @@ public static class TukanUnifiedDatabaseBootstrapper
         var chomikOptions = new DatabaseOptions
         {
             FilePath = unifiedPath,
-            DatabasePassword = TukanDatabaseOptions.Password,
+            DatabasePassword = workingPassword,
             UseDatabasePassword = true
         };
 
@@ -47,27 +49,61 @@ public static class TukanUnifiedDatabaseBootstrapper
         var boberOptions = new BoberDatabaseOptions
         {
             FilePath = unifiedPath,
-            DatabasePassword = TukanDatabaseOptions.Password,
+            DatabasePassword = workingPassword,
             UseDatabasePassword = true
         };
 
         var boberBootstrapper = new BoberDatabaseBootstrapper(boberOptions);
         await boberBootstrapper.EnsureReadyAsync(cancellationToken);
 
-        var skrybekFactory = new SkrybekConnectionFactory(unifiedPath);
+        var skrybekFactory = new SkrybekConnectionFactory(unifiedPath, workingPassword);
         var skrybekBootstrapper = new SkrybekDatabaseBootstrapper(skrybekFactory);
         await skrybekBootstrapper.EnsureCreatedAsync();
 
-        await MarkSchemaCurrentAsync(unifiedPath, cancellationToken);
+        await MarkSchemaCurrentAsync(unifiedPath, workingPassword, cancellationToken);
+    }
+
+    private static async Task<string> ResolveWorkingPasswordAsync(
+        string unifiedPath,
+        CancellationToken cancellationToken)
+    {
+        if (!File.Exists(unifiedPath))
+        {
+            var password = TukanDatabaseOptions.ResolvePassword();
+            TukanDatabaseOptions.RememberWorkingPassword(password);
+            return password;
+        }
+
+        Exception? lastError = null;
+        foreach (var candidate in TukanDatabaseOptions.GetPasswordCandidates())
+        {
+            try
+            {
+                await using var connection = new OleDbConnection(
+                    TukanDatabaseOptions.BuildConnectionString(unifiedPath, candidate));
+                await connection.OpenAsync(cancellationToken);
+                TukanDatabaseOptions.RememberWorkingPassword(candidate);
+                return candidate;
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Nie można otworzyć bazy TUKAN:\n{unifiedPath}",
+            lastError);
     }
 
     private static async Task<bool> IsSchemaCurrentAsync(
         string unifiedPath,
+        string password,
         CancellationToken cancellationToken)
     {
         try
         {
-            await using var connection = OpenConnection(unifiedPath);
+            await using var connection = OpenConnection(unifiedPath, password);
             await connection.OpenAsync(cancellationToken);
 
             await using var command = new OleDbCommand(
@@ -80,18 +116,18 @@ public static class TukanUnifiedDatabaseBootstrapper
         }
         catch
         {
-            // Brak tabeli / pierwsze uruchomienie — wymagany pełny bootstrap.
             return false;
         }
     }
 
     private static async Task MarkSchemaCurrentAsync(
         string unifiedPath,
+        string password,
         CancellationToken cancellationToken)
     {
         try
         {
-            await using var connection = OpenConnection(unifiedPath);
+            await using var connection = OpenConnection(unifiedPath, password);
             await connection.OpenAsync(cancellationToken);
 
             await using (var delete = new OleDbCommand(
@@ -115,6 +151,6 @@ public static class TukanUnifiedDatabaseBootstrapper
         }
     }
 
-    private static OleDbConnection OpenConnection(string databasePath) =>
-        new(TukanDatabaseOptions.BuildConnectionString(databasePath));
+    private static OleDbConnection OpenConnection(string databasePath, string password) =>
+        new(TukanDatabaseOptions.BuildConnectionString(databasePath, password));
 }
