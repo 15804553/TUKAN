@@ -1,5 +1,4 @@
 using System.Data.OleDb;
-using SKRYBEK.Core.Configuration;
 
 namespace SKRYBEK.Data.Connections;
 
@@ -17,7 +16,7 @@ public sealed class ChomikConnectionFactory
     {
         if (string.IsNullOrWhiteSpace(_databasePath))
             throw new InvalidOperationException(
-                $"Nie ustawiono ścieżki bazy CHOMIK w pliku {DatabasePatch.FileName}.");
+                "Nie ustawiono ścieżki bazy personelu (CHOMIK / TukanDatabase).");
 
         Exception? lastError = null;
         foreach (var pwd in DatabasePasswords)

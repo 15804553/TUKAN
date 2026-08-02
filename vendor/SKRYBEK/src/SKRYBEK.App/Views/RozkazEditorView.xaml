@@ -163,14 +163,14 @@
                                     CornerRadius="3"
                                     BorderThickness="2"
                                     BorderBrush="{Binding Converter={StaticResource FunkcjonariuszNurekObramowanieConverter}}"
-                                    Background="{Binding Converter={StaticResource FunkcjonariuszBoberTloConverter}}">
+                                    Background="{Binding Converter={StaticResource FunkcjonariuszRoleTloConverter}}">
                                 <StackPanel>
                                     <TextBlock FontWeight="SemiBold" FontSize="12"
-                                               Foreground="{Binding Converter={StaticResource FunkcjonariuszBoberKolorConverter}}"
+                                               Foreground="{Binding Converter={StaticResource FunkcjonariuszRoleKolorConverter}}"
                                                Text="{Binding StopienINazwisko}" />
                                     <TextBlock FontSize="10"
                                                Opacity="0.85"
-                                               Foreground="{Binding Converter={StaticResource FunkcjonariuszBoberKolorConverter}}"
+                                               Foreground="{Binding Converter={StaticResource FunkcjonariuszRoleKolorConverter}}"
                                                Text="{Binding Stanowisko}"
                                                TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
@@ -342,7 +342,7 @@
                                             <DataTemplate DataType="{x:Type vm:OsobaComboBoxItem}">
                                                 <TextBlock Text="{Binding StopienINazwisko}"
                                                            ToolTip="{Binding TooltipText}"
-                                                           Foreground="{Binding KolorBoberaForeground}"
+                                                           Foreground="{Binding KolorRoliForeground}"
                                                            FontWeight="{Binding CzySugerowana,
                                                                Converter={StaticResource BoolToFontWeightConverter}}" />
                                             </DataTemplate>
@@ -457,7 +457,7 @@
                                                                 <DataTemplate DataType="{x:Type vm:OsobaComboBoxItem}">
                                                                     <TextBlock Text="{Binding StopienINazwisko}"
                                                                                ToolTip="{Binding TooltipText}"
-                                                                               Foreground="{Binding KolorBoberaForeground}"
+                                                                               Foreground="{Binding KolorRoliForeground}"
                                                                                FontWeight="{Binding CzySugerowana,
                                                                                    Converter={StaticResource BoolToFontWeightConverter}}" />
                                                                 </DataTemplate>
@@ -530,7 +530,7 @@
                                             <DataTemplate DataType="{x:Type vm:OsobaComboBoxItem}">
                                                 <TextBlock Text="{Binding StopienINazwisko}"
                                                            ToolTip="{Binding TooltipText}"
-                                                           Foreground="{Binding KolorBoberaForeground}" />
+                                                           Foreground="{Binding KolorRoliForeground}" />
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>

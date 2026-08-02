@@ -16,11 +16,26 @@ public sealed class AuthService(IUserRepository userRepository) : IAuthService
 
         return users
             .Where(u => (int)u.Role != LegacyZmiana4Role)
+            .OrderBy(u => LoginSortOrder(u.Role))
+            .ThenBy(u => u.Login, StringComparer.OrdinalIgnoreCase)
             .Select(u => u.Login)
-            .OrderBy(login => login.Equals("PA", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
-            .ThenBy(login => login, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
+    /// <summary>PA, DCA, Zmiana 1, Gość 1, Zmiana 2, Gość 2, Zmiana 3, Gość 3, …</summary>
+    private static int LoginSortOrder(UserRole role) => role switch
+    {
+        UserRole.Pa => 0,
+        UserRole.DcaJrg => 1,
+        UserRole.Zmiana1 => 2,
+        UserRole.Gosc1 => 3,
+        UserRole.Zmiana2 => 4,
+        UserRole.Gosc2 => 5,
+        UserRole.Zmiana3 => 6,
+        UserRole.Gosc3 => 7,
+        UserRole.Administrator => 8,
+        _ => 99
+    };
 
     public bool TryLogin(string login, string? password, out string? errorMessage)
     {

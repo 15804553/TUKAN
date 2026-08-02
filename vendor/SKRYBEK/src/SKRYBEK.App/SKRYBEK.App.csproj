@@ -32,6 +32,7 @@
     <ProjectReference Include="..\SKRYBEK.Core\SKRYBEK.Core.csproj" />
     <ProjectReference Include="..\SKRYBEK.Data\SKRYBEK.Data.csproj" />
     <ProjectReference Include="..\SKRYBEK.Services\SKRYBEK.Services.csproj" />
+    <ProjectReference Include="..\..\..\BOBER\src\BOBER.Core\BOBER.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,21 +40,6 @@
     <Resource Include="Resources\skrybek_logo.png" />
     <Resource Include="Resources\skrybek_icon.png" />
     <Resource Include="Themes\SkrybekTheme.xaml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Themes\kolory-ui.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Themes\kolory-rol.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Themes\kolory-grafik.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Config\DatabasePatch.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

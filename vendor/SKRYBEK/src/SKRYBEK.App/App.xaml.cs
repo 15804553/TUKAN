@@ -2,7 +2,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using SKRYBEK.App.Helpers;
-using SKRYBEK.Core.Configuration;
 using SKRYBEK.Services;
 using SKRYBEK.Services.Logging;
 
@@ -39,8 +38,7 @@ public partial class App : Application
             SkrybekLog.Error("Błąd inicjalizacji bazy danych", ex);
             SkrybekMessageBox.ShowError(
                 $"Błąd inicjalizacji:\n{ex.Message}\n\n" +
-                $"Ścieżki baz CHOMIK i BOBER ustaw w pliku:\n{DatabasePatch.GetFilePath()}\n\n" +
-                "Sprawdź też czy zainstalowany jest Microsoft Access Database Engine (x64).",
+                "Sprawdź ścieżkę bazy danych oraz czy zainstalowany jest Microsoft Access Database Engine (x64).",
                 "SKRYBEK — Błąd startu");
             Shutdown(1);
             return;

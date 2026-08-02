@@ -70,7 +70,7 @@ public sealed class AppServices
     }
 
     /// <param name="sharedDatabasePath">
-    /// Wspólna baza CHOMIK/BOBER (TUKAN). Gdy podana — pomija odczyt DatabasePatch.txt.
+    /// Wspólna baza TUKAN. Gdy null — używa <paramref name="dbPath"/> (ta sama baza).
     /// </param>
     /// <param name="ensureCreated">
     /// Gdy false — pomija EnsureCreated (np. gdy TUKAN już wykonał bootstrap schematu).
@@ -80,9 +80,7 @@ public sealed class AppServices
         string? sharedDatabasePath = null,
         bool ensureCreated = true)
     {
-        var databasePatch = sharedDatabasePath is not null
-            ? DatabasePatch.FromUnifiedDatabase(sharedDatabasePath)
-            : DatabasePatch.Load();
+        var databasePatch = DatabasePatch.FromUnifiedDatabase(sharedDatabasePath ?? dbPath);
 
         var skrybek = new SkrybekConnectionFactory(dbPath);
         if (ensureCreated)
@@ -95,8 +93,7 @@ public sealed class AppServices
         var chomik = new ChomikConnectionFactory(databasePatch.ChomikDatabasePath);
         var calendar = new ShiftCalendarEngine(bober);
 
-        SkrybekLog.Info($"Baza CHOMIK: {databasePatch.ChomikDatabasePath}");
-        SkrybekLog.Info($"Baza BOBER: {(string.IsNullOrWhiteSpace(databasePatch.BoberDatabasePath) ? "(brak)" : databasePatch.BoberDatabasePath)}");
+        SkrybekLog.Info($"Baza personelu/grafiku: {databasePatch.ChomikDatabasePath}");
 
         return new AppServices(skrybek, bober, chomik, calendar, databasePatch);
     }

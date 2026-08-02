@@ -135,8 +135,12 @@
                             </StackPanel>
                         </Grid>
 
-                        <TextBlock Text="Dane wrażliwe" FontWeight="SemiBold" FontSize="16" Margin="0,20,0,12" />
-                        <Grid>
+                        <TextBlock x:Name="SensitiveDataHeader"
+                                   Text="Dane wrażliwe"
+                                   FontWeight="SemiBold"
+                                   FontSize="16"
+                                   Margin="0,20,0,12" />
+                        <Grid x:Name="SensitiveDataPanel">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
@@ -172,7 +176,8 @@
                                 </ScrollViewer>
                             </GroupBox>
 
-                            <GroupBox Grid.Column="1"
+                            <GroupBox x:Name="OdznaczeniaGroupBox"
+                                      Grid.Column="1"
                                       Header="Odznaczenia i medale"
                                       Style="{StaticResource ChomikGroupBox}"
                                       Margin="8,0,0,0">

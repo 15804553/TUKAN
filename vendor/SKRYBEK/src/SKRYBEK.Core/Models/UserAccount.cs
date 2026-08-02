@@ -20,6 +20,9 @@ public sealed class UserAccount
         UserRole.Zmiana1 => "Zmiana 1",
         UserRole.Zmiana2 => "Zmiana 2",
         UserRole.Zmiana3 => "Zmiana 3",
+        UserRole.Gosc1   => "Gość 1",
+        UserRole.Gosc2   => "Gość 2",
+        UserRole.Gosc3   => "Gość 3",
         UserRole.DCAJRG  => "DCA JRG",
         UserRole.PA      => "PA",
         _                => "Nieznana"

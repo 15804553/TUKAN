@@ -194,16 +194,50 @@ public sealed class MainController(AppServices services)
         int miesiac,
         int dzien,
         string typWpisu,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default)
+    {
+        var oldTyp = await ResolveCurrentTypAsync(funkcjonariuszId, rok, miesiac, dzien, cancellationToken);
         await services.Grafik.SetWpisAsync(funkcjonariuszId, ZmianaId, rok, miesiac, dzien, typWpisu, cancellationToken);
+        await TryAuditGrafikAsync(funkcjonariuszId, oldTyp, typWpisu);
+    }
 
     public async Task ClearWpisAsync(
         int funkcjonariuszId,
         int rok,
         int miesiac,
         int dzien,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default)
+    {
+        var oldTyp = await ResolveCurrentTypAsync(funkcjonariuszId, rok, miesiac, dzien, cancellationToken);
         await services.Grafik.ClearWpisAsync(funkcjonariuszId, rok, miesiac, dzien, cancellationToken);
+        await TryAuditGrafikAsync(funkcjonariuszId, oldTyp, "—");
+    }
+
+    private async Task<string> ResolveCurrentTypAsync(
+        int funkcjonariuszId,
+        int rok,
+        int miesiac,
+        int dzien,
+        CancellationToken cancellationToken)
+    {
+        var month = await services.Grafik.GetMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
+        var existing = month.LastOrDefault(w => w.FunkcjonariuszId == funkcjonariuszId && w.Dzien == dzien);
+        return string.IsNullOrWhiteSpace(existing?.TypWpisu) ? "—" : existing!.TypWpisu;
+    }
+
+    private async Task TryAuditGrafikAsync(int funkcjonariuszId, string oldTyp, string newTyp)
+    {
+        if (string.Equals(oldTyp, newTyp, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var append = BOBER.Core.Audit.GuestChangeAudit.TryAppendAsync;
+        if (append is null)
+            return;
+
+        var osoba = (_funkcjonariusze ?? []).FirstOrDefault(f => f.Id == funkcjonariuszId);
+        var name = osoba?.PelneImieNazwisko ?? $"ID {funkcjonariuszId}";
+        await append("Grafik", $"Grafik służb [{name}] {oldTyp} na {newTyp}");
+    }
 
     public async Task ExportMonthAsync(
         string filePath,

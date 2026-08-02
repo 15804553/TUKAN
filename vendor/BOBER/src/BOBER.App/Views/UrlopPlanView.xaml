@@ -36,8 +36,9 @@
                               Width="90"
                               SelectionChanged="OnYearChanged" />
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="Importuj z Excel"
+                <StackPanel x:Name="EditActionsPanel" Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="ImportButton"
+                            Content="Importuj z Excel"
                             Style="{StaticResource SecondaryButton}"
                             Padding="12,6"
                             Margin="0,0,8,0"
@@ -47,12 +48,14 @@
                             Padding="12,6"
                             Margin="0,0,8,0"
                             Click="OnExportClick" />
-                    <Button Content="Wyczyść plan roku"
+                    <Button x:Name="ClearYearButton"
+                            Content="Wyczyść plan roku"
                             Style="{StaticResource DangerButton}"
                             Padding="12,6"
                             Margin="0,0,8,0"
                             Click="OnClearYearClick" />
-                    <Button Content="Zastosuj na grafiku"
+                    <Button x:Name="ApplyToGrafikButton"
+                            Content="Zastosuj na grafiku"
                             Style="{StaticResource PrimaryButton}"
                             Padding="12,6"
                             Click="OnApplyToGrafikClick" />

@@ -15,7 +15,10 @@ public static class DefaultCredentials
             [UserRole.Zmiana2] = "2222",
             [UserRole.Zmiana3] = "3333",
             [UserRole.DcaJrg] = "0000",
-            [UserRole.Administrator] = "5359"
+            [UserRole.Administrator] = "5359",
+            [UserRole.Gosc1] = "0001",
+            [UserRole.Gosc2] = "0002",
+            [UserRole.Gosc3] = "0003"
         };
 
 }

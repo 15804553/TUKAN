@@ -78,6 +78,8 @@ public partial class MainWindow : Window
 
     private void ApplyRoleUi()
     {
+        GeneralViewButton.Visibility = _dashboardController.ShowGeneralViewNavButton
+            ? Visibility.Visible : Visibility.Collapsed;
         PersonnelEditButton.Visibility = _dashboardController.CanEditPersonnel
             ? Visibility.Visible : Visibility.Collapsed;
         PasswordAdminButton.Visibility = _dashboardController.CanManagePasswords
@@ -116,7 +118,24 @@ public partial class MainWindow : Window
         WindowState = WindowState.Maximized;
         try
         {
-            ShowGeneralView();
+            if (_dashboardController.IsAdministrator)
+            {
+                OnPasswordAdminClick(PasswordAdminButton, new RoutedEventArgs());
+            }
+            else if (_tukanServices.Chomik.Auth.CurrentUser?.IsGuest == true
+                     && _dashboardController.CanEditPersonnel)
+            {
+                OnPersonnelEditClick(PersonnelEditButton, new RoutedEventArgs());
+            }
+            else if (_dashboardController.CanViewGeneralView)
+            {
+                ShowGeneralView();
+            }
+            else if (_dashboardController.CanEditPersonnel)
+            {
+                OnPersonnelEditClick(PersonnelEditButton, new RoutedEventArgs());
+            }
+
             _ = RefreshKalendarzUnreadBadgeAsync();
         }
         catch (Exception ex)
@@ -313,7 +332,7 @@ public partial class MainWindow : Window
         NavigateTo(_boberView, "Grafik służb", BoberViewButton);
     }
 
-    private void OnUrlopPlanClick(object sender, RoutedEventArgs e)
+    private async void OnUrlopPlanClick(object sender, RoutedEventArgs e)
     {
         if (_tukanServices.Chomik.Auth.CurrentUser?.CanManageUrlopPlan != true)
             return;
@@ -326,8 +345,22 @@ public partial class MainWindow : Window
             ?? _tukanServices.Bober.Auth.CurrentSession?.NazwaZmiany
             ?? $"Zmiana {zmianaId}";
 
+        var urlopLocked = false;
+        if (user?.IsGuest == true)
+        {
+            try
+            {
+                urlopLocked = await _tukanServices.GuestAudit.IsUrlopPlanLockedAsync(zmianaId);
+            }
+            catch
+            {
+                urlopLocked = false;
+            }
+        }
+
         _urlopPlanController = new UrlopPlanController(_tukanServices.Bober, zmianaId, nazwaZmiany);
         _urlopPlanView ??= new UrlopPlanView { IsEmbedded = true };
+        _urlopPlanView.IsReadOnlyMode = urlopLocked;
         _urlopPlanView.Initialize(_urlopPlanController);
         NavigateTo(_urlopPlanView, "Plan urlopów", UrlopPlanButton);
     }

@@ -23,6 +23,8 @@ public partial class PersonnelManagementView : UserControl
     {
         InitializeComponent();
         _controller = controller;
+        if (!_controller.CanViewSensitiveData)
+            OdznaczeniaColumn.Visibility = Visibility.Collapsed;
         Loaded += async (_, _) => await LoadAsync();
         IsVisibleChanged += OnIsVisibleChanged;
     }

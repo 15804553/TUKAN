@@ -25,5 +25,8 @@
         <TabItem x:Name="ExportPathsTab" Header="Ścieżki eksportu" Visibility="Collapsed">
             <ContentControl x:Name="ExportPathsHost" />
         </TabItem>
+        <TabItem x:Name="GuestAuditTab" Header="Audyt Gościa" Visibility="Collapsed">
+            <ContentControl x:Name="GuestAuditHost" />
+        </TabItem>
     </TabControl>
 </UserControl>

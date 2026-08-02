@@ -16,21 +16,26 @@ public sealed class AuthService
         _chomikAuth = chomikAuth;
     }
 
-    /// <summary>Zwraca listę kont do wyświetlenia w oknie logowania: Zmiana 1–3, PA, DCA JRG.</summary>
+    /// <summary>Zwraca listę kont do wyświetlenia w oknie logowania: Zmiana 1–3, Gość 1–3, PA, DCA JRG.</summary>
     public async Task<List<UserAccount>> GetAvailableUsersAsync()
     {
         var dozwolone = new HashSet<UserRole>
         {
-            UserRole.Zmiana1, UserRole.Zmiana2, UserRole.Zmiana3, UserRole.PA, UserRole.DCAJRG
+            UserRole.Zmiana1, UserRole.Zmiana2, UserRole.Zmiana3,
+            UserRole.Gosc1, UserRole.Gosc2, UserRole.Gosc3,
+            UserRole.PA, UserRole.DCAJRG
         };
 
         var kolejnosc = new Dictionary<UserRole, int>
         {
-            [UserRole.Zmiana1] = 0,
-            [UserRole.Zmiana2] = 1,
-            [UserRole.Zmiana3] = 2,
-            [UserRole.PA]      = 3,
-            [UserRole.DCAJRG]  = 4
+            [UserRole.PA]      = 0,
+            [UserRole.DCAJRG]  = 1,
+            [UserRole.Zmiana1] = 2,
+            [UserRole.Gosc1]   = 3,
+            [UserRole.Zmiana2] = 4,
+            [UserRole.Gosc2]   = 5,
+            [UserRole.Zmiana3] = 6,
+            [UserRole.Gosc3]   = 7
         };
 
         var wszyscy = await _chomikAuth.GetAllAsync();
@@ -92,7 +97,8 @@ public sealed class AuthService
             IsReadOnly  = user.IsReadOnly,
             CanEditAll  = user.Role == UserRole.DCAJRG,
             CanEditPojazdy = user.Role is UserRole.DCAJRG
-                or UserRole.Zmiana1 or UserRole.Zmiana2 or UserRole.Zmiana3,
+                or UserRole.Zmiana1 or UserRole.Zmiana2 or UserRole.Zmiana3
+                or UserRole.Gosc1 or UserRole.Gosc2 or UserRole.Gosc3,
             IsPaAccount = user.Role == UserRole.PA
         };
         session.NormalizePaFlags();

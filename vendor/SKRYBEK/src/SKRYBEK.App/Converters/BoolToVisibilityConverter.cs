@@ -68,23 +68,23 @@ public sealed class NullToVisibilityConverter : IValueConverter
 }
 
 [ValueConversion(typeof(Funkcjonariusz), typeof(Brush))]
-public sealed class FunkcjonariuszBoberKolorConverter : IValueConverter
+public sealed class FunkcjonariuszRoleKolorConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         => value is Funkcjonariusz
-            ? BoberKolorHelper.KolorCzcionkiListy
-            : BoberKolorHelper.DomyslnyForeground;
+            ? RoleKolorHelper.KolorCzcionkiListy
+            : RoleKolorHelper.DomyslnyForeground;
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
 
 [ValueConversion(typeof(Funkcjonariusz), typeof(Brush))]
-public sealed class FunkcjonariuszBoberTloConverter : IValueConverter
+public sealed class FunkcjonariuszRoleTloConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         => value is Funkcjonariusz f
-            ? BoberKolorHelper.WyznaczKolorTla(f)
+            ? RoleKolorHelper.WyznaczKolorTla(f)
             : Brushes.Transparent;
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -96,7 +96,7 @@ public sealed class FunkcjonariuszNurekObramowanieConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         => value is Funkcjonariusz f
-            ? BoberKolorHelper.WyznaczKolorObramowaniaNurek(f)
+            ? RoleKolorHelper.WyznaczKolorObramowaniaNurek(f)
             : Brushes.Transparent;
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

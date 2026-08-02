@@ -28,6 +28,9 @@ public partial class UrlopPlanView : UserControl
 
     public bool IsEmbedded { get; set; }
 
+    /// <summary>Gdy true — Gość nie może edytować planu (blokada Zmiany).</summary>
+    public bool IsReadOnlyMode { get; set; }
+
     private static readonly string[] MonthNames =
     [
         "", "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
@@ -46,8 +49,19 @@ public partial class UrlopPlanView : UserControl
         _controller = controller;
         _year = controller.DefaultPlanYear;
         PopulateYearCombo();
+        ApplyReadOnlyModeUi();
         _initializeCalled = true;
         _ = SetupUiAsync();
+    }
+
+    private void ApplyReadOnlyModeUi()
+    {
+        ImportButton.IsEnabled = !IsReadOnlyMode;
+        ClearYearButton.IsEnabled = !IsReadOnlyMode;
+        ApplyToGrafikButton.IsEnabled = !IsReadOnlyMode;
+        ShortcutsStatusTextBlock.Text = IsReadOnlyMode
+            ? "Plan urlopów jest zablokowany — tylko podgląd (Gość nie może edytować)."
+            : "Skróty: Shift/Ctrl+klik — zaznacz dni w wierszu, potem W — wypoczynkowy  |  D — dodatkowy  |  Spacja — wyczyść  |  Prawy przycisk — menu";
     }
 
     private async void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -586,7 +600,7 @@ public partial class UrlopPlanView : UserControl
 
     private async Task TryHandleShortcutKeyAsync(DataGrid dataGrid, KeyEventArgs e)
     {
-        if (_controller is null)
+        if (_controller is null || IsReadOnlyMode)
             return;
 
         var typ = e.Key switch
@@ -732,7 +746,7 @@ public partial class UrlopPlanView : UserControl
 
     private async void OnImportClick(object sender, RoutedEventArgs e)
     {
-        if (_controller is null)
+        if (IsReadOnlyMode || _controller is null)
             return;
 
         var dialog = new OpenFileDialog
@@ -787,7 +801,7 @@ public partial class UrlopPlanView : UserControl
 
     private async void OnClearYearClick(object sender, RoutedEventArgs e)
     {
-        if (_controller is null)
+        if (IsReadOnlyMode || _controller is null)
             return;
 
         var dialog = new ClearUrlopYearDialog(_year, _controller.NazwaZmiany)
@@ -815,7 +829,7 @@ public partial class UrlopPlanView : UserControl
 
     private async void OnApplyToGrafikClick(object sender, RoutedEventArgs e)
     {
-        if (_controller is null)
+        if (IsReadOnlyMode || _controller is null)
             return;
 
         var issues = await _controller.ValidateAsync(_year);

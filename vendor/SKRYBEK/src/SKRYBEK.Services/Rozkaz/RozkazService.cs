@@ -70,12 +70,66 @@ public sealed class RozkazService
         RozkazDzienny rozkaz,
         IReadOnlyList<Funkcjonariusz>? personel = null)
     {
+        RozkazDzienny? before = null;
+        if (rozkaz.Id > 0)
+            before = await _repo.GetByIdAsync(rozkaz.Id);
+
         await WalidujUnikalnoscAsync(rozkaz);
         var samochody = await _samochodyRepo.GetAktywneAsync();
         ValidatePodzialBojowy(rozkaz, samochody, personel);
         var id = await _repo.SaveAsync(rozkaz);
         SkrybekLog.Info($"Zapisano rozkaz nr {rozkaz.NumerRozkazu}/{rozkaz.Rok}, Id={id}");
+
+        await TryAuditRozkazSaveAsync(before, rozkaz, samochody);
         return id;
+    }
+
+    private static async Task TryAuditRozkazSaveAsync(
+        RozkazDzienny? before,
+        RozkazDzienny after,
+        IReadOnlyList<Samochod> samochody)
+    {
+        var append = SKRYBEK.Core.Audit.GuestChangeAudit.TryAppendAsync;
+        if (append is null)
+            return;
+
+        if (before is null)
+        {
+            await append("Rozkazy", $"Rozkazy dzienne dodano nr {after.NumerRozkazu}/{after.Rok}");
+            return;
+        }
+
+        var samochodPoId = samochody.ToDictionary(s => s.Id);
+        var beforeFilled = before.PodzialBojowy
+            .Where(p => p.FunkcjonariuszId.HasValue)
+            .Select(p => FormatPozycja(p, samochodPoId))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var afterFilled = after.PodzialBojowy
+            .Where(p => p.FunkcjonariuszId.HasValue)
+            .Select(p => FormatPozycja(p, samochodPoId))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var added in afterFilled.Except(beforeFilled, StringComparer.OrdinalIgnoreCase))
+            await append("Rozkazy", $"dodano {added}");
+
+        foreach (var removed in beforeFilled.Except(afterFilled, StringComparer.OrdinalIgnoreCase))
+            await append("Rozkazy", $"usunieto {removed}");
+
+        if (beforeFilled.SetEquals(afterFilled))
+        {
+            await append("Rozkazy", $"Rozkazy dzienne zapisano nr {after.NumerRozkazu}/{after.Rok}");
+        }
+    }
+
+    private static string FormatPozycja(PozycjaSamochodu p, IReadOnlyDictionary<int, Samochod> samochody)
+    {
+        var nazwa = !string.IsNullOrWhiteSpace(p.NazwaSamochodu)
+            ? p.NazwaSamochodu
+            : samochody.TryGetValue(p.SamochodId, out var s) ? s.Nazwa : $"pojazd {p.SamochodId}";
+        var max = samochody.TryGetValue(p.SamochodId, out var samochód)
+            ? samochód.LiczbaPozycji
+            : p.Pozycja;
+        return $"{nazwa} {p.Pozycja}/{max}";
     }
 
     /// <summary>
@@ -123,8 +177,15 @@ public sealed class RozkazService
 
     public async Task UsunAsync(int id)
     {
+        var before = await _repo.GetByIdAsync(id);
         await _repo.DeleteAsync(id);
         SkrybekLog.Info($"Usunięto rozkaz Id={id}");
+
+        var append = SKRYBEK.Core.Audit.GuestChangeAudit.TryAppendAsync;
+        if (append is not null && before is not null)
+        {
+            await append("Rozkazy", $"usunieto rozkaz nr {before.NumerRozkazu}/{before.Rok}");
+        }
     }
 
     /// <summary>

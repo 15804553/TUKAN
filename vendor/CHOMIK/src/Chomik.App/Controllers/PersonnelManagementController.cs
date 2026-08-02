@@ -10,6 +10,9 @@ public sealed class PersonnelManagementController(AppServices services)
         services.Auth.CurrentUser?.ShiftNumber
         ?? throw new InvalidOperationException("Brak zalogowanego użytkownika zmiany.");
 
+    public bool CanViewSensitiveData =>
+        services.Auth.CurrentUser?.CanViewSensitiveData ?? false;
+
     public Task<IReadOnlyList<Funkcjonariusz>> LoadPersonnelAsync(CancellationToken cancellationToken = default)
     {
         var user = services.Auth.CurrentUser!;

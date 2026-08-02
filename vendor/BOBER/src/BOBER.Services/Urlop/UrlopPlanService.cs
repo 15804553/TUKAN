@@ -29,45 +29,92 @@ public sealed class UrlopPlanService(
         CancellationToken cancellationToken = default) =>
         urlopPlanRepository.GetByZmianaAndMonthAsync(zmianaId, rok, miesiac, cancellationToken);
 
-    public Task SetWpisAsync(
+    public async Task SetWpisAsync(
         int funkcjonariuszId,
         int zmianaId,
         int rok,
         int miesiac,
         int dzien,
         string typUrlopu,
-        CancellationToken cancellationToken = default) =>
-        urlopPlanRepository.UpsertAsync(new UrlopPlanWpis
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureGuestCanEditUrlopAsync(zmianaId, cancellationToken);
+        var normalized = UrlopTypy.Normalize(typUrlopu);
+        await urlopPlanRepository.UpsertAsync(new UrlopPlanWpis
         {
             FunkcjonariuszId = funkcjonariuszId,
             ZmianaId = zmianaId,
             Rok = rok,
             Miesiac = miesiac,
             Dzien = dzien,
-            TypUrlopu = UrlopTypy.Normalize(typUrlopu)
+            TypUrlopu = normalized
         }, cancellationToken);
 
-    public Task ClearWpisAsync(
+        var append = BOBER.Core.Audit.GuestChangeAudit.TryAppendAsync;
+        if (append is not null)
+        {
+            var osoby = await funkcjonariusze.GetByZmianaAsync(zmianaId, cancellationToken);
+            var name = osoby.FirstOrDefault(f => f.Id == funkcjonariuszId)?.PelneImieNazwisko
+                ?? $"ID {funkcjonariuszId}";
+            await append("Urlopy", $"Plan urlopów [{name}] {dzien:00}.{miesiac:00}.{rok} → {normalized}");
+        }
+    }
+
+    public async Task ClearWpisAsync(
         int funkcjonariuszId,
         int zmianaId,
         int rok,
         int miesiac,
         int dzien,
-        CancellationToken cancellationToken = default) =>
-        urlopPlanRepository.DeleteAsync(funkcjonariuszId, zmianaId, rok, miesiac, dzien, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureGuestCanEditUrlopAsync(zmianaId, cancellationToken);
+        await urlopPlanRepository.DeleteAsync(funkcjonariuszId, zmianaId, rok, miesiac, dzien, cancellationToken);
 
-    public Task ClearHalfYearAsync(
+        var append = BOBER.Core.Audit.GuestChangeAudit.TryAppendAsync;
+        if (append is not null)
+        {
+            var osoby = await funkcjonariusze.GetByZmianaAsync(zmianaId, cancellationToken);
+            var name = osoby.FirstOrDefault(f => f.Id == funkcjonariuszId)?.PelneImieNazwisko
+                ?? $"ID {funkcjonariuszId}";
+            await append("Urlopy", $"Plan urlopów [{name}] usunięto {dzien:00}.{miesiac:00}.{rok}");
+        }
+    }
+
+    private static async Task EnsureGuestCanEditUrlopAsync(int zmianaId, CancellationToken cancellationToken)
+    {
+        if (!BOBER.Core.Audit.GuestChangeAudit.IsGuestSession)
+            return;
+
+        var checker = BOBER.Core.Audit.GuestChangeAudit.IsUrlopPlanLockedAsync;
+        if (checker is null)
+            return;
+
+        if (await checker(zmianaId))
+        {
+            throw new InvalidOperationException(
+                "Plan urlopów jest zablokowany przez użytkownika zmiany — Gość nie może go edytować.");
+        }
+    }
+
+    public async Task ClearHalfYearAsync(
         int zmianaId,
         int rok,
         int polrocze,
-        CancellationToken cancellationToken = default) =>
-        urlopPlanRepository.DeleteByHalfYearAsync(zmianaId, rok, polrocze, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureGuestCanEditUrlopAsync(zmianaId, cancellationToken);
+        await urlopPlanRepository.DeleteByHalfYearAsync(zmianaId, rok, polrocze, cancellationToken);
+    }
 
-    public Task ClearYearAsync(
+    public async Task ClearYearAsync(
         int zmianaId,
         int rok,
-        CancellationToken cancellationToken = default) =>
-        urlopPlanRepository.DeleteByYearAsync(zmianaId, rok, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureGuestCanEditUrlopAsync(zmianaId, cancellationToken);
+        await urlopPlanRepository.DeleteByYearAsync(zmianaId, rok, cancellationToken);
+    }
 
     public async Task<IReadOnlyList<UrlopPlanValidationIssue>> ValidateAsync(
         int zmianaId,
@@ -93,6 +140,7 @@ public sealed class UrlopPlanService(
         int rok,
         CancellationToken cancellationToken = default)
     {
+        await EnsureGuestCanEditUrlopAsync(zmianaId, cancellationToken);
         var planWpisy = await urlopPlanRepository.GetByZmianaAndYearAsync(zmianaId, rok, cancellationToken);
         var grafikWpisy = await grafikRepository.GetByZmianaAndYearAsync(zmianaId, rok, cancellationToken);
         var grafikLookup = grafikWpisy
@@ -151,6 +199,7 @@ public sealed class UrlopPlanService(
         string filePath,
         CancellationToken cancellationToken = default)
     {
+        await EnsureGuestCanEditUrlopAsync(zmianaId, cancellationToken);
         var osoby = await funkcjonariusze.GetByZmianaAsync(zmianaId, cancellationToken);
         var imported = excelService.Import(filePath, rok, osoby);
         var existing = await urlopPlanRepository.GetByZmianaAndYearAsync(zmianaId, rok, cancellationToken);

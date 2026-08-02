@@ -25,7 +25,8 @@ public sealed class UserAccountService(IUserRepository userRepository) : IUserAc
         if (manager.CanResetShiftPasswords)
         {
             return all
-                .Where(u => u.Role is UserRole.Zmiana1 or UserRole.Zmiana2 or UserRole.Zmiana3)
+                .Where(u => u.Role is UserRole.Zmiana1 or UserRole.Zmiana2 or UserRole.Zmiana3
+                    or UserRole.Gosc1 or UserRole.Gosc2 or UserRole.Gosc3)
                 .OrderBy(u => u.Login, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }

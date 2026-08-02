@@ -46,3 +46,9 @@ Desktop.ini
 
 # Cursor
 .cursor/
+
+# Certyfikaty / sekrety podpisu Authenticode (nigdy do repo)
+*.pfx
+*.p12
+*.key
+scripts/local-signing.env

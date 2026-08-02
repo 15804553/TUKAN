@@ -38,9 +38,20 @@ public partial class PersonnelEditWindow : Window
         Title = $"{appTitle} — {chromeTitle}";
         TitleBar.Title = chromeTitle;
         BindEntity(entity);
+        ApplySensitiveDataVisibility();
         WstepienieDoSluzbyDatePicker.SelectedDateChanged += (_, _) => UpdateStazFromServiceStartDate();
         ImieTextBox.LostFocus += (_, _) => ImieTextBox.Text = CapitalizePersonName(ImieTextBox.Text);
         NazwiskoTextBox.LostFocus += (_, _) => NazwiskoTextBox.Text = CapitalizePersonName(NazwiskoTextBox.Text);
+    }
+
+    private void ApplySensitiveDataVisibility()
+    {
+        var visible = _controller.CanViewSensitiveData
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        SensitiveDataHeader.Visibility = visible;
+        SensitiveDataPanel.Visibility = visible;
+        OdznaczeniaGroupBox.Visibility = visible;
     }
 
     private void BuildUprawnieniaUi(IReadOnlyList<TypUprawnienia> typy, Funkcjonariusz entity)
@@ -189,25 +200,32 @@ public partial class PersonnelEditWindow : Window
         }
 
         var selectedOdznaczenia = new Dictionary<int, DateTime>();
-        foreach (var row in _odznaczeniaRows)
+        if (_controller.CanViewSensitiveData)
         {
-            if (row.CheckBox?.IsChecked != true)
+            foreach (var row in _odznaczeniaRows)
             {
-                continue;
-            }
+                if (row.CheckBox?.IsChecked != true)
+                {
+                    continue;
+                }
 
-            if (row.DatePicker?.SelectedDate is not DateTime dataNadania)
-            {
-                ChomikMessageBox.Show(this, $"Podaj datę nadania dla: {row.Typ.Nazwa}", "Informacja");
-                return;
-            }
+                if (row.DatePicker?.SelectedDate is not DateTime dataNadania)
+                {
+                    ChomikMessageBox.Show(this, $"Podaj datę nadania dla: {row.Typ.Nazwa}", "Informacja");
+                    return;
+                }
 
-            selectedOdznaczenia[row.Typ.Id] = dataNadania;
+                selectedOdznaczenia[row.Typ.Id] = dataNadania;
+            }
         }
 
         _entity.NumerPorzadkowy = numerPorzadkowy;
         _entity.StopienId = stopienId;
         _entity.StanowiskoId = stanowiskoId;
+        if (StanowiskoComboBox.SelectedItem is SlownikItem stanowiskoItem)
+            _entity.Stanowisko = stanowiskoItem.Nazwa;
+        if (StopienComboBox.SelectedItem is SlownikItem stopienItem)
+            _entity.Stopien = stopienItem.Nazwa;
         _entity.Imie = CapitalizePersonName(ImieTextBox.Text);
         _entity.Nazwisko = CapitalizePersonName(NazwiskoTextBox.Text);
         ImieTextBox.Text = _entity.Imie;
@@ -219,9 +237,13 @@ public partial class PersonnelEditWindow : Window
         _entity.BadaniaOkresoweDo = BadaniaDatePicker.SelectedDate;
         _entity.KomoraDymowaDo = KomoraDatePicker.SelectedDate;
         _entity.KppDo = KppDatePicker.SelectedDate;
-        _entity.DataAwansuStopien = AwansStopienDatePicker.SelectedDate;
-        _entity.DataAwansuGrupa = AwansGrupaDatePicker.SelectedDate;
-        _entity.DodatekMotywacyjny = decimal.TryParse(DodatekTextBox.Text, out var dodatek) ? dodatek : null;
+        if (_controller.CanViewSensitiveData)
+        {
+            _entity.DataAwansuStopien = AwansStopienDatePicker.SelectedDate;
+            _entity.DataAwansuGrupa = AwansGrupaDatePicker.SelectedDate;
+            _entity.DodatekMotywacyjny = decimal.TryParse(DodatekTextBox.Text, out var dodatek) ? dodatek : null;
+        }
+
         _entity.NumerZmiany = _controller.ShiftNumber;
 
         var selectedTypes = new List<int>();

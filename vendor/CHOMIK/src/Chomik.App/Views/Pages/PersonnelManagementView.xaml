@@ -95,7 +95,10 @@
                             <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Odznaczenia" Binding="{Binding OdznaczeniaSkrot}" Width="200">
+                    <DataGridTextColumn x:Name="OdznaczeniaColumn"
+                                        Header="Odznaczenia"
+                                        Binding="{Binding OdznaczeniaSkrot}"
+                                        Width="200">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
                         </DataGridTextColumn.ElementStyle>

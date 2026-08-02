@@ -91,7 +91,7 @@ public sealed partial class MainViewModel : ObservableObject
             EditorVm.Saved += OnRozkazSaved;
 
             StatusMessage = personel.Count == 0
-                ? $"Brak personelu na {data:dd.MM.yyyy}. Sprawdź grafik BOBER i BoberDatabase w DatabasePatch.txt."
+                ? $"Brak personelu na {data:dd.MM.yyyy}. Sprawdź grafik służb w module BOBER."
                 : $"Nowy rozkaz na {data:dd.MM.yyyy} — dostępnych: {personel.Count}";
         }
         catch (Exception ex)

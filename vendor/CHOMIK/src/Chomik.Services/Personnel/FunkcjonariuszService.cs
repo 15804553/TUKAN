@@ -123,6 +123,33 @@ public sealed class FunkcjonariuszService(
 
         await ValidateNumerPorzadkowyAsync(entity, cancellationToken);
 
+        Funkcjonariusz? before = null;
+        if (entity.Id > 0)
+        {
+            before = await repository.GetByIdAsync(entity.Id, cancellationToken);
+        }
+
+        IReadOnlyDictionary<int, DateTime> odznaczeniaToSave = datyNadaniaOdznaczen;
+        if (!user.CanViewSensitiveData)
+        {
+            if (before is not null)
+            {
+                entity.DodatekMotywacyjny = before.DodatekMotywacyjny;
+                entity.DataAwansuStopien = before.DataAwansuStopien;
+                entity.DataAwansuGrupa = before.DataAwansuGrupa;
+                odznaczeniaToSave = before.Odznaczenia.ToDictionary(
+                    o => o.TypOdznaczeniaId,
+                    o => o.DataNadania);
+            }
+            else
+            {
+                entity.DodatekMotywacyjny = null;
+                entity.DataAwansuStopien = null;
+                entity.DataAwansuGrupa = null;
+                odznaczeniaToSave = new Dictionary<int, DateTime>();
+            }
+        }
+
         if (entity.Id == 0)
         {
             entity.Id = await repository.InsertAsync(entity, cancellationToken);
@@ -133,8 +160,45 @@ public sealed class FunkcjonariuszService(
         }
 
         await repository.ReplaceUprawnieniaAsync(entity.Id, typyUprawnienIds, datyWaznosci, cancellationToken);
-        await repository.ReplaceOdznaczeniaAsync(entity.Id, datyNadaniaOdznaczen, cancellationToken);
+        await repository.ReplaceOdznaczeniaAsync(entity.Id, odznaczeniaToSave, cancellationToken);
+
+        await TryAuditPersonnelChangeAsync(user, before, entity);
         return entity.Id;
+    }
+
+    private static async Task TryAuditPersonnelChangeAsync(
+        SessionUser user,
+        Funkcjonariusz? before,
+        Funkcjonariusz after)
+    {
+        if (!user.IsGuest)
+            return;
+
+        var append = Chomik.Core.Audit.GuestChangeAudit.TryAppendAsync;
+        if (append is null)
+            return;
+
+        var name = after.PelneImieNazwisko;
+        if (before is null)
+        {
+            await append("Personel", $"Edycja personelu dodano [{name}]");
+            return;
+        }
+
+        if (!string.Equals(before.Stanowisko, after.Stanowisko, StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(before.Stanowisko)
+            && !string.IsNullOrWhiteSpace(after.Stanowisko))
+        {
+            await append(
+                "Personel",
+                $"[{name}] zmiana {before.Stanowisko} -> {after.Stanowisko}");
+        }
+        else if (!string.Equals(before.PelneImieNazwisko, after.PelneImieNazwisko, StringComparison.Ordinal)
+                 || before.StopienId != after.StopienId
+                 || before.StanowiskoId != after.StanowiskoId)
+        {
+            await append("Personel", $"Edycja personelu zmieniono [{name}]");
+        }
     }
 
     public async Task DeleteAsync(SessionUser user, int id, CancellationToken cancellationToken = default)
@@ -146,6 +210,13 @@ public sealed class FunkcjonariuszService(
         }
 
         await repository.DeleteAsync(id, cancellationToken);
+
+        if (user.IsGuest)
+        {
+            var append = Chomik.Core.Audit.GuestChangeAudit.TryAppendAsync;
+            if (append is not null)
+                await append("Personel", $"Edycja personelu usunieto [{entity.PelneImieNazwisko}]");
+        }
     }
 
     public async Task SaveGeneralViewNumerZmianyAsync(

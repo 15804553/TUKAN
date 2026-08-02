@@ -17,9 +17,9 @@ public sealed class OsobaComboBoxItem
     public string NazwaGrupy => CzySugerowana ? "Zalecani" : "Pozostali";
 
     /// <summary>
-    /// Kolor tekstu zgodny z grafikiem BOBER — kontrast do tła roli, czerwony dla nurka.
+    /// Kolor tekstu zgodny z rolą w grafiku — kontrast do tła, wyróżnienie nurka.
     /// </summary>
-    public Brush KolorBoberaForeground => BoberKolorHelper.WyznaczKolorForeground(Osoba);
+    public Brush KolorRoliForeground => RoleKolorHelper.WyznaczKolorForeground(Osoba);
 
     public string TooltipText
     {

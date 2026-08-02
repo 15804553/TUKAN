@@ -87,6 +87,9 @@ public sealed class ChomikAuthRepository
         4 => null,               // Zmiana 4 — poza zakresem SKRYBEK
         5 => UserRole.DCAJRG,
         6 => UserRole.DCAJRG,    // Administrator
+        7 => UserRole.Gosc1,
+        8 => UserRole.Gosc2,
+        9 => UserRole.Gosc3,
         _ => null
     };
 }

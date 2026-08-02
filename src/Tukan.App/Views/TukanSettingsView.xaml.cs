@@ -46,6 +46,7 @@ public partial class TukanSettingsView : UserControl
             InitializeShiftCalendarSettings();
             if (CanEditPojazdy)
                 InitializePojazdyTab();
+            InitializeGuestAuditSettings();
         }
     }
 
@@ -63,6 +64,7 @@ public partial class TukanSettingsView : UserControl
         RozkazyTab.Visibility = Visibility.Collapsed;
         PojazdyTab.Visibility = Visibility.Collapsed;
         KalendarzTab.Visibility = Visibility.Collapsed;
+        GuestAuditTab.Visibility = Visibility.Collapsed;
         ExportPathsTab.Visibility = Visibility.Visible;
 
         var pathsControl = new ExportPathsSettingsControl(_tukanServices.Bober.Settings);
@@ -77,6 +79,7 @@ public partial class TukanSettingsView : UserControl
         GrafikTab.Visibility = Visibility.Collapsed;
         RozkazyTab.Visibility = Visibility.Visible;
         KalendarzTab.Visibility = Visibility.Visible;
+        GuestAuditTab.Visibility = Visibility.Collapsed;
 
         var session = _tukanServices.SkrybekSession!;
         var skrybekViewModel = new SettingsViewModel(session);
@@ -97,7 +100,7 @@ public partial class TukanSettingsView : UserControl
     private void InitializeShiftCalendarSettings()
     {
         var user = _tukanServices.Chomik.Auth.CurrentUser;
-        if (user?.IsShiftScoped != true || user.ShiftNumber is not int shiftNumber || shiftNumber is < 1 or > 3)
+        if (user?.IsShiftAccount != true || user.ShiftNumber is not int shiftNumber || shiftNumber is < 1 or > 3)
         {
             KalendarzTab.Visibility = Visibility.Collapsed;
             return;
@@ -111,6 +114,22 @@ public partial class TukanSettingsView : UserControl
             settingsShiftNumber: shiftNumber);
         kalendarzSettings.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
         KalendarzSettingsHost.Content = kalendarzSettings;
+    }
+
+    private void InitializeGuestAuditSettings()
+    {
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        if (user?.IsShiftAccount != true || user.ShiftNumber is not int shiftNumber || shiftNumber is < 1 or > 3)
+        {
+            GuestAuditTab.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        GuestAuditTab.Visibility = Visibility.Visible;
+        GuestAuditHost.Content = new GuestAuditSettingsView(
+            _tukanServices.GuestAudit,
+            shiftNumber,
+            canConfigure: true);
     }
 
     private void InitializePojazdyTab()
@@ -136,10 +155,26 @@ public partial class TukanSettingsView : UserControl
         {
             if (_ratownikMedycznySettingsView is not null)
                 await _ratownikMedycznySettingsView.ReloadAsync();
+
+            await TryAuditSettingsAsync("Ustawienia pojazdów");
         }
         finally
         {
             SettingsSaved?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private async Task TryAuditSettingsAsync(string message)
+    {
+        try
+        {
+            await _tukanServices.GuestAudit.TryAppendAsync(
+                Services.GuestAudit.GuestAuditModule.Ustawienia,
+                message);
+        }
+        catch
+        {
+            // Audyt nie może blokować zapisu ustawień.
         }
     }
 
@@ -162,8 +197,21 @@ public partial class TukanSettingsView : UserControl
         if (dashboardController.CanManageSettings || dashboardController.CanCustomizeGeneralViewColumns)
         {
             _chomikSettingsView = new SettingsView(_chomikSettingsController);
-            _chomikSettingsView.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+            _chomikSettingsView.SettingsSaved += async (_, _) =>
+            {
+                await TryAuditSettingsAsync("Ustawienia personelu");
+                SettingsSaved?.Invoke(this, EventArgs.Empty);
+            };
             ChomikSettingsHost.Content = _chomikSettingsView;
+        }
+        else if (_tukanServices.Chomik.Auth.CurrentUser?.IsGuest == true)
+        {
+            ChomikSettingsHost.Content = new TextBlock
+            {
+                Text = "Ustawienia personelu (kolumny widoku ogólnego) są niedostępne dla konta Gość.",
+                Margin = new Thickness(16),
+                TextWrapping = TextWrapping.Wrap
+            };
         }
         else
         {
@@ -186,7 +234,11 @@ public partial class TukanSettingsView : UserControl
         }
 
         _ratownikMedycznySettingsView = new RatownikMedycznyUstawieniaView(zmianaId);
-        _ratownikMedycznySettingsView.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+        _ratownikMedycznySettingsView.SettingsSaved += async (_, _) =>
+        {
+            await TryAuditSettingsAsync("Ustawienia ratowników medycznych");
+            SettingsSaved?.Invoke(this, EventArgs.Empty);
+        };
         RatownikMedycznySettingsHost.Content = _ratownikMedycznySettingsView;
     }
 
@@ -197,7 +249,11 @@ public partial class TukanSettingsView : UserControl
         {
             ShowCancelButton = false
         };
-        view.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+        view.SettingsSaved += async (_, _) =>
+        {
+            await TryAuditSettingsAsync("Ustawienia grafiku");
+            SettingsSaved?.Invoke(this, EventArgs.Empty);
+        };
         BoberSettingsHost.Content = view;
     }
 }

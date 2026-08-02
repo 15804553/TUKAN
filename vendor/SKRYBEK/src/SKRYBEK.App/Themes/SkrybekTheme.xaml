@@ -12,8 +12,8 @@
     <conv:PozycjaOznaczenieBrushConverter x:Key="PozycjaOznaczenieBrushConverter" />
     <conv:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" />
     <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
-    <conv:FunkcjonariuszBoberKolorConverter x:Key="FunkcjonariuszBoberKolorConverter" />
-    <conv:FunkcjonariuszBoberTloConverter x:Key="FunkcjonariuszBoberTloConverter" />
+    <conv:FunkcjonariuszRoleKolorConverter x:Key="FunkcjonariuszRoleKolorConverter" />
+    <conv:FunkcjonariuszRoleTloConverter x:Key="FunkcjonariuszRoleTloConverter" />
     <conv:FunkcjonariuszNurekObramowanieConverter x:Key="FunkcjonariuszNurekObramowanieConverter" />
 
     <!-- Paleta grafitowa (grafit + szarości) -->

@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SKRYBEK.Core.Models;
-using SKRYBEK.Core.Configuration;
 using SKRYBEK.Services.Logging;
 
 namespace SKRYBEK.App.ViewModels;
@@ -51,7 +50,7 @@ public sealed partial class LoginViewModel : ObservableObject
         {
             SkrybekLog.Error("Błąd ładowania użytkowników CHOMIK", ex);
             Blad = $"Nie można załadować listy użytkowników:\n{ex.Message}\n\n" +
-                   $"Sprawdź ścieżkę bazy CHOMIK w pliku:\n{DatabasePatch.GetFilePath()}";
+                   "Sprawdź ścieżkę wspólnej bazy TUKAN (databasepath.txt / TukanDatabase.accdb).";
         }
         finally
         {

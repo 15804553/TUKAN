@@ -8,8 +8,12 @@ public sealed class SessionUser
     public required UserRole Role { get; init; }
     public int? ShiftNumber { get; init; }
 
-    public bool CanViewSensitiveData => Role is UserRole.Zmiana1 or UserRole.Zmiana2
-        or UserRole.Zmiana3 or UserRole.DcaJrg;
+    public bool IsGuest => Role is UserRole.Gosc1 or UserRole.Gosc2 or UserRole.Gosc3;
+
+    public bool IsShiftAccount => Role is UserRole.Zmiana1 or UserRole.Zmiana2
+        or UserRole.Zmiana3;
+
+    public bool CanViewSensitiveData => IsShiftAccount || IsDcaJrgUser;
 
     public bool CanViewAllShifts => Role is UserRole.Pa or UserRole.DcaJrg;
 
@@ -21,9 +25,9 @@ public sealed class SessionUser
 
     public bool IsAdministrator => Role is UserRole.Administrator;
 
-    public bool CanViewGeneralView => !IsAdministrator;
+    public bool CanViewGeneralView => !IsAdministrator && !IsGuest;
 
-    public bool CanCreatePersonnelList => IsPaUser || IsShiftScoped;
+    public bool CanCreatePersonnelList => IsPaUser || IsShiftAccount;
 
     /// <summary>PA ma widok ogólny domyślnie; przycisk nawigacji jest ukryty.</summary>
     public bool ShowGeneralViewNavButton => CanViewGeneralView && !IsPaUser;
@@ -38,8 +42,7 @@ public sealed class SessionUser
 
     public bool CanManagePermissionTypes => Role is UserRole.DcaJrg;
 
-    public bool CanEditPersonnel => Role is UserRole.Zmiana1 or UserRole.Zmiana2
-        or UserRole.Zmiana3;
+    public bool CanEditPersonnel => IsShiftAccount || IsGuest;
 
     public bool CanResetShiftPasswords => Role is UserRole.DcaJrg;
 
@@ -47,21 +50,22 @@ public sealed class SessionUser
 
     public bool CanManageSettings => Role is UserRole.DcaJrg;
 
-    public bool CanCustomizeGeneralViewColumns => IsShiftScoped || IsDcaJrgUser;
+    public bool CanCustomizeGeneralViewColumns => IsShiftAccount || IsDcaJrgUser;
 
     public bool ShowSettingsNavButton =>
-        CanManageSettings || CanCustomizeGeneralViewColumns || CanManageExportPaths;
+        CanManageSettings || CanCustomizeGeneralViewColumns || CanManageExportPaths || IsGuest;
 
-    public bool IsShiftScoped => Role is UserRole.Zmiana1 or UserRole.Zmiana2
-        or UserRole.Zmiana3;
+    /// <summary>Konto ograniczone do jednej zmiany (Zmiana 1–3 lub Gość 1–3).</summary>
+    public bool IsShiftScoped => IsShiftAccount || IsGuest;
 
+    /// <summary>Widok Planu urlopów; edycja Gościa zależy od blokady w ustawieniach.</summary>
     public bool CanManageUrlopPlan => IsShiftScoped;
 
-    public bool CanViewGrafikNurkowy => IsShiftScoped || IsDcaJrgUser;
+    public bool CanViewGrafikNurkowy => IsShiftAccount || IsDcaJrgUser;
 
     public bool CanApproveGrafikNurkowy => IsDcaJrgUser;
 
-    public bool CanViewKalendarz => IsShiftScoped || IsDcaJrgUser;
+    public bool CanViewKalendarz => IsShiftAccount || IsDcaJrgUser;
 
     public bool CanEditKalendarz => IsDcaJrgUser;
 

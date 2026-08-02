@@ -1,0 +1,69 @@
+<UserControl x:Class="Tukan.App.Views.GuestAuditSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+        <StackPanel>
+            <StackPanel x:Name="ConfigurePanel">
+                <TextBlock Text="Blokada Planu urlopów"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8" />
+                <CheckBox x:Name="UrlopLockCheckBox"
+                          Content="Zablokuj edycję Planu urlopów dla użytkownika Gość"
+                          Margin="0,0,0,16"
+                          Checked="OnConfigChanged"
+                          Unchecked="OnConfigChanged" />
+
+                <TextBlock Text="Zakres zapisu zmian Gościa w logu"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8" />
+                <CheckBox x:Name="AuditGrafikCheckBox"
+                          Content="Grafik służb"
+                          Margin="0,0,0,4"
+                          Checked="OnConfigChanged"
+                          Unchecked="OnConfigChanged" />
+                <CheckBox x:Name="AuditPersonelCheckBox"
+                          Content="Edycja personelu"
+                          Margin="0,0,0,4"
+                          Checked="OnConfigChanged"
+                          Unchecked="OnConfigChanged" />
+                <CheckBox x:Name="AuditRozkazyCheckBox"
+                          Content="Rozkazy dzienne"
+                          Margin="0,0,0,4"
+                          Checked="OnConfigChanged"
+                          Unchecked="OnConfigChanged" />
+                <CheckBox x:Name="AuditUrlopyCheckBox"
+                          Content="Plan urlopów"
+                          Margin="0,0,0,4"
+                          Checked="OnConfigChanged"
+                          Unchecked="OnConfigChanged" />
+                <CheckBox x:Name="AuditUstawieniaCheckBox"
+                          Content="Ustawienia"
+                          Margin="0,0,0,16"
+                          Checked="OnConfigChanged"
+                          Unchecked="OnConfigChanged" />
+
+                <DockPanel Margin="0,0,0,8">
+                    <Button DockPanel.Dock="Right"
+                            Content="Odśwież"
+                            Padding="12,4"
+                            Click="OnRefreshLogClick" />
+                    <TextBlock x:Name="LogHintText"
+                               VerticalAlignment="Center"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+                </DockPanel>
+            </StackPanel>
+
+            <TextBox x:Name="LogTextBox"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     MinHeight="280"
+                     FontFamily="Consolas"
+                     FontSize="12" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -40,6 +40,7 @@ public sealed class AppServices
         Chomik = chomikRepository;
         Auth = new AuthService(authRepository, chomikRepository);
         Settings = new SettingsService(ustawieniaRepository);
+        Ustawienia = ustawieniaRepository;
         Kolory = koloryRepository;
         Kolejnosc = kolejnoscRepository;
 
@@ -72,6 +73,7 @@ public sealed class AppServices
     public IChomikRepository Chomik { get; }
     public IAuthService Auth { get; }
     public ISettingsService Settings { get; }
+    public IUstawieniaRepository Ustawienia { get; }
     public IKoloryRepository Kolory { get; }
     public IKolejnoscRepository Kolejnosc { get; }
     public IGrafikService Grafik { get; }

@@ -15,7 +15,7 @@ public static class ChomikSlowniki
         14  // Dowódca zmiany
     ];
 
-    /// <summary>Grupy stanowisk do mapowania kolorów Bober (kolory-rol.json).</summary>
+    /// <summary>Grupy stanowisk do mapowania kolorów ról w TUKAN.</summary>
     public static readonly HashSet<int> StanowiskaDowodcyZmiany  = [13, 14];
     public static readonly HashSet<int> StanowiskaDowodcySekcji  = [11, 12];
     public const int StanowiskoDowodcaZastepu = 9;

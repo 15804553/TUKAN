@@ -48,24 +48,14 @@ public partial class App : Application
 
         try
         {
-            var (services, migration) = TukanAppServices.CreateAsync().GetAwaiter().GetResult();
-            _services = services;
+            _services = TukanAppServices.CreateAsync().GetAwaiter().GetResult();
             _services.StartBackgroundBackup();
-
-            if (migration.Any)
-            {
-                MessageBox.Show(
-                    TukanMigrationSummary.FormatForUser(migration),
-                    "TUKAN — migracja danych",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-            }
         }
         catch (Exception ex)
         {
             var aceArch = Environment.Is64BitProcess ? "x64" : "x86 (32-bit)";
             MessageBox.Show(
-                $"Nie udało się przygotować baz danych.\n\n{ex.Message}\n\n" +
+                $"Nie udało się przygotować bazy danych.\n\n{ex.Message}\n\n" +
                 $"Aplikacja działa jako proces {aceArch}. " +
                 $"Zainstaluj Microsoft Access Database Engine (ACE) w tej samej architekturze ({aceArch}).",
                 ApplicationTitle,

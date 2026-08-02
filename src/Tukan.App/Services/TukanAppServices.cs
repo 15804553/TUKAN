@@ -3,15 +3,15 @@ using BOBER.Services;
 using BOBER.Services.Logging;
 using BOBER.Services.Startup;
 using Serilog;
-using Chomik.Data;
 using Chomik.Services;
 using SKRYBEK.App;
 using SKRYBEK.Services;
 using SKRYBEK.Services.Logging;
+using Tukan.App.Services.GuestAudit;
 
 namespace Tukan.App.Services;
 
-/// <summary>Inicjalizacja i synchronizacja trzech modułów w jednym katalogu programu.</summary>
+/// <summary>Inicjalizacja wspólnej bazy i modułów domenowych TUKAN.</summary>
 public sealed class TukanAppServices : IDisposable
 {
     public Chomik.Services.AppServices Chomik { get; }
@@ -20,18 +20,21 @@ public sealed class TukanAppServices : IDisposable
 
     public SKRYBEK.Core.Models.SessionInfo? SkrybekSession { get; private set; }
 
-    private TukanAppServices(Chomik.Services.AppServices chomik, BOBER.Services.AppServices bober)
+    public GuestAuditFacade GuestAudit { get; }
+
+    private TukanAppServices(
+        Chomik.Services.AppServices chomik,
+        BOBER.Services.AppServices bober,
+        GuestAuditFacade guestAudit)
     {
         Chomik = chomik;
         Bober = bober;
+        GuestAudit = guestAudit;
     }
 
-    public static async Task<(TukanAppServices Services, TukanDatabaseMigrator.MigrationResult Migration)> CreateAsync()
+    public static async Task<TukanAppServices> CreateAsync()
     {
         ConfigureLogging();
-
-        var targetDirectory = AppContext.BaseDirectory;
-        var migration = await TukanDatabaseMigrator.MigrateAllAsync(targetDirectory);
 
         var unifiedPath = TukanDatabaseOptions.GetFullPath();
 
@@ -39,18 +42,14 @@ public sealed class TukanAppServices : IDisposable
         chomik.DatabaseOptions.FilePath = unifiedPath;
         chomik.DatabaseOptions.DatabasePassword = TukanDatabaseOptions.Password;
         chomik.DatabaseOptions.UseDatabasePassword = true;
-        chomik.DatabaseOptions.MigrateLegacyDatabaseIfNeeded();
 
         var bober = new BOBER.Services.AppServices();
         bober.BoberOptions.FilePath = unifiedPath;
         bober.ChomikOptions.FilePath = unifiedPath;
         DatabasePathFile.Write(unifiedPath);
 
-        // Warm: szybki SELECT wersji schematu; cold: pełny bootstrap raz (konsolidator też woła —
-        // wtedy flaga TukanSchemaVersion pomija drugi przebieg).
         await TukanUnifiedDatabaseBootstrapper.EnsureSchemaAsync(unifiedPath);
 
-        // CreateAsync bez ponownego EnsureCreated — schemat jest już gotowy.
         var skrybek = await SKRYBEK.Services.AppServices.CreateAsync(
             unifiedPath,
             unifiedPath,
@@ -59,7 +58,11 @@ public sealed class TukanAppServices : IDisposable
 
         BoberLog.Information("TUKAN: wspólna baza={UnifiedPath}", unifiedPath);
 
-        return (new TukanAppServices(chomik, bober) { Skrybek = skrybek }, migration);
+        var guestAudit = new GuestAuditFacade(
+            new GuestAuditLogService(),
+            new GuestAuditSettingsService(bober.Ustawienia));
+
+        return new TukanAppServices(chomik, bober, guestAudit) { Skrybek = skrybek };
     }
 
     /// <summary>Backup w tle — nie blokuje okna logowania.</summary>
@@ -91,7 +94,7 @@ public sealed class TukanAppServices : IDisposable
         if (!Bober.Auth.TryAuthenticate(login, password, out var boberError))
         {
             Chomik.Auth.Logout();
-            return (false, boberError ?? "Nie udało się zsynchronizować sesji BOBER.");
+            return (false, boberError ?? "Nie udało się zsynchronizować sesji grafiku.");
         }
 
         var skrybekSession = await Skrybek.Auth.LoginAsync(login, password);
@@ -99,16 +102,18 @@ public sealed class TukanAppServices : IDisposable
         {
             Chomik.Auth.Logout();
             Bober.Auth.Logout();
-            return (false, "Nie udało się zsynchronizować sesji SKRYBEK.");
+            return (false, "Nie udało się zsynchronizować sesji rozkazów.");
         }
 
         SkrybekSession = skrybekSession;
         SkrybekSession.NormalizePaFlags();
+        WireGuestAuditBridges();
         return (true, string.Empty);
     }
 
     public void Logout()
     {
+        ClearGuestAuditBridges();
         SkrybekSession = null;
         Chomik.Auth.Logout();
         Bober.Auth.Logout();
@@ -119,9 +124,41 @@ public sealed class TukanAppServices : IDisposable
         Logout();
     }
 
+    private void WireGuestAuditBridges()
+    {
+        ClearGuestAuditBridges();
+
+        var user = Chomik.Auth.CurrentUser;
+        if (user?.IsGuest == true && user.ShiftNumber is int shift)
+        {
+            GuestAudit.ActivateGuestSession(shift);
+            BOBER.Core.Audit.GuestChangeAudit.IsGuestSession = true;
+        }
+
+        Task Append(string moduleKey, string message)
+        {
+            if (!Enum.TryParse<GuestAuditModule>(moduleKey, ignoreCase: true, out var module))
+                return Task.CompletedTask;
+            return GuestAudit.TryAppendAsync(module, message);
+        }
+
+        global::Chomik.Core.Audit.GuestChangeAudit.TryAppendAsync = Append;
+        BOBER.Core.Audit.GuestChangeAudit.TryAppendAsync = Append;
+        SKRYBEK.Core.Audit.GuestChangeAudit.TryAppendAsync = Append;
+        BOBER.Core.Audit.GuestChangeAudit.IsUrlopPlanLockedAsync =
+            shiftNumber => GuestAudit.IsUrlopPlanLockedAsync(shiftNumber);
+    }
+
+    private void ClearGuestAuditBridges()
+    {
+        GuestAudit.ClearSession();
+        global::Chomik.Core.Audit.GuestChangeAudit.Clear();
+        BOBER.Core.Audit.GuestChangeAudit.Clear();
+        SKRYBEK.Core.Audit.GuestChangeAudit.Clear();
+    }
+
     private static void ConfigureLogging()
     {
-        // katalog\LOG\TUKANyyyy-MM-dd.txt — tylko Warning / Error / wyjątki.
         var logDir = Path.Combine(AppContext.BaseDirectory, "LOG");
         Directory.CreateDirectory(logDir);
         UsunStarePlikiLogow(logDir, DateTime.Now.AddMonths(-6));
@@ -133,7 +170,6 @@ public sealed class TukanAppServices : IDisposable
             minimumLevel: Serilog.Events.LogEventLevel.Warning);
     }
 
-    /// <summary>Usuwa pliki logów starsze niż podana data (wg daty ostatniej modyfikacji).</summary>
     private static void UsunStarePlikiLogow(string logDir, DateTime starszeNiz)
     {
         foreach (var path in Directory.EnumerateFiles(logDir, "TUKAN*.txt"))

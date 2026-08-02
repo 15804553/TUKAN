@@ -80,12 +80,18 @@ public sealed class AuthService(IAuthRepository authRepository, IChomikRepositor
             return account.NumerZmiany;
         }
 
-        if (account.Login.StartsWith("Zmiana ", StringComparison.OrdinalIgnoreCase))
+        if (account.Login.StartsWith("Zmiana ", StringComparison.OrdinalIgnoreCase)
+            || account.Login.StartsWith("Gość ", StringComparison.OrdinalIgnoreCase)
+            || account.Login.StartsWith("Gosc ", StringComparison.OrdinalIgnoreCase))
         {
-            var suffix = account.Login["Zmiana ".Length..].Trim();
-            if (int.TryParse(suffix, out var numer) && numer is > 0 and not 4)
+            var space = account.Login.IndexOf(' ');
+            if (space >= 0)
             {
-                return numer;
+                var suffix = account.Login[(space + 1)..].Trim();
+                if (int.TryParse(suffix, out var numer) && numer is > 0 and not 4)
+                {
+                    return numer;
+                }
             }
         }
 

@@ -156,6 +156,9 @@ internal static class DatabaseSeed
             ("Zmiana 1", UserRole.Zmiana1, 1),
             ("Zmiana 2", UserRole.Zmiana2, 2),
             ("Zmiana 3", UserRole.Zmiana3, 3),
+            ("Gość 1", UserRole.Gosc1, 1),
+            ("Gość 2", UserRole.Gosc2, 2),
+            ("Gość 3", UserRole.Gosc3, 3),
             ("DCA JRG", UserRole.DcaJrg, null),
             ("Administrator", UserRole.Administrator, null)
         };

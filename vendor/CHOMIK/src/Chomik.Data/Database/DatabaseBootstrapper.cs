@@ -46,6 +46,7 @@ public sealed class DatabaseBootstrapper(DatabaseOptions options)
         {
             await SlownikTextFileSynchronizer.SyncAsync(connection, options, cancellationToken);
             await MlodszyNurekUprawnienieMigration.ApplyAsync(connection, cancellationToken);
+            await GoscUsersMigration.ApplyAsync(connection, cancellationToken);
         }
     }
 

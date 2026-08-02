@@ -1,37 +1,19 @@
 using System.Data.OleDb;
 using System.IO;
-using System.Text.Json;
 using System.Windows.Media;
+using BOBER.Core.Constants;
 using SKRYBEK.Core.Chomik;
-using SKRYBEK.Core.Configuration;
 using SKRYBEK.Core.Models;
 using SKRYBEK.Data.Connections;
 
 namespace SKRYBEK.App.Helpers;
 
 /// <summary>
-/// Mapuje funkcjonariusza na kolory zgodne z grafikiem służby BOBER.
-/// Kolory ról wczytywane są z tabeli KoloryStanowisk w bazie BOBER,
-/// z fallbackiem do pliku Themes/kolory-rol.json.
+/// Kolory ról funkcjonariuszy w TUKAN — to samo źródło co grafik:
+/// domyślne <see cref="RoleKeys"/> + nadpisania z tabeli KoloryStanowisk we wspólnej bazie.
 /// </summary>
-public static class BoberKolorHelper
+public static class RoleKolorHelper
 {
-    private const string KluczNurekCzcionka = "NurekCzcionka";
-
-    private static readonly string PlikKolorow =
-        Path.Combine(AppContext.BaseDirectory, "Themes", "kolory-rol.json");
-
-    private static readonly IReadOnlyDictionary<string, string> DomyslneKolory =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["DowodcaZmiany"] = "#F79646",
-            ["DowodcaZastepu"] = "#92D050",
-            ["DowodcaSekcji"] = "#B8CCE4",
-            ["Kierowca"] = "#BFBFBF",
-            ["Zwykly"] = "#FFFFFF",
-            [KluczNurekCzcionka] = "#F80808",
-        };
-
     private static readonly Lazy<IReadOnlyDictionary<string, string>> KoloryRoli = new(WczytajKoloryRoli);
 
     public static Brush DomyslnyForeground =>
@@ -44,49 +26,47 @@ public static class BoberKolorHelper
         new SolidColorBrush(PobierzKolorTlaRoli(WyznaczKluczRoliTla(osoba)));
 
     /// <summary>
-    /// Kolor tekstu w comboboxach — kontrast do tła roli; czerwony dla nurka (jak w grafiku BOBER).
+    /// Kolor tekstu w comboboxach — kontrast do tła roli; wyróżnienie nurka jak w grafiku.
     /// </summary>
     public static Brush WyznaczKolorForeground(Funkcjonariusz osoba)
     {
         if (CzyNurek(osoba))
-            return new SolidColorBrush(PobierzHexKlucza(KluczNurekCzcionka));
+            return new SolidColorBrush(PobierzHexKlucza(RoleKeys.NurekCzcionka));
 
         var tlo = PobierzKolorTlaRoli(WyznaczKluczRoliTla(osoba));
         return new SolidColorBrush(KontrastowyTekst(tlo));
     }
 
     /// <summary>
-    /// Czerwona obwódka wyróżniająca nurka na liście dostępnego personelu.
+    /// Obramowanie wyróżniające nurka na liście dostępnego personelu.
     /// Dla pozostałych — przezroczysta, przy stałej grubości 2 px bez przesuwania layoutu.
     /// </summary>
     public static Brush WyznaczKolorObramowaniaNurek(Funkcjonariusz osoba) =>
         CzyNurek(osoba)
-            ? new SolidColorBrush(PobierzHexKlucza(KluczNurekCzcionka))
+            ? new SolidColorBrush(PobierzHexKlucza(RoleKeys.NurekCzcionka))
             : Brushes.Transparent;
 
     public static bool CzyNurek(Funkcjonariusz osoba) =>
         osoba.MaUprawnieniaNumek || osoba.MaUprawnieniaKPP;
 
-    /// <summary>
-    /// Rola tła wiersza — ta sama logika co w BOBER (nurek nie zmienia tła).
-    /// </summary>
+    /// <summary>Rola tła wiersza — nurek nie zmienia tła (tylko czcionka / obramowanie).</summary>
     private static string WyznaczKluczRoliTla(Funkcjonariusz osoba)
     {
         var sid = osoba.StanowiskoId;
 
         if (ChomikSlowniki.StanowiskaDowodcyZmiany.Contains(sid))
-            return "DowodcaZmiany";
+            return RoleKeys.DowodcaZmiany;
 
         if (ChomikSlowniki.StanowiskaDowodcySekcji.Contains(sid))
-            return "DowodcaSekcji";
+            return RoleKeys.DowodcaSekcji;
 
         if (sid == ChomikSlowniki.StanowiskoDowodcaZastepu)
-            return "DowodcaZastepu";
+            return RoleKeys.DowodcaZastepu;
 
         if (osoba.MaUprawnieniaKierowca)
-            return "Kierowca";
+            return RoleKeys.Kierowca;
 
-        return "Zwykly";
+        return RoleKeys.Zwykly;
     }
 
     private static Color PobierzKolorTlaRoli(string klucz) =>
@@ -97,7 +77,7 @@ public static class BoberKolorHelper
         if (KoloryRoli.Value.TryGetValue(klucz, out var hex))
             return ParsujKolor(hex);
 
-        return ParsujKolor(DomyslneKolory.TryGetValue(klucz, out var domyslny) ? domyslny : "#FFFFFF");
+        return ParsujKolor(RoleKeys.GetDefaultKolorHex(klucz));
     }
 
     private static Color KontrastowyTekst(Color tlo)
@@ -110,64 +90,25 @@ public static class BoberKolorHelper
 
     private static IReadOnlyDictionary<string, string> WczytajKoloryRoli()
     {
-        var kolory = new Dictionary<string, string>(DomyslneKolory, StringComparer.OrdinalIgnoreCase);
+        var kolory = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var klucz in RoleKeys.WszystkieKolory)
+            kolory[klucz] = RoleKeys.GetDefaultKolorHex(klucz);
 
-        foreach (var (klucz, hex) in WczytajKoloryZJson())
-            kolory[klucz] = hex;
-
-        foreach (var (klucz, hex) in WczytajKoloryZBazyBober())
+        foreach (var (klucz, hex) in WczytajKoloryZBazy())
             kolory[klucz] = hex;
 
         return kolory;
     }
 
-    private static IEnumerable<KeyValuePair<string, string>> WczytajKoloryZJson()
+    private static IEnumerable<KeyValuePair<string, string>> WczytajKoloryZBazy()
     {
         var wynik = new List<KeyValuePair<string, string>>();
         try
         {
-            if (!File.Exists(PlikKolorow))
+            if (ServiceProvider.Services is null)
                 return wynik;
 
-            var json = File.ReadAllText(PlikKolorow);
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            foreach (var property in root.EnumerateObject())
-            {
-                if (property.NameEquals("Nurek") && property.Value.ValueKind == JsonValueKind.Object)
-                {
-                    if (property.Value.TryGetProperty("czcionka", out var czcionka)
-                        && czcionka.GetString() is { } nurekHex)
-                    {
-                        wynik.Add(new KeyValuePair<string, string>(KluczNurekCzcionka, nurekHex));
-                    }
-
-                    continue;
-                }
-
-                if (property.Value.ValueKind == JsonValueKind.String
-                    && property.Value.GetString() is { } hex)
-                {
-                    wynik.Add(new KeyValuePair<string, string>(property.Name, hex));
-                }
-            }
-        }
-        catch
-        {
-            // fallback do wartości domyślnych
-        }
-
-        return wynik;
-    }
-
-    private static IEnumerable<KeyValuePair<string, string>> WczytajKoloryZBazyBober()
-    {
-        var wynik = new List<KeyValuePair<string, string>>();
-        try
-        {
-            var patch = DatabasePatch.Load();
-            var path = DatabasePatch.ResolveBoberPath(patch.BoberDatabasePath);
+            var path = ServiceProvider.Services.BoberDb.DatabasePath;
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
                 return wynik;
 
@@ -188,7 +129,7 @@ public static class BoberKolorHelper
         }
         catch
         {
-            // fallback do pliku JSON / wartości domyślnych
+            // fallback do RoleKeys
         }
 
         return wynik;

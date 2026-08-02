@@ -10,6 +10,9 @@
     <RootNamespace>Tukan.App</RootNamespace>
     <Product>TUKAN</Product>
     <ApplicationTitle>TUKAN</ApplicationTitle>
+    <Company>st.ogn.Maciej Wnek</Company>
+    <Authors>st.ogn.Maciej Wnek</Authors>
+    <Copyright>Copyright © Maciej Wnęk</Copyright>
     <Version>1.0.0</Version>
     <ApplicationIcon>Assets\tukan.ico</ApplicationIcon>
     <!-- Architektura musi odpowiadać zainstalowanemu ACE (x86 = ACE32, x64 = ACE64). -->
