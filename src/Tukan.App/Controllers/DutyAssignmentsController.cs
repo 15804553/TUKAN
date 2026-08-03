@@ -54,7 +54,7 @@ public sealed class DutyAssignmentsController
         var rowsById = personnel.Zip(rows).ToDictionary(pair => pair.First.Id, pair => pair.Second);
         var rowsByName = BuildNameLookup(personnel, rows);
 
-        foreach (var order in await GetApprovedOrdersForMonthAsync(year, month))
+        foreach (var order in await GetOrdersForMonthAsync(year, month))
         {
             foreach (var assignment in order.Sluzba)
             {
@@ -72,11 +72,13 @@ public sealed class DutyAssignmentsController
         return rows;
     }
 
-    private async Task<IReadOnlyList<RozkazDzienny>> GetApprovedOrdersForMonthAsync(int year, int month)
+    /// <summary>
+    /// Rozkazy zmiany w miesiącu (robocze i zatwierdzone) — obsada z SŁUŻBY po „Zapisz”.
+    /// </summary>
+    private async Task<IReadOnlyList<RozkazDzienny>> GetOrdersForMonthAsync(int year, int month)
     {
         var summaries = await _services.Skrybek.Rozkaz.GetByRokAsync(year);
         var matchingOrders = summaries
-            .Where(order => order.Status == StatusRozkazu.Zatwierdzony)
             .Where(order => order.ZmianaId == _shiftNumber)
             .Where(order => order.Data.Month == month)
             .OrderBy(order => order.Data)
