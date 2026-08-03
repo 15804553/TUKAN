@@ -3,7 +3,7 @@ namespace BOBER.Core.Constants;
 /// <summary>
 /// Kody wpisów w komórkach grafiku i reguły ich interpretacji przy podsumowaniach.
 /// Oddaje (O) — nakładka „/” na WS/D/U/UWS (obecność).
-/// Kropka (.) — chętna oddać, tylko z U, UWS lub WS (nie wpływa na stan etatowy).
+/// Kropka (.) — chętna oddać, tylko z D, U, UWS lub WS (nie wpływa na stan etatowy).
 /// Pytajnik (?) — potrzebuje wolne, tylko gdy osoba jest w pracy (nie wpływa na stan).
 /// UWS — urlop z wolną służbą (żółte tło jak WS, napis „U”).
 /// </summary>
@@ -22,7 +22,7 @@ public static class GrafikWpisTypy
     /// <summary>Sufiks Oddaje — bazowy kod (WS/D/U/UWS) zostaje pod spodem.</summary>
     public const char OddalSufiks = '/';
 
-    /// <summary>Sufiks „chętna oddać” — tylko z U, UWS lub WS.</summary>
+    /// <summary>Sufiks „chętna oddać” — tylko z D, U, UWS lub WS.</summary>
     public const char KropkaSufiks = '.';
 
     /// <summary>Znak wizualny długiej pauzy (Oddaje) w komórce.</summary>
@@ -173,15 +173,13 @@ public static class GrafikWpisTypy
         return MaOddal(typWpisu) ? bazowy : bazowy + OddalSufiks;
     }
 
-    /// <summary>Dodaje lub usuwa kropkę (tylko U / UWS / WS). Zwraca null, gdy nie wolno.</summary>
+    /// <summary>Dodaje lub usuwa kropkę (tylko D / U / UWS / WS). Zwraca null, gdy nie wolno.</summary>
     public static string? PrzelaczKropke(string? typWpisu)
     {
-        var bazowy = BazowyKod(typWpisu);
-        if (!bazowy.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
-            && !bazowy.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
-            && !bazowy.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase))
+        if (!MoznaOddac(typWpisu))
             return null;
 
+        var bazowy = BazowyKod(typWpisu);
         if (MaKropke(typWpisu))
             return bazowy; // zdejmij kropkę i ewentualne Oddaje
 

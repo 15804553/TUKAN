@@ -257,7 +257,7 @@ public sealed class GrafikSluzbExportMarksTests
     }
 
     [Fact]
-    public void ExportMonth_LessColor_BialeWierszeCzarnaCzcionkaZolteTylkoWs()
+    public void ExportMonth_LessColor_BialeWierszeCzarnaCzcionkaZolteWsIDyzur()
     {
         var funkcjonariusze = new List<Funkcjonariusz>
         {
@@ -313,9 +313,9 @@ public sealed class GrafikSluzbExportMarksTests
             Assert.Equal(white, ws.Cell(5, 2).Style.Fill.BackgroundColor);
             Assert.Equal(black, ws.Cell(5, 2).Style.Font.FontColor);
 
-            // WS — żółte; D i Del — białe (bez żółtego)
+            // WS i D — żółte; Del — białe (bez żółtego)
             Assert.Equal(wsYellow, ws.Cell(3, 3).Style.Fill.BackgroundColor);
-            Assert.Equal(white, ws.Cell(4, 3).Style.Fill.BackgroundColor);
+            Assert.Equal(wsYellow, ws.Cell(4, 3).Style.Fill.BackgroundColor);
             Assert.Equal(white, ws.Cell(5, 3).Style.Fill.BackgroundColor);
 
             // Czcionka czarna w całym pliku: nagłówek, wiersze, stopka

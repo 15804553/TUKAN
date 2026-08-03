@@ -664,7 +664,7 @@ public partial class BoberGrafikView : UserControl
         {
             BoberMessageBox.Show(
                 OwnerWindow,
-                "Znak „.” (osoba chętna oddać) można ustawić tylko przy oznaczeniu U (urlop), U+WS lub WS (wolna służba).",
+                "Znak „.” (osoba chętna oddać) można ustawić tylko przy oznaczeniu D (dyżur), U (urlop), U+WS lub WS (wolna służba).",
                 "Grafik");
             return;
         }

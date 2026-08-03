@@ -188,7 +188,8 @@ public sealed class ExportService
                 var bazowy = GrafikWpisTypy.BazowyKod(wpis);
 
                 if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase)
-                    || bazowy.Equals(GrafikWpisTypy.UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase))
+                    || bazowy.Equals(GrafikWpisTypy.UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
+                    || bazowy.Equals(GrafikWpisTypy.Dyzur, StringComparison.OrdinalIgnoreCase))
                 {
                     cell.Style.Fill.BackgroundColor = nieobecnoscBg;
                     cell.Value = GrafikWpisTypy.TekstWyswietlany(wpis);
@@ -205,12 +206,11 @@ public sealed class ExportService
                 }
 
                 cell.Value = GrafikWpisTypy.TekstWyswietlany(wpis);
-                // LessColor: żółte tło tylko dla WS; D i Del bez dodatkowego koloru.
+                // LessColor: żółte tło dla WS/UWS/D (powyżej); Del bez dodatkowego koloru.
                 cell.Style.Fill.BackgroundColor = lessColor
                     ? rowBg
                     : bazowy switch
                     {
-                        GrafikWpisTypy.Dyzur => nieobecnoscBg,
                         GrafikWpisTypy.Delegacja => nieobecnoscBg,
                         _ => rowBg
                     };
@@ -296,7 +296,7 @@ public sealed class ExportService
 
     private static readonly string[] LegendLines =
     [
-        "Legenda komórek: (puste) — w pracy | D — Dyżur | żółte tło — Wolna służba | U — Urlop | U na żółtym — Urlop z WS | Del — Delegacja | S — Szkolenie | C — Chory",
+        "Legenda komórek: (puste) — w pracy | D — Dyżur (żółte tło) | żółte tło — Wolna służba | U — Urlop | U na żółtym — Urlop z WS | Del — Delegacja | S — Szkolenie | C — Chory",
         "? — potrzebuje wolne | • — chętna oddać | przekreślenie lub — — Oddaje | Oznaczenia: D — Dowódca | N — Nurek | K — Kierowca"
     ];
 

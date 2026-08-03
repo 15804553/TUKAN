@@ -27,7 +27,7 @@ public interface ISettingsService
 
     /// <summary>
     /// LessColor: eksport grafiku służb bez kolorów ról/nurek — białe wiersze, czarna czcionka,
-    /// żółte tło tylko dla WS. Domyślnie włączone.
+    /// żółte tło dla WS i D. Domyślnie włączone.
     /// </summary>
     Task<bool> GetLessColorAsync(CancellationToken cancellationToken = default);
     Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default);

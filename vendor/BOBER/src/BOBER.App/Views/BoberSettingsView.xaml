@@ -170,7 +170,7 @@
                         Margin="0,0,0,16">
                     <StackPanel>
                         <CheckBox x:Name="LessColorCheckBox"
-                                  Content="LessColor — eksport grafiku bez kolorów ról (białe wiersze, czarna czcionka, żółte tylko WS)"
+                                  Content="LessColor — eksport grafiku bez kolorów ról (białe wiersze, czarna czcionka, żółte WS i D)"
                                   Foreground="{StaticResource ForegroundBrush}"
                                   IsChecked="True"
                                   Margin="0,0,0,12" />

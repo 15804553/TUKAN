@@ -35,16 +35,19 @@ public sealed class GrafikWpisTypyTests
     [InlineData("UWS.", "UWS")]
     [InlineData("WS", "WS.")]
     [InlineData("WS/", "WS.")]
-    public void PrzelaczKropke_TylkoUorazWS(string wejscie, string oczekiwane)
+    [InlineData("D", "D.")]
+    [InlineData("D.", "D")]
+    [InlineData("D/", "D.")]
+    public void PrzelaczKropke_TylkoDUorazWS(string wejscie, string oczekiwane)
     {
         Assert.Equal(oczekiwane, GrafikWpisTypy.PrzelaczKropke(wejscie));
     }
 
     [Theory]
     [InlineData("")]
-    [InlineData("D")]
     [InlineData("S")]
     [InlineData("?")]
+    [InlineData("Del")]
     public void PrzelaczKropke_Niedozwolone_ZwracaNull(string? typ)
     {
         Assert.Null(GrafikWpisTypy.PrzelaczKropke(typ));
@@ -92,6 +95,7 @@ public sealed class GrafikWpisTypyTests
 
     [Theory]
     [InlineData("U.", "\u2022")]
+    [InlineData("D.", "\u2022")]
     [InlineData("?", "?")]
     [InlineData("U", "")]
     public void TekstZnaczka(string? typ, string expected)
