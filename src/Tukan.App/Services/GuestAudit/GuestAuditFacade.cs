@@ -49,4 +49,9 @@ public sealed class GuestAuditFacade
         int shiftNumber,
         CancellationToken cancellationToken = default) =>
         _settings.GetUrlopPlanLockedAsync(shiftNumber, cancellationToken);
+
+    public Task<bool> CanGuestManageGrafikAsync(
+        int shiftNumber,
+        CancellationToken cancellationToken = default) =>
+        _settings.GetGuestCanManageGrafikAsync(shiftNumber, cancellationToken);
 }

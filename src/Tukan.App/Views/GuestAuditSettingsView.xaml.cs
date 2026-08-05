@@ -42,6 +42,8 @@ public partial class GuestAuditSettingsView : UserControl
 
                 UrlopLockCheckBox.IsChecked =
                     await _guestAudit.Settings.GetUrlopPlanLockedAsync(_shiftNumber);
+                GrafikManageCheckBox.IsChecked =
+                    await _guestAudit.Settings.GetGuestCanManageGrafikAsync(_shiftNumber);
             }
 
             LogTextBox.Text = _canConfigure
@@ -75,6 +77,9 @@ public partial class GuestAuditSettingsView : UserControl
             await _guestAudit.Settings.SetUrlopPlanLockedAsync(
                 _shiftNumber,
                 UrlopLockCheckBox.IsChecked == true);
+            await _guestAudit.Settings.SetGuestCanManageGrafikAsync(
+                _shiftNumber,
+                GrafikManageCheckBox.IsChecked == true);
         }
         catch (Exception ex)
         {

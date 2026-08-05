@@ -117,6 +117,13 @@ public partial class BoberSettingsView : UserControl
             UpdateAlternatingColorsPanel();
             RefreshAltColorPreview(AltColorAPreview, AltColorATextBox.Text);
             RefreshAltColorPreview(AltColorBPreview, AltColorBTextBox.Text);
+
+            var showGrafikMgmt = await _controller.CanShowGrafikManagementAsync();
+            if (generation != _loadGeneration)
+                return;
+            GrafikManagementSection.Visibility = showGrafikMgmt
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
         catch (Exception ex)
         {
@@ -328,6 +335,9 @@ public partial class BoberSettingsView : UserControl
 
     private async void OnGenerateScheduleClick(object sender, RoutedEventArgs e)
     {
+        if (!await EnsureGuestGrafikManagementAllowedAsync())
+            return;
+
         var result = BoberMessageBox.Show(
             GetOwnerWindow(),
             "Zostanie utworzony nowy grafik (nowe daty służby) ale wpisy w grafiku pozostają niezmienione. Jeżeli chcesz je wyczyścić użyj przycisków Wyczyść półrocze.\n\nCzy kontynuować?",
@@ -352,6 +362,9 @@ public partial class BoberSettingsView : UserControl
 
     private async void OnClearH1Click(object sender, RoutedEventArgs e)
     {
+        if (!await EnsureGuestGrafikManagementAllowedAsync())
+            return;
+
         var dialog = new ClearHalfYearDialog("I półrocza (Styczeń–Czerwiec)")
         {
             Owner = GetOwnerWindow()
@@ -375,6 +388,9 @@ public partial class BoberSettingsView : UserControl
 
     private async void OnClearH2Click(object sender, RoutedEventArgs e)
     {
+        if (!await EnsureGuestGrafikManagementAllowedAsync())
+            return;
+
         var dialog = new ClearHalfYearDialog("II półrocza (Lipiec–Grudzień)")
         {
             Owner = GetOwnerWindow()
@@ -394,6 +410,18 @@ public partial class BoberSettingsView : UserControl
         {
             UiErrorReporter.Show(GetOwnerWindow(), ex, "Błąd czyszczenia półrocza");
         }
+    }
+
+    private async Task<bool> EnsureGuestGrafikManagementAllowedAsync()
+    {
+        if (await _controller.CanShowGrafikManagementAsync())
+            return true;
+
+        BoberMessageBox.Show(
+            GetOwnerWindow(),
+            "Zarządzanie grafikiem jest wyłączone dla użytkownika Gość.",
+            "BOBER");
+        return false;
     }
 
     private Window? GetOwnerWindow() => Window.GetWindow(this);

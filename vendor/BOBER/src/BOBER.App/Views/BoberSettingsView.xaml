@@ -296,6 +296,7 @@
                     </StackPanel>
                 </Border>
 
+                <StackPanel x:Name="GrafikManagementSection">
                 <TextBlock Text="ZARZĄDZANIE GRAFIKIEM" Style="{StaticResource SectionHeader}" />
                 <Border Background="{StaticResource BackgroundBrush}"
                         CornerRadius="6"
@@ -327,6 +328,7 @@
                         </StackPanel>
                     </StackPanel>
                 </Border>
+                </StackPanel>
 
             </StackPanel>
         </ScrollViewer>

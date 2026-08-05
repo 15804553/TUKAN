@@ -150,6 +150,8 @@ public sealed class TukanAppServices : IDisposable
         SKRYBEK.Core.Audit.GuestChangeAudit.TryAppendAsync = Append;
         BOBER.Core.Audit.GuestChangeAudit.IsUrlopPlanLockedAsync =
             shiftNumber => GuestAudit.IsUrlopPlanLockedAsync(shiftNumber);
+        BOBER.Core.Audit.GuestChangeAudit.CanManageGrafikAsync =
+            shiftNumber => GuestAudit.CanGuestManageGrafikAsync(shiftNumber);
     }
 
     private void ClearGuestAuditBridges()

@@ -1,3 +1,4 @@
+using BOBER.Core.Audit;
 using BOBER.Core.Constants;
 using BOBER.Core.Models;
 using BOBER.Services;
@@ -87,6 +88,7 @@ public sealed class SettingsController(AppServices services)
 
     public async Task ClearHalfYearAsync(int polrocze, bool alsoClearUrlopPlan = false, CancellationToken ct = default)
     {
+        await EnsureGuestCanManageGrafikAsync(ct);
         await services.Grafik.ClearHalfYearAsync(ZmianaId, DateTime.Today.Year, polrocze, ct);
         if (alsoClearUrlopPlan)
             await services.UrlopPlan.ClearHalfYearAsync(ZmianaId, DateTime.Today.Year, polrocze, ct);
@@ -94,9 +96,34 @@ public sealed class SettingsController(AppServices services)
 
     public async Task GenerateBaseScheduleAsync(int year, CancellationToken ct = default)
     {
+        await EnsureGuestCanManageGrafikAsync(ct);
         var funkcjonariusze = await GetFunkcjonariuszeAsync(ct);
         var ids = funkcjonariusze.Select(f => f.Id).ToList();
         await services.Grafik.GenerateBaseScheduleAsync(ZmianaId, year, ids, ct);
+    }
+
+    /// <summary>
+    /// Czy pokazać sekcję zarządzania grafikiem. Dla Gościa — tylko gdy Zmiana włączyła dostęp.
+    /// </summary>
+    public async Task<bool> CanShowGrafikManagementAsync(CancellationToken ct = default)
+    {
+        if (!GuestChangeAudit.IsGuestSession)
+            return true;
+
+        var checker = GuestChangeAudit.CanManageGrafikAsync;
+        return checker is not null && await checker(ZmianaId);
+    }
+
+    private async Task EnsureGuestCanManageGrafikAsync(CancellationToken ct)
+    {
+        if (!GuestChangeAudit.IsGuestSession)
+            return;
+
+        if (await CanShowGrafikManagementAsync(ct))
+            return;
+
+        throw new InvalidOperationException(
+            "Zarządzanie grafikiem jest wyłączone dla użytkownika Gość — włącz je w Audycie Gościa (użytkownik Zmiana).");
     }
 
     public IReadOnlyList<(string Klucz, string Etykieta)> GetKolorKeys() =>

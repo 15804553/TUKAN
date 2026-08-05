@@ -14,6 +14,16 @@
                           Checked="OnConfigChanged"
                           Unchecked="OnConfigChanged" />
 
+                <TextBlock Text="Zarządzanie grafikiem"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8" />
+                <CheckBox x:Name="GrafikManageCheckBox"
+                          Content="Pozwól użytkownikowi Gość na zarządzanie grafikiem (przygotowanie / czyszczenie półroczy)"
+                          Margin="0,0,0,16"
+                          Checked="OnConfigChanged"
+                          Unchecked="OnConfigChanged" />
+
                 <TextBlock Text="Zakres zapisu zmian Gościa w logu"
                            FontSize="16"
                            FontWeight="SemiBold"

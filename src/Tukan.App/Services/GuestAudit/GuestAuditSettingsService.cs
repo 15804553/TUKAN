@@ -3,7 +3,7 @@ using BOBER.Data.Repositories;
 
 namespace Tukan.App.Services.GuestAudit;
 
-/// <summary>Konfiguracja audytu Gościa i blokady Planu urlopów — klucze w tabeli Ustawienia (BOBER).</summary>
+/// <summary>Konfiguracja audytu Gościa, blokady Planu urlopów i dostępu do zarządzania grafikiem — tabela Ustawienia (BOBER).</summary>
 public sealed class GuestAuditSettingsService(IUstawieniaRepository ustawienia)
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -14,6 +14,7 @@ public sealed class GuestAuditSettingsService(IUstawieniaRepository ustawienia)
 
     public static string AuditKey(int shiftNumber) => $"AudytGosc.Zmiana{shiftNumber}";
     public static string UrlopLockKey(int shiftNumber) => $"BlokadaPlanUrlopow.Zmiana{shiftNumber}";
+    public static string GrafikManageKey(int shiftNumber) => $"DostepZarzadzanieGrafikiem.Zmiana{shiftNumber}";
 
     public async Task<GuestAuditScope> GetScopeAsync(
         int shiftNumber,
@@ -56,4 +57,22 @@ public sealed class GuestAuditSettingsService(IUstawieniaRepository ustawienia)
         bool locked,
         CancellationToken cancellationToken = default) =>
         ustawienia.SetAsync(UrlopLockKey(shiftNumber), locked ? "true" : "false", cancellationToken);
+
+    /// <summary>
+    /// Czy Gość może używać sekcji „Zarządzanie grafikiem”. Brak klucza / false = wyłączone.
+    /// </summary>
+    public async Task<bool> GetGuestCanManageGrafikAsync(
+        int shiftNumber,
+        CancellationToken cancellationToken = default)
+    {
+        var raw = await ustawienia.GetAsync(GrafikManageKey(shiftNumber), cancellationToken);
+        return string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase)
+            || raw == "1";
+    }
+
+    public Task SetGuestCanManageGrafikAsync(
+        int shiftNumber,
+        bool allowed,
+        CancellationToken cancellationToken = default) =>
+        ustawienia.SetAsync(GrafikManageKey(shiftNumber), allowed ? "true" : "false", cancellationToken);
 }
