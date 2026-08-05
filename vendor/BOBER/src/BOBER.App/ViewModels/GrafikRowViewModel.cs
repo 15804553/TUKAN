@@ -27,6 +27,21 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
     /// <summary>Kolor obramowania imienia (czerwony dla nurka, przezroczysty w pozostałych przypadkach).</summary>
     public Brush NameBorderBrush { get; set; } = Brushes.Transparent;
 
+    private bool _isSelectionHighlight;
+
+    /// <summary>Wiersz aktywny przy zaznaczeniu komórki dnia — podświetla Lp. i imię.</summary>
+    public bool IsSelectionHighlight
+    {
+        get => _isSelectionHighlight;
+        set
+        {
+            if (_isSelectionHighlight == value)
+                return;
+            _isSelectionHighlight = value;
+            OnPropertyChanged();
+        }
+    }
+
     private string _uwagaMiesieczna = string.Empty;
 
     /// <summary>Tekst uwagi miesięcznej w ostatniej kolumnie grafiku (per pracownik / miesiąc).</summary>

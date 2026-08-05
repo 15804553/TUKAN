@@ -200,6 +200,12 @@ public static class GrafikGridBuilder
     private const double SummaryLineFontSize = 12.0;
     private const double SummaryLineHeight = 15.0;
 
+    private static readonly SolidColorBrush SelectionBorderBrush =
+        new(Color.FromRgb(0x1A, 0x16, 0x0A));
+
+    private static Brush SelectionHighlightBg =>
+        GetThemeBrush("AccentBrush");
+
     private static DataTemplate CreateNameCellTemplate()
     {
         var template = new DataTemplate();
@@ -220,6 +226,17 @@ public static class GrafikGridBuilder
         };
         nurekBorder.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(2)));
         borderStyle.Triggers.Add(nurekBorder);
+
+        // Podświetlenie osoby przy zaznaczonej komórce dnia w tym wierszu.
+        var selectionHighlight = new DataTrigger
+        {
+            Binding = new Binding(nameof(GrafikRowViewModel.IsSelectionHighlight)),
+            Value = true
+        };
+        selectionHighlight.Setters.Add(new Setter(Border.BackgroundProperty, SelectionHighlightBg));
+        selectionHighlight.Setters.Add(new Setter(Border.BorderBrushProperty, SelectionBorderBrush));
+        selectionHighlight.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(2.5)));
+        borderStyle.Triggers.Add(selectionHighlight);
         borderFactory.SetValue(FrameworkElement.StyleProperty, borderStyle);
 
         var textFactory = new FrameworkElementFactory(typeof(TextBlock));
@@ -239,6 +256,15 @@ public static class GrafikGridBuilder
         };
         nurekFg.Setters.Add(new Setter(TextBlock.ForegroundProperty, NormalDayFg));
         textStyle.Triggers.Add(nurekFg);
+
+        var selectionFg = new DataTrigger
+        {
+            Binding = new Binding(nameof(GrafikRowViewModel.IsSelectionHighlight)),
+            Value = true
+        };
+        selectionFg.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.Bold));
+        selectionFg.Setters.Add(new Setter(TextBlock.ForegroundProperty, NormalDayFg));
+        textStyle.Triggers.Add(selectionFg);
 
         var summaryText = new DataTrigger
         {
@@ -283,9 +309,6 @@ public static class GrafikGridBuilder
         template.VisualTree = factory;
         return template;
     }
-
-    private static readonly SolidColorBrush SelectionBorderBrush =
-        new(Color.FromRgb(0x1A, 0x16, 0x0A));
 
     private static DataTemplate CreateDayCellTemplate(int day, GrafikCellColors colors)
     {
@@ -553,7 +576,7 @@ public static class GrafikGridBuilder
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return GrafikWpisTypy.MaTloWolnejSluzby(value?.ToString())
+            return GrafikWpisTypy.MaTloWolnejSluzby(value?.ToString(), colors.HighlightDel)
                 ? colors.WsTlo
                 : Transparent;
         }
@@ -623,6 +646,15 @@ public static class GrafikGridBuilder
         style.Setters.Add(new Setter(TextBlock.FontSizeProperty, 13.0));
         style.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Center));
         style.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
+
+        var highlight = new DataTrigger
+        {
+            Binding = new Binding(nameof(GrafikRowViewModel.IsSelectionHighlight)),
+            Value = true
+        };
+        highlight.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.Bold));
+        highlight.Setters.Add(new Setter(TextBlock.BackgroundProperty, SelectionHighlightBg));
+        style.Triggers.Add(highlight);
         return style;
     }
 }

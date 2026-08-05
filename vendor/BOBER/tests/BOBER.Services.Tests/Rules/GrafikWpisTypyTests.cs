@@ -127,4 +127,12 @@ public sealed class GrafikWpisTypyTests
     {
         Assert.Equal(expected, GrafikWpisTypy.MaTloWolnejSluzby(typ));
     }
+
+    [Fact]
+    public void MaTloWolnejSluzby_DelBezZoltego_GdyWylaczone()
+    {
+        Assert.False(GrafikWpisTypy.MaTloWolnejSluzby("Del", highlightDel: false));
+        Assert.True(GrafikWpisTypy.MaTloWolnejSluzby("WS", highlightDel: false));
+        Assert.True(GrafikWpisTypy.MaTloWolnejSluzby("D", highlightDel: false));
+    }
 }

@@ -74,22 +74,23 @@ public sealed class SettingsService(IUstawieniaRepository ustawieniaRepository) 
     public Task SetExportPathGrafikNurkowyAsync(string path, CancellationToken cancellationToken = default) =>
         ustawieniaRepository.SetAsync("ExportPathGrafikNurkowy", path, cancellationToken);
 
-    public async Task<bool> GetLessColorAsync(CancellationToken cancellationToken = default)
-    {
-        var raw = await ustawieniaRepository.GetAsync("LessColor", cancellationToken);
-        if (raw is null)
-            return true;
-
-        if (bool.TryParse(raw, out var parsed))
-            return parsed;
-
-        return raw.Equals("1", StringComparison.OrdinalIgnoreCase)
-            || raw.Equals("yes", StringComparison.OrdinalIgnoreCase)
-            || raw.Equals("tak", StringComparison.OrdinalIgnoreCase);
-    }
+    public Task<bool> GetLessColorAsync(CancellationToken cancellationToken = default) =>
+        GetBoolSettingAsync("LessColor", defaultValue: true, cancellationToken);
 
     public Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default) =>
         ustawieniaRepository.SetAsync("LessColor", enabled ? "True" : "False", cancellationToken);
+
+    public Task<bool> GetGrafikDelYellowAsync(CancellationToken cancellationToken = default) =>
+        GetBoolSettingAsync("GrafikDelYellow", defaultValue: true, cancellationToken);
+
+    public Task SetGrafikDelYellowAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        ustawieniaRepository.SetAsync("GrafikDelYellow", enabled ? "True" : "False", cancellationToken);
+
+    public Task<bool> GetGrafikMultiSelectAsync(CancellationToken cancellationToken = default) =>
+        GetBoolSettingAsync("GrafikMultiSelect", defaultValue: true, cancellationToken);
+
+    public Task SetGrafikMultiSelectAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        ustawieniaRepository.SetAsync("GrafikMultiSelect", enabled ? "True" : "False", cancellationToken);
 
     public async Task<GrafikRowColorSettings> GetGrafikRowColorSettingsAsync(
         CancellationToken cancellationToken = default)
@@ -154,6 +155,23 @@ public sealed class SettingsService(IUstawieniaRepository ustawieniaRepository) 
         shiftNumber is >= 1 and <= 3
             ? $"KalendarzAutoDelete_Zmiana_{shiftNumber.Value}"
             : "KalendarzAutoDelete_DCA";
+
+    private async Task<bool> GetBoolSettingAsync(
+        string key,
+        bool defaultValue,
+        CancellationToken cancellationToken)
+    {
+        var raw = await ustawieniaRepository.GetAsync(key, cancellationToken);
+        if (raw is null)
+            return defaultValue;
+
+        if (bool.TryParse(raw, out var parsed))
+            return parsed;
+
+        return raw.Equals("1", StringComparison.OrdinalIgnoreCase)
+            || raw.Equals("yes", StringComparison.OrdinalIgnoreCase)
+            || raw.Equals("tak", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static string NormalizeHex(string? hex, string fallback)
     {

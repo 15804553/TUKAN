@@ -33,6 +33,20 @@ public interface ISettingsService
     Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Żółte tło komórki Del (jak WS/D) w grafiku służb. Gdy wyłączone — tylko tekst „Del”.
+    /// Domyślnie włączone. Dotyczy wszystkich użytkowników.
+    /// </summary>
+    Task<bool> GetGrafikDelYellowAsync(CancellationToken cancellationToken = default);
+    Task SetGrafikDelYellowAsync(bool enabled, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Zaznaczanie wielu komórek (dni) w jednym wierszu grafiku służb (Shift/Ctrl).
+    /// Domyślnie włączone. Dotyczy wszystkich użytkowników.
+    /// </summary>
+    Task<bool> GetGrafikMultiSelectAsync(CancellationToken cancellationToken = default);
+    Task SetGrafikMultiSelectAsync(bool enabled, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Kolorowanie wierszy grafiku służb w UI (role vs dwa kolory naprzemiennie).
     /// Nie wpływa na eksport Excel. Dotyczy wszystkich zmian.
     /// </summary>

@@ -73,13 +73,16 @@ public static class GrafikWpisTypy
             || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Czy komórka ma żółte tło wolnej służby (WS, D, Del, UWS).</summary>
-    public static bool MaTloWolnejSluzby(string? typWpisu)
+    /// <summary>Czy komórka ma żółte tło wolnej służby (WS, D, UWS; Del zależnie od ustawienia).</summary>
+    /// <param name="highlightDel">Gdy true — Del też ma żółte tło (domyślne zachowanie).</param>
+    public static bool MaTloWolnejSluzby(string? typWpisu, bool highlightDel = true)
     {
         var kod = BazowyKod(typWpisu);
+        if (kod.Equals(Delegacja, StringComparison.OrdinalIgnoreCase))
+            return highlightDel;
+
         return kod.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Dyzur, StringComparison.OrdinalIgnoreCase)
-            || kod.Equals(Delegacja, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase);
     }
 

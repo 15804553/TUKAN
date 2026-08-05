@@ -98,6 +98,8 @@ public partial class BoberSettingsView : UserControl
             MaxUrlopowNaSluzbieTextBox.Text =
                 (await _controller.GetMaxUrlopowNaSluzbieAsync(_controller.ZmianaId)).ToString();
             LessColorCheckBox.IsChecked = await _controller.GetLessColorAsync();
+            DelYellowCheckBox.IsChecked = await _controller.GetGrafikDelYellowAsync();
+            MultiSelectCheckBox.IsChecked = await _controller.GetGrafikMultiSelectAsync();
 
             var rowColors = await _controller.GetGrafikRowColorSettingsAsync();
             if (generation != _loadGeneration)
@@ -275,6 +277,8 @@ public partial class BoberSettingsView : UserControl
             }).ToList();
             await _controller.SaveKoloryAsync(kolory);
             await _controller.SetLessColorAsync(LessColorCheckBox.IsChecked == true);
+            await _controller.SetGrafikDelYellowAsync(DelYellowCheckBox.IsChecked == true);
+            await _controller.SetGrafikMultiSelectAsync(MultiSelectCheckBox.IsChecked == true);
             await _controller.SetGrafikRowColorSettingsAsync(new GrafikRowColorSettings
             {
                 Mode = AlternatingColorsCheckBox.IsChecked == true

@@ -7,4 +7,7 @@ public sealed class GrafikCellColors
 {
     public SolidColorBrush DyzurTlo { get; init; } = new(Color.FromRgb(0x6A, 0x5C, 0x00));
     public SolidColorBrush WsTlo { get; init; } = new(Color.FromRgb(0x6A, 0x5C, 0x00));
+
+    /// <summary>Czy Del dostaje żółte tło jak WS (ustawienie GrafikDelYellow).</summary>
+    public bool HighlightDel { get; init; } = true;
 }

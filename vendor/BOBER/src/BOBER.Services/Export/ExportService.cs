@@ -19,11 +19,13 @@ public sealed class ExportService
         int stanMinimalny,
         IReadOnlyDictionary<string, string> kolory,
         IReadOnlyCollection<int>? workDays = null,
-        bool lessColor = true)
+        bool lessColor = true,
+        bool highlightDel = true)
     {
         using var workbook = new XLWorkbook();
         AddMonthWorksheet(
-            workbook, rok, miesiac, funkcjonariusze, wpisy, stanZmiany, stanMinimalny, kolory, workDays, lessColor);
+            workbook, rok, miesiac, funkcjonariusze, wpisy, stanZmiany, stanMinimalny, kolory, workDays,
+            lessColor, highlightDel);
         workbook.SaveAs(filePath);
     }
 
@@ -37,7 +39,8 @@ public sealed class ExportService
         int stanZmiany,
         int stanMinimalny,
         IReadOnlyDictionary<string, string> kolory,
-        bool lessColor = true)
+        bool lessColor = true,
+        bool highlightDel = true)
     {
         using var workbook = new XLWorkbook();
         for (var miesiac = 1; miesiac <= 12; miesiac++)
@@ -52,7 +55,8 @@ public sealed class ExportService
                 stanMinimalny,
                 kolory,
                 workDays,
-                lessColor);
+                lessColor,
+                highlightDel);
         }
 
         workbook.SaveAs(filePath);
@@ -68,7 +72,8 @@ public sealed class ExportService
         int stanMinimalny,
         IReadOnlyDictionary<string, string> kolory,
         IReadOnlyCollection<int>? workDays,
-        bool lessColor)
+        bool lessColor,
+        bool highlightDel)
     {
         var ws = workbook.Worksheets.Add(GetMonthName(miesiac));
 
@@ -207,13 +212,10 @@ public sealed class ExportService
 
                 cell.Value = GrafikWpisTypy.TekstWyswietlany(wpis);
                 // LessColor: żółte tło dla WS/UWS/D (powyżej); Del bez dodatkowego koloru.
-                cell.Style.Fill.BackgroundColor = lessColor
-                    ? rowBg
-                    : bazowy switch
-                    {
-                        GrafikWpisTypy.Delegacja => nieobecnoscBg,
-                        _ => rowBg
-                    };
+                // Bez LessColor: Del żółty tylko gdy highlightDel (ustawienie GrafikDelYellow).
+                var delYellow = !lessColor && highlightDel
+                    && bazowy.Equals(GrafikWpisTypy.Delegacja, StringComparison.OrdinalIgnoreCase);
+                cell.Style.Fill.BackgroundColor = delYellow ? nieobecnoscBg : rowBg;
                 cell.Style.Font.FontColor = lessColor ? lessColorText : appText;
                 ApplyOddajeStrikethrough(cell, wpis);
             }

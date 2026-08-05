@@ -19,6 +19,8 @@ public sealed class MainController(AppServices services)
     private IReadOnlyDictionary<string, string>? _kolory;
     private int _stanZmiany = 10;
     private int _stanMinimalny = 6;
+    private bool _grafikDelYellow = true;
+    private bool _grafikMultiSelect = true;
 
     public int CurrentYear { get; } = DateTime.Today.Year;
     public int ZmianaId => services.Auth.CurrentSession?.ZmianaId ?? 1;
@@ -27,6 +29,9 @@ public sealed class MainController(AppServices services)
         ZmianaId is >= 1 and <= 3
         && NazwaZmiany.StartsWith("Zmiana ", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Zaznaczanie wielu kratek w grafiku służb (ustawienie globalne).</summary>
+    public bool GrafikMultiSelect => _grafikMultiSelect;
+
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         _funkcjonariusze = await services.Funkcjonariusze.GetByZmianaAsync(ZmianaId, cancellationToken);
@@ -34,6 +39,8 @@ public sealed class MainController(AppServices services)
         _kolory = kolory.ToDictionary(k => k.KluczRoli, k => k.KolorHex);
         _stanZmiany = await services.Settings.GetStanZmianyAsync(ZmianaId, cancellationToken);
         _stanMinimalny = await services.Settings.GetStanMinimalnyAsync(ZmianaId, cancellationToken);
+        _grafikDelYellow = await services.Settings.GetGrafikDelYellowAsync(cancellationToken);
+        _grafikMultiSelect = await services.Settings.GetGrafikMultiSelectAsync(cancellationToken);
     }
 
     public IReadOnlyList<Funkcjonariusz> GetFunkcjonariusze() => _funkcjonariusze ?? [];
@@ -185,7 +192,8 @@ public sealed class MainController(AppServices services)
         return new GrafikCellColors
         {
             DyzurTlo = nieobecnosc,
-            WsTlo = nieobecnosc
+            WsTlo = nieobecnosc,
+            HighlightDel = _grafikDelYellow
         };
     }
 
@@ -267,7 +275,8 @@ public sealed class MainController(AppServices services)
             _stanMinimalny,
             _kolory ?? new Dictionary<string, string>(),
             workDays,
-            lessColor);
+            lessColor,
+            _grafikDelYellow);
     }
 
     public async Task ExportYearAsync(
@@ -296,7 +305,8 @@ public sealed class MainController(AppServices services)
             _stanZmiany,
             _stanMinimalny,
             _kolory ?? new Dictionary<string, string>(),
-            lessColor);
+            lessColor,
+            _grafikDelYellow);
     }
 
     public Task<string> GetExportPathGrafikSluzbAsync(CancellationToken cancellationToken = default) =>

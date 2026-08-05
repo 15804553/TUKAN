@@ -175,6 +175,18 @@
                                   IsChecked="True"
                                   Margin="0,0,0,12" />
 
+                        <CheckBox x:Name="DelYellowCheckBox"
+                                  Content="Del — żółte tło komórki jak WS (wyłączone: sam tekst „Del” bez zaznaczenia)"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  IsChecked="True"
+                                  Margin="0,0,0,12" />
+
+                        <CheckBox x:Name="MultiSelectCheckBox"
+                                  Content="Zaznaczanie wielu kratek w grafiku służb (Shift/Ctrl w jednym wierszu)"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  IsChecked="True"
+                                  Margin="0,0,0,12" />
+
                         <CheckBox x:Name="AlternatingColorsCheckBox"
                                   Content="Kolorowanie naprzemienne — dwa kolory zamiast kolorów ról (tylko widok, nie eksport; WS bez zmian)"
                                   Foreground="{StaticResource ForegroundBrush}"
