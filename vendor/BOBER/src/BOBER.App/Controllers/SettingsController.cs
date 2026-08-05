@@ -41,12 +41,10 @@ public sealed class SettingsController(AppServices services)
 
     public async Task SaveKoloryAsync(IReadOnlyList<KolorStanowiska> kolory, CancellationToken ct = default)
     {
-        // SaveAsync nadpisuje całą tabelę — zachowaj kolory kalendarza ustawiane przez DCA.
+        // SaveAsync nadpisuje całą tabelę — dołącz klucze spoza listy UI (np. legacy DzienSluzby, Nurek).
         var existing = await services.Kolory.GetAllAsync(ct);
-        var calendarKeys = RoleKeys.KalendarzKolory;
-        var preserved = existing
-            .Where(k => calendarKeys.Contains(k.KluczRoli))
-            .Where(k => kolory.All(c => c.KluczRoli != k.KluczRoli));
+        var submittedKeys = kolory.Select(c => c.KluczRoli).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var preserved = existing.Where(k => !submittedKeys.Contains(k.KluczRoli));
         var merged = kolory.Concat(preserved).ToList();
         await services.Kolory.SaveAsync(merged, ct);
     }
@@ -74,12 +72,6 @@ public sealed class SettingsController(AppServices services)
 
     public Task SetLessColorAsync(bool enabled, CancellationToken ct = default) =>
         services.Settings.SetLessColorAsync(enabled, ct);
-
-    public Task<bool> GetGrafikDelYellowAsync(CancellationToken ct = default) =>
-        services.Settings.GetGrafikDelYellowAsync(ct);
-
-    public Task SetGrafikDelYellowAsync(bool enabled, CancellationToken ct = default) =>
-        services.Settings.SetGrafikDelYellowAsync(enabled, ct);
 
     public Task<bool> GetGrafikMultiSelectAsync(CancellationToken ct = default) =>
         services.Settings.GetGrafikMultiSelectAsync(ct);

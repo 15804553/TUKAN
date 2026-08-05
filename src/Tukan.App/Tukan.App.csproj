@@ -18,6 +18,13 @@
     <!-- Architektura musi odpowiadać zainstalowanemu ACE (x86 = ACE32, x64 = ACE64). -->
     <Platforms>x86;x64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64</RuntimeIdentifiers>
+    <!--
+      Domyślnie MSBuild przy Platform=x86 pisze do bin\x86\Release\...
+      Publish -o bin\x86 wrzuca wtedy katalog Release do dystrybucji.
+      Odwracamy kolejność: bin\{Configuration}\{Platform}\ — publish zostaje czysty.
+    -->
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
+    <OutputPath>bin\$(Configuration)\$(Platform)\</OutputPath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Platform)' == 'x64'">

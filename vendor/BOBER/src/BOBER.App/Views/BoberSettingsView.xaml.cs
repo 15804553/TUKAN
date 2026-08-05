@@ -83,12 +83,17 @@ public partial class BoberSettingsView : UserControl
                 }
 
                 var domyslny = RoleKeys.GetDefaultKolorHex(klucz);
+                var zapisanyHex = koloryDict.TryGetValue(klucz, out var zapisany) ? zapisany : domyslny;
+                var allowEmpty = RoleKeys.KoloryOpcjonalneWypelnienia.Contains(klucz);
 
                 _kolory.Add(new KolorRoliViewModel
                 {
                     KluczRoli = klucz,
                     Etykieta = etykieta,
-                    KolorHex = koloryDict.TryGetValue(klucz, out var zapisany) ? zapisany : domyslny
+                    AllowEmpty = allowEmpty,
+                    KolorHex = allowEmpty
+                        ? RoleKeys.NormalizeKolorHex(zapisanyHex, klucz)
+                        : (RoleKeys.IsBrakWypelnienia(zapisanyHex) ? domyslny : zapisanyHex)
                 });
             }
 
@@ -98,7 +103,6 @@ public partial class BoberSettingsView : UserControl
             MaxUrlopowNaSluzbieTextBox.Text =
                 (await _controller.GetMaxUrlopowNaSluzbieAsync(_controller.ZmianaId)).ToString();
             LessColorCheckBox.IsChecked = await _controller.GetLessColorAsync();
-            DelYellowCheckBox.IsChecked = await _controller.GetGrafikDelYellowAsync();
             MultiSelectCheckBox.IsChecked = await _controller.GetGrafikMultiSelectAsync();
 
             var rowColors = await _controller.GetGrafikRowColorSettingsAsync();
@@ -241,11 +245,18 @@ public partial class BoberSettingsView : UserControl
             return;
         }
 
-        var chosen = PickColor(vm.KolorHex);
+        var startHex = vm.HasFill ? vm.KolorHex : RoleKeys.GetDefaultKolorHex(RoleKeys.WolnaSluzba);
+        var chosen = PickColor(startHex);
         if (chosen is null)
             return;
 
         vm.KolorHex = chosen;
+    }
+
+    private void OnClearColorClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: KolorRoliViewModel vm })
+            vm.ClearFill();
     }
 
     private async void OnSaveClick(object sender, RoutedEventArgs e)
@@ -273,11 +284,10 @@ public partial class BoberSettingsView : UserControl
             var kolory = _kolory.Select(k => new KolorStanowiska
             {
                 KluczRoli = k.KluczRoli,
-                KolorHex = k.KolorHex
+                KolorHex = RoleKeys.NormalizeKolorHex(k.KolorHex, k.KluczRoli)
             }).ToList();
             await _controller.SaveKoloryAsync(kolory);
             await _controller.SetLessColorAsync(LessColorCheckBox.IsChecked == true);
-            await _controller.SetGrafikDelYellowAsync(DelYellowCheckBox.IsChecked == true);
             await _controller.SetGrafikMultiSelectAsync(MultiSelectCheckBox.IsChecked == true);
             await _controller.SetGrafikRowColorSettingsAsync(new GrafikRowColorSettings
             {

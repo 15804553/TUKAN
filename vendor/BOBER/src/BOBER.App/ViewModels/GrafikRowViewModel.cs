@@ -8,6 +8,7 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
 {
     private readonly Dictionary<int, string> _cells = new();
     private readonly DayIndexedTexts _kalendarzNotes = new();
+    private readonly DayIndexedFlags _fromUrlopPlan = new();
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -61,6 +62,9 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
     /// <summary>Notatki kalendarza DCA per dzień — binding: KalendarzNotes[15].</summary>
     public DayIndexedTexts KalendarzNotes => _kalendarzNotes;
 
+    /// <summary>Urlopy przeniesione z planu urlopów (IsAuto) — binding: FromUrlopPlan[15].</summary>
+    public DayIndexedFlags FromUrlopPlan => _fromUrlopPlan;
+
     /// <summary>Indekser dla kolumn dni DataGrid — binding: {Binding [1]}, {Binding [15]}, itd.</summary>
     public string this[int day]
     {
@@ -68,18 +72,50 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
         set
         {
             _cells[day] = value ?? string.Empty;
+            OnPropertyChanged($"Item[{day}]");
             OnPropertyChanged($"[{day}]");
         }
     }
 
-    public void SetCell(int day, string value) => this[day] = value;
+    public void SetCell(int day, string value, bool fromUrlopPlan = false)
+    {
+        this[day] = value;
+        FromUrlopPlan[day] = fromUrlopPlan && !string.IsNullOrWhiteSpace(value);
+    }
+
     public string GetCell(int day) => this[day];
-    public void ClearCell(int day) => this[day] = string.Empty;
+
+    public void ClearCell(int day)
+    {
+        this[day] = string.Empty;
+        FromUrlopPlan[day] = false;
+    }
 
     public void SetKalendarzNote(int day, string value) => KalendarzNotes[day] = value;
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+}
+
+/// <summary>Indeksowane flagi dni do bindingu WPF (np. FromUrlopPlan[3]).</summary>
+public sealed class DayIndexedFlags : INotifyPropertyChanged
+{
+    private readonly Dictionary<int, bool> _flags = new();
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public bool this[int day]
+    {
+        get => _flags.TryGetValue(day, out var v) && v;
+        set
+        {
+            if (_flags.TryGetValue(day, out var current) && current == value)
+                return;
+            _flags[day] = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs($"Item[{day}]"));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs($"[{day}]"));
+        }
+    }
 }
 
 /// <summary>Indeksowane teksty dni do bindingu WPF (np. KalendarzNotes[3]).</summary>

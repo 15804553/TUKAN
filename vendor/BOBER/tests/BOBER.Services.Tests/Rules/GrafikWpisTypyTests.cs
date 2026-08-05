@@ -120,19 +120,52 @@ public sealed class GrafikWpisTypyTests
     [InlineData("UWS", true)]
     [InlineData("WS", true)]
     [InlineData("D", true)]
-    [InlineData("Del", true)]
-    [InlineData("U", false)]
+    [InlineData("Del", false)]
     [InlineData("S", false)]
+    [InlineData("U", false)]
     public void MaTloWolnejSluzby(string? typ, bool expected)
     {
         Assert.Equal(expected, GrafikWpisTypy.MaTloWolnejSluzby(typ));
     }
 
-    [Fact]
-    public void MaTloWolnejSluzby_DelBezZoltego_GdyWylaczone()
+    [Theory]
+    [InlineData("Del*", true)]
+    [InlineData("S*", true)]
+    [InlineData("Del", false)]
+    [InlineData("S", false)]
+    [InlineData("WS", false)]
+    public void MaZachowaneTloWs(string? typ, bool expected)
     {
-        Assert.False(GrafikWpisTypy.MaTloWolnejSluzby("Del", highlightDel: false));
-        Assert.True(GrafikWpisTypy.MaTloWolnejSluzby("WS", highlightDel: false));
-        Assert.True(GrafikWpisTypy.MaTloWolnejSluzby("D", highlightDel: false));
+        Assert.Equal(expected, GrafikWpisTypy.MaZachowaneTloWs(typ));
+    }
+
+    [Theory]
+    [InlineData("Del*", "Del")]
+    [InlineData("S*", "S")]
+    [InlineData("Del", "Del")]
+    public void BazowyKod_UsuwaSufiksZachowanegoTla(string typ, string expected)
+    {
+        Assert.Equal(expected, GrafikWpisTypy.BazowyKod(typ));
+    }
+
+    [Theory]
+    [InlineData("WS", "Del", "Del*")]
+    [InlineData("D", "S", "S*")]
+    [InlineData("UWS", "Del", "Del*")]
+    [InlineData("Del*", "S", "S*")]
+    [InlineData("", "Del", "Del")]
+    [InlineData("U", "Del", "Del")]
+    [InlineData("Del", "Del", "Del")]
+    [InlineData("WS", "U", "U")]
+    public void ResolveDelSDlaZapisu(string? poprzedni, string nowy, string expected)
+    {
+        Assert.Equal(expected, GrafikWpisTypy.ResolveDelSDlaZapisu(poprzedni, nowy));
+    }
+
+    [Fact]
+    public void TekstGlowny_DelZSufiksem_PokazujeDel()
+    {
+        Assert.Equal("Del", GrafikWpisTypy.TekstGlowny("Del*"));
+        Assert.Equal("S", GrafikWpisTypy.TekstGlowny("S*"));
     }
 }

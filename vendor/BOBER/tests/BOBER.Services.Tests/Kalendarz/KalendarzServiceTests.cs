@@ -396,8 +396,6 @@ public sealed class KalendarzServiceTests
         public Task SetExportPathGrafikNurkowyAsync(string path, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<bool> GetLessColorAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<bool> GetGrafikDelYellowAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
-        public Task SetGrafikDelYellowAsync(bool enabled, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<bool> GetGrafikMultiSelectAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task SetGrafikMultiSelectAsync(bool enabled, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<GrafikRowColorSettings> GetGrafikRowColorSettingsAsync(CancellationToken cancellationToken = default) =>

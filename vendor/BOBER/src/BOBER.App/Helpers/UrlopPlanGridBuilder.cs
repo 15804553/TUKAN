@@ -72,7 +72,7 @@ public static class UrlopPlanGridBuilder
         grid.FrozenColumnCount = 2;
 
         var daysInMonth = DateTime.DaysInMonth(year, month);
-        var workDayBrush = dzienSluzbyBrush ?? new SolidColorBrush(Color.FromRgb(0xFF, 0xD7, 0x00));
+        var workDayBrush = dzienSluzbyBrush ?? new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0x00));
         for (var day = 1; day <= daysInMonth; day++)
         {
             var header = DayHeaderViewModel.Create(year, month, day);

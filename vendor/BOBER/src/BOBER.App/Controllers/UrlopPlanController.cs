@@ -69,13 +69,12 @@ public sealed class UrlopPlanController(AppServices services, int zmianaId, stri
 
 
     public SolidColorBrush GetDzienSluzbyBrush()
-
     {
-
-        var hex = GetKolorHex(RoleKeys.DzienSluzby, RoleKeys.DomyslneKoloryWpisow);
-
-        return ParseBrush(hex, Color.FromRgb(0xFF, 0xD7, 0x00));
-
+        var klucz = RoleKeys.KalendarzKluczForZmiana(ZmianaId);
+        var defaultHex = RoleKeys.GetDefaultKolorHex(klucz);
+        var hex = GetKolorHex(klucz, RoleKeys.DomyslneKoloryKalendarza);
+        var fallback = ParseColor(defaultHex, Color.FromRgb(0xFF, 0xFF, 0x00));
+        return ParseBrush(hex, fallback);
     }
 
 
@@ -160,7 +159,31 @@ public sealed class UrlopPlanController(AppServices services, int zmianaId, stri
 
             return hex;
 
-        return domyslne.TryGetValue(klucz, out var defaultHex) ? defaultHex : "#FFD700";
+        return domyslne.TryGetValue(klucz, out var defaultHex) ? defaultHex : RoleKeys.GetDefaultKolorHex(klucz);
+
+    }
+
+
+
+    private static Color ParseColor(string hex, Color fallback)
+
+    {
+
+        try
+
+        {
+
+            return (Color)ColorConverter.ConvertFromString(hex)!;
+
+        }
+
+        catch
+
+        {
+
+            return fallback;
+
+        }
 
     }
 

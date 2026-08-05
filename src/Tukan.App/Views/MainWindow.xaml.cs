@@ -518,6 +518,18 @@ public partial class MainWindow : Window
             }
         }
 
+        if (_urlopPlanView is not null && _urlopPlanController is not null)
+        {
+            try
+            {
+                await _urlopPlanView.OdswiezPoAktywacjiAsync();
+            }
+            catch (Exception ex)
+            {
+                TukanMessageBox.Show(this, $"Nie udało się odświeżyć planu urlopów po zapisie ustawień:\n\n{ex.Message}", "TUKAN");
+            }
+        }
+
         if (_skrybekView is not null)
         {
             try

@@ -19,13 +19,12 @@ public sealed class ExportService
         int stanMinimalny,
         IReadOnlyDictionary<string, string> kolory,
         IReadOnlyCollection<int>? workDays = null,
-        bool lessColor = true,
-        bool highlightDel = true)
+        bool lessColor = true)
     {
         using var workbook = new XLWorkbook();
         AddMonthWorksheet(
             workbook, rok, miesiac, funkcjonariusze, wpisy, stanZmiany, stanMinimalny, kolory, workDays,
-            lessColor, highlightDel);
+            lessColor);
         workbook.SaveAs(filePath);
     }
 
@@ -39,8 +38,7 @@ public sealed class ExportService
         int stanZmiany,
         int stanMinimalny,
         IReadOnlyDictionary<string, string> kolory,
-        bool lessColor = true,
-        bool highlightDel = true)
+        bool lessColor = true)
     {
         using var workbook = new XLWorkbook();
         for (var miesiac = 1; miesiac <= 12; miesiac++)
@@ -55,8 +53,7 @@ public sealed class ExportService
                 stanMinimalny,
                 kolory,
                 workDays,
-                lessColor,
-                highlightDel);
+                lessColor);
         }
 
         workbook.SaveAs(filePath);
@@ -72,8 +69,7 @@ public sealed class ExportService
         int stanMinimalny,
         IReadOnlyDictionary<string, string> kolory,
         IReadOnlyCollection<int>? workDays,
-        bool lessColor,
-        bool highlightDel)
+        bool lessColor)
     {
         var ws = workbook.Worksheets.Add(GetMonthName(miesiac));
 
@@ -133,7 +129,7 @@ public sealed class ExportService
 
         var wpisyLookup = wpisy
             .GroupBy(w => (w.FunkcjonariuszId, w.Dzien))
-            .ToDictionary(g => g.Key, g => g.Last().TypWpisu);
+            .ToDictionary(g => g.Key, g => g.Last());
 
         var funcLookup = funkcjonariusze.ToDictionary(f => f.Id);
 
@@ -190,17 +186,19 @@ public sealed class ExportService
 
                 if (!wpisyLookup.TryGetValue((f.Id, day), out var wpis)) continue;
 
-                var bazowy = GrafikWpisTypy.BazowyKod(wpis);
+                var typ = wpis.TypWpisu;
+                var bazowy = GrafikWpisTypy.BazowyKod(typ);
 
                 if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase)
                     || bazowy.Equals(GrafikWpisTypy.UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
                     || bazowy.Equals(GrafikWpisTypy.Dyzur, StringComparison.OrdinalIgnoreCase))
                 {
                     cell.Style.Fill.BackgroundColor = nieobecnoscBg;
-                    cell.Value = GrafikWpisTypy.TekstWyswietlany(wpis);
+                    cell.Value = GrafikWpisTypy.TekstWyswietlany(typ);
                     if (lessColor)
                         cell.Style.Font.FontColor = lessColorText;
-                    ApplyOddajeStrikethrough(cell, wpis);
+                    ApplyOddajeStrikethrough(cell, typ);
+                    ApplyUrlopPlanBold(cell, wpis);
                     continue;
                 }
 
@@ -210,14 +208,14 @@ public sealed class ExportService
                     continue;
                 }
 
-                cell.Value = GrafikWpisTypy.TekstWyswietlany(wpis);
-                // LessColor: żółte tło dla WS/UWS/D (powyżej); Del bez dodatkowego koloru.
-                // Bez LessColor: Del żółty tylko gdy highlightDel (ustawienie GrafikDelYellow).
-                var delYellow = !lessColor && highlightDel
-                    && bazowy.Equals(GrafikWpisTypy.Delegacja, StringComparison.OrdinalIgnoreCase);
-                cell.Style.Fill.BackgroundColor = delYellow ? nieobecnoscBg : rowBg;
+                cell.Value = GrafikWpisTypy.TekstWyswietlany(typ);
+                // LessColor: tylko WS/UWS/D żółte (powyżej). Del/S — własny kolor lub żółte tylko przy zachowanym tle WS.
+                cell.Style.Fill.BackgroundColor = lessColor
+                    ? rowBg
+                    : ResolveOptionalWpisBg(typ, bazowy, kolory, rowBg, nieobecnoscBg);
                 cell.Style.Font.FontColor = lessColor ? lessColorText : appText;
-                ApplyOddajeStrikethrough(cell, wpis);
+                ApplyOddajeStrikethrough(cell, typ);
+                ApplyUrlopPlanBold(cell, wpis);
             }
         }
 
@@ -240,7 +238,7 @@ public sealed class ExportService
             var col = i + firstDayCol;
 
             var nieobecniIds = wpisyLookup
-                .Where(kv => kv.Key.Dzien == day && GrafikWpisTypy.JestNieobecnoscia(kv.Value))
+                .Where(kv => kv.Key.Dzien == day && GrafikWpisTypy.JestNieobecnoscia(kv.Value.TypWpisu))
                 .Select(kv => kv.Key.FunkcjonariuszId)
                 .ToHashSet();
 
@@ -404,6 +402,13 @@ public sealed class ExportService
         cell.Style.Font.Strikethrough = true;
     }
 
+    /// <summary>Pogrubienie urlopów przeniesionych z planu urlopów (IsAuto).</summary>
+    private static void ApplyUrlopPlanBold(IXLCell cell, GrafikWpis wpis)
+    {
+        if (wpis.IsAuto && GrafikWpisTypy.JestUrlopem(wpis.TypWpisu))
+            cell.Style.Font.Bold = true;
+    }
+
     private static string ResolveHex(
         IReadOnlyDictionary<string, string> kolory,
         string key,
@@ -412,6 +417,30 @@ public sealed class ExportService
         if (kolory.TryGetValue(key, out var hex) && !string.IsNullOrWhiteSpace(hex))
             return hex;
         return defaults.TryGetValue(key, out var fallback) ? fallback : "#FFFFFF";
+    }
+
+    private static XLColor ResolveOptionalWpisBg(
+        string typWpisu,
+        string bazowy,
+        IReadOnlyDictionary<string, string> kolory,
+        XLColor rowBg,
+        XLColor wsYellowBg)
+    {
+        string? klucz = null;
+        if (bazowy.Equals(GrafikWpisTypy.Delegacja, StringComparison.OrdinalIgnoreCase))
+            klucz = RoleKeys.Delegacja;
+        else if (bazowy.Equals(GrafikWpisTypy.Szkolenie, StringComparison.OrdinalIgnoreCase))
+            klucz = RoleKeys.Szkolenie;
+
+        if (klucz is null)
+            return rowBg;
+
+        var hex = ResolveHex(kolory, klucz, RoleKeys.DomyslneKoloryWpisow);
+        // Brak własnego koloru: żółte tylko gdy zachowano tło WS (Del*/S*), inaczej tło wiersza.
+        if (RoleKeys.IsBrakWypelnienia(hex))
+            return GrafikWpisTypy.MaZachowaneTloWs(typWpisu) ? wsYellowBg : rowBg;
+
+        return ToXl(hex);
     }
 
     private static void StyleBandCell(IXLCell cell, XLColor bg, XLColor fg)

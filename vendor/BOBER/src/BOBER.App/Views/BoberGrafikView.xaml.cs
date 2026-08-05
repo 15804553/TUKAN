@@ -982,8 +982,9 @@ public partial class BoberGrafikView : UserControl
         }
         else
         {
-            await _controller.SetWpisAsync(vm.FunkcjonariuszId.Value, _year, month, day, typWpisu);
-            vm.SetCell(day, typWpisu);
+            var toSave = GrafikWpisTypy.ResolveDelSDlaZapisu(vm.GetCell(day), typWpisu);
+            await _controller.SetWpisAsync(vm.FunkcjonariuszId.Value, _year, month, day, toSave);
+            vm.SetCell(day, toSave);
         }
     }
 

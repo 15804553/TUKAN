@@ -19,7 +19,6 @@ public sealed class MainController(AppServices services)
     private IReadOnlyDictionary<string, string>? _kolory;
     private int _stanZmiany = 10;
     private int _stanMinimalny = 6;
-    private bool _grafikDelYellow = true;
     private bool _grafikMultiSelect = true;
 
     public int CurrentYear { get; } = DateTime.Today.Year;
@@ -36,10 +35,9 @@ public sealed class MainController(AppServices services)
     {
         _funkcjonariusze = await services.Funkcjonariusze.GetByZmianaAsync(ZmianaId, cancellationToken);
         var kolory = await services.Kolory.GetAllAsync(cancellationToken);
-        _kolory = kolory.ToDictionary(k => k.KluczRoli, k => k.KolorHex);
+        _kolory = kolory.ToDictionary(k => k.KluczRoli, k => k.KolorHex, StringComparer.OrdinalIgnoreCase);
         _stanZmiany = await services.Settings.GetStanZmianyAsync(ZmianaId, cancellationToken);
         _stanMinimalny = await services.Settings.GetStanMinimalnyAsync(ZmianaId, cancellationToken);
-        _grafikDelYellow = await services.Settings.GetGrafikDelYellowAsync(cancellationToken);
         _grafikMultiSelect = await services.Settings.GetGrafikMultiSelectAsync(cancellationToken);
     }
 
@@ -58,7 +56,7 @@ public sealed class MainController(AppServices services)
         // GroupBy zabezpiecza przed wyjątkiem przy zduplikowanych wpisach w DB
         var wpisyLookup = wpisy
             .GroupBy(w => (w.FunkcjonariuszId, w.Dzien))
-            .ToDictionary(g => g.Key, g => g.Last().TypWpisu);
+            .ToDictionary(g => g.Key, g => g.Last());
 
         var uwagi = await services.Grafik.GetUwagiMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
         var uwagiLookup = uwagi
@@ -96,7 +94,10 @@ public sealed class MainController(AppServices services)
             for (var day = 1; day <= daysInMonth; day++)
             {
                 if (wpisyLookup.TryGetValue((f.Id, day), out var wpis))
-                    row.SetCell(day, wpis);
+                    row.SetCell(
+                        day,
+                        wpis.TypWpisu,
+                        fromUrlopPlan: wpis.IsAuto && GrafikWpisTypy.JestUrlopem(wpis.TypWpisu));
             }
 
             rows.Add(row);
@@ -193,8 +194,26 @@ public sealed class MainController(AppServices services)
         {
             DyzurTlo = nieobecnosc,
             WsTlo = nieobecnosc,
-            HighlightDel = _grafikDelYellow
+            DelTlo = TryParseOptionalFillBrush(RoleKeys.Delegacja),
+            STlo = TryParseOptionalFillBrush(RoleKeys.Szkolenie)
         };
+    }
+
+    private SolidColorBrush? TryParseOptionalFillBrush(string klucz)
+    {
+        var hex = GetKolorHex(klucz, RoleKeys.DomyslneKoloryWpisow);
+        if (RoleKeys.IsBrakWypelnienia(hex))
+            return null;
+
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex)!;
+            return new SolidColorBrush(color);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public void RefreshSummaryRow(GrafikRowViewModel summaryRow, IEnumerable<GrafikRowViewModel> allRows, int miesiac)
@@ -275,8 +294,7 @@ public sealed class MainController(AppServices services)
             _stanMinimalny,
             _kolory ?? new Dictionary<string, string>(),
             workDays,
-            lessColor,
-            _grafikDelYellow);
+            lessColor);
     }
 
     public async Task ExportYearAsync(
@@ -305,8 +323,7 @@ public sealed class MainController(AppServices services)
             _stanZmiany,
             _stanMinimalny,
             _kolory ?? new Dictionary<string, string>(),
-            lessColor,
-            _grafikDelYellow);
+            lessColor);
     }
 
     public Task<string> GetExportPathGrafikSluzbAsync(CancellationToken cancellationToken = default) =>
@@ -418,8 +435,16 @@ public sealed class MainController(AppServices services)
     private string GetKolorHex(string klucz, IReadOnlyDictionary<string, string> domyslne)
     {
         if (_kolory is not null && _kolory.TryGetValue(klucz, out var hex))
-            return hex;
-        return domyslne.TryGetValue(klucz, out var defaultHex) ? defaultHex : "#6A5C00";
+        {
+            if (RoleKeys.KoloryOpcjonalneWypelnienia.Contains(klucz) && RoleKeys.IsBrakWypelnienia(hex))
+                return RoleKeys.BrakWypelnienia;
+            if (!string.IsNullOrWhiteSpace(hex))
+                return hex;
+        }
+
+        return domyslne.TryGetValue(klucz, out var defaultHex)
+            ? defaultHex
+            : RoleKeys.GetDefaultKolorHex(klucz);
     }
 
     private SolidColorBrush ParseBrush(string hex) =>

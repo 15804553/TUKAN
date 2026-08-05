@@ -25,6 +25,12 @@ public static class GrafikWpisTypy
     /// <summary>Sufiks „chętna oddać” — tylko z D, U, UWS lub WS.</summary>
     public const char KropkaSufiks = '.';
 
+    /// <summary>
+    /// Sufiks zachowania żółtego tła WS przy Del/S z „brakiem koloru” (np. „Del*”).
+    /// Nie jest wyświetlany w UI; tylko w typie zapisanym w DB / komórce.
+    /// </summary>
+    public const char ZachowajTloWsSufiks = '*';
+
     /// <summary>Znak wizualny długiej pauzy (Oddaje) w komórce.</summary>
     public const string OddalZnak = "\u2014"; // —
 
@@ -73,14 +79,10 @@ public static class GrafikWpisTypy
             || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Czy komórka ma żółte tło wolnej służby (WS, D, UWS; Del zależnie od ustawienia).</summary>
-    /// <param name="highlightDel">Gdy true — Del też ma żółte tło (domyślne zachowanie).</param>
-    public static bool MaTloWolnejSluzby(string? typWpisu, bool highlightDel = true)
+    /// <summary>Czy komórka ma żółte tło wolnej służby (WS, D, UWS). Del/S: własne kolory lub zachowane tło WS (*).</summary>
+    public static bool MaTloWolnejSluzby(string? typWpisu)
     {
         var kod = BazowyKod(typWpisu);
-        if (kod.Equals(Delegacja, StringComparison.OrdinalIgnoreCase))
-            return highlightDel;
-
         return kod.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Dyzur, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase);
@@ -150,7 +152,30 @@ public static class GrafikWpisTypy
     public static bool JestWPracy(string? typWpisu) =>
         string.IsNullOrWhiteSpace(typWpisu) || MaPytajnik(typWpisu);
 
-    /// <summary>Kod bez sufiksów Oddaje i kropki (np. „U.” → „U”, „WS/” → „WS”).</summary>
+    /// <summary>Czy typ ma zachować żółte tło WS (sufiks *).</summary>
+    public static bool MaZachowaneTloWs(string? typWpisu)
+    {
+        if (string.IsNullOrWhiteSpace(typWpisu))
+            return false;
+
+        var t = typWpisu.Trim();
+        return t.Length > 0 && t[^1] == ZachowajTloWsSufiks;
+    }
+
+    /// <summary>Usuwa sufiks zachowania tła WS (np. „Del*” → „Del”).</summary>
+    public static string UsunSufiksZachowanegoTla(string? typWpisu)
+    {
+        if (string.IsNullOrWhiteSpace(typWpisu))
+            return string.Empty;
+
+        var t = typWpisu.Trim();
+        if (t.Length > 0 && t[^1] == ZachowajTloWsSufiks)
+            t = t[..^1];
+
+        return t;
+    }
+
+    /// <summary>Kod bez sufiksów Oddaje, kropki i zachowania tła (np. „U.” → „U”, „Del*” → „Del”).</summary>
     public static string BazowyKod(string? typWpisu)
     {
         if (string.IsNullOrWhiteSpace(typWpisu))
@@ -161,8 +186,38 @@ public static class GrafikWpisTypy
             trimmed = trimmed[..^1];
         if (trimmed.Length > 0 && trimmed[^1] == KropkaSufiks)
             trimmed = trimmed[..^1];
+        if (trimmed.Length > 0 && trimmed[^1] == ZachowajTloWsSufiks)
+            trimmed = trimmed[..^1];
 
         return trimmed;
+    }
+
+    /// <summary>Typ do zapisu z zachowaniem tła WS (np. „Del” → „Del*”).</summary>
+    public static string ZZachowanymTlemWs(string typWpisu) =>
+        UsunSufiksZachowanegoTla(typWpisu) + ZachowajTloWsSufiks;
+
+    /// <summary>Czy bazowy kod to Del lub S.</summary>
+    public static bool JestDelLubS(string? typWpisu)
+    {
+        var b = BazowyKod(typWpisu);
+        return b.Equals(Delegacja, StringComparison.OrdinalIgnoreCase)
+            || b.Equals(Szkolenie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Del/S przy zapisie: zachowaj żółte tło WS (sufiks *), gdy poprzednio było WS/D/UWS
+    /// albo Del/S z już zachowanym tłem. Przy „braku koloru” pusta służba → bez żółtego.
+    /// </summary>
+    public static string ResolveDelSDlaZapisu(string? poprzedniTyp, string nowyTyp)
+    {
+        var czysty = UsunSufiksZachowanegoTla(nowyTyp);
+        if (!JestDelLubS(czysty))
+            return czysty;
+
+        var zachowaj = MaTloWolnejSluzby(poprzedniTyp)
+            || (JestDelLubS(poprzedniTyp) && MaZachowaneTloWs(poprzedniTyp));
+
+        return zachowaj ? ZZachowanymTlemWs(czysty) : czysty;
     }
 
     /// <summary>Dodaje lub usuwa Oddaje. Zwraca null, gdy nie wolno.</summary>

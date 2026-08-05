@@ -382,7 +382,6 @@ public static class GrafikGridBuilder
         var textFactory = new FrameworkElementFactory(typeof(TextBlock));
         textFactory.SetBinding(TextBlock.TextProperty,
             new Binding($"[{day}]") { Converter = WpisTekstConverter.Instance });
-        textFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.SemiBold);
         textFactory.SetValue(TextBlock.FontSizeProperty, 15.0);
         textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
@@ -390,6 +389,17 @@ public static class GrafikGridBuilder
 
         var textStyle = new Style(typeof(TextBlock));
         textStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, NormalDayFg));
+        textStyle.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.SemiBold));
+
+        // Urlopy przeniesione z planu urlopów (IsAuto) — pogrubienie Bold.
+        var fromUrlopPlan = new DataTrigger
+        {
+            Binding = new Binding($"{nameof(GrafikRowViewModel.FromUrlopPlan)}[{day}]"),
+            Value = true
+        };
+        fromUrlopPlan.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.Bold));
+        textStyle.Triggers.Add(fromUrlopPlan);
+
         var oddalStrike = new DataTrigger
         {
             Binding = new Binding($"[{day}]") { Converter = OddalFlagConverter.Instance },
@@ -572,13 +582,31 @@ public static class GrafikGridBuilder
 
     private sealed class WpisTloConverter(GrafikCellColors colors) : IValueConverter
     {
-        private static readonly SolidColorBrush Transparent = new(Colors.Transparent);
-
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return GrafikWpisTypy.MaTloWolnejSluzby(value?.ToString(), colors.HighlightDel)
-                ? colors.WsTlo
-                : Transparent;
+            var typ = value?.ToString();
+
+            if (GrafikWpisTypy.MaTloWolnejSluzby(typ))
+                return colors.WsTlo;
+
+            var kod = GrafikWpisTypy.BazowyKod(typ);
+
+            // Del/S: własny kolor → on; „brak” → żółte tylko gdy zachowano tło WS (sufiks *), inaczej bez wypełnienia.
+            if (kod.Equals(GrafikWpisTypy.Delegacja, StringComparison.OrdinalIgnoreCase))
+            {
+                if (colors.DelTlo is not null)
+                    return colors.DelTlo;
+                return GrafikWpisTypy.MaZachowaneTloWs(typ) ? colors.WsTlo : Brushes.Transparent;
+            }
+
+            if (kod.Equals(GrafikWpisTypy.Szkolenie, StringComparison.OrdinalIgnoreCase))
+            {
+                if (colors.STlo is not null)
+                    return colors.STlo;
+                return GrafikWpisTypy.MaZachowaneTloWs(typ) ? colors.WsTlo : Brushes.Transparent;
+            }
+
+            return Brushes.Transparent;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>

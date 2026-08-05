@@ -18,8 +18,15 @@ public static class RoleKeys
     public const string Dyzur = "Dyzur";
     public const string WolnaSluzba = "WolnaSluzba";
     public const string DzienSluzby = "DzienSluzby";
+    /// <summary>Tło komórki Del w grafiku służb. Wartość <see cref="BrakWypelnienia"/> = bez własnego koloru (zachowuje tło komórki).</summary>
+    public const string Delegacja = "Delegacja";
+    /// <summary>Tło komórki S w grafiku służb. Wartość <see cref="BrakWypelnienia"/> = bez własnego koloru (zachowuje tło komórki).</summary>
+    public const string Szkolenie = "Szkolenie";
     public const string EksportNaglowekStopkaTlo = "EksportNaglowekStopkaTlo";
     public const string EksportNaglowekStopkaCzcionka = "EksportNaglowekStopkaCzcionka";
+
+    /// <summary>Sentinel w KolorHex — brak własnego koloru Del/S (tło jak WS).</summary>
+    public const string BrakWypelnienia = "None";
 
     public const string KalendarzZmiana1 = "KalendarzZmiana1";
     public const string KalendarzZmiana2 = "KalendarzZmiana2";
@@ -42,11 +49,20 @@ public static class RoleKeys
         KalendarzZmiana3
     ];
 
+    /// <summary>Kolory opcjonalne (kolor albo brak wypełnienia) — Del, S.</summary>
+    public static IReadOnlyList<string> KoloryOpcjonalneWypelnienia =>
+    [
+        Delegacja,
+        Szkolenie
+    ];
+
     public static IReadOnlyList<string> WszystkieKolory =>
         [
             .. WszystkieRole,
             WolnaSluzba,
-            DzienSluzby,
+            Delegacja,
+            Szkolenie,
+            .. KalendarzKolory,
             NurekCzcionka,
             EksportNaglowekStopkaTlo,
             EksportNaglowekStopkaCzcionka
@@ -63,12 +79,14 @@ public static class RoleKeys
             { Kierowca, "Kierowca (C/C+E/D)" },
             { Zwykly, "Zwykły strażak" },
             { WolnaSluzba, "D / WS — tło komórki" },
-            { DzienSluzby, "Dzień służby — plan urlopów" },
+            { Delegacja, "Del — tło (Brak = bez zmiany tła: służba bez koloru, WS zostaje żółte)" },
+            { Szkolenie, "S — tło (Brak = bez zmiany tła: służba bez koloru, WS zostaje żółte)" },
+            { DzienSluzby, "Dzień służby — plan urlopów (legacy)" },
             { EksportNaglowekStopkaTlo, "Eksport — tło nagłówka i stopki" },
             { EksportNaglowekStopkaCzcionka, "Eksport — czcionka nagłówka i stopki" },
-            { KalendarzZmiana1, "Kalendarz — zmiana I" },
-            { KalendarzZmiana2, "Kalendarz — zmiana II" },
-            { KalendarzZmiana3, "Kalendarz — zmiana III" }
+            { KalendarzZmiana1, "Zmiana I — dzień służby (plan urlopów / kalendarz)" },
+            { KalendarzZmiana2, "Zmiana II — dzień służby (plan urlopów / kalendarz)" },
+            { KalendarzZmiana3, "Zmiana III — dzień służby (plan urlopów / kalendarz)" }
         };
 
     /// <summary>Kolory tła wiersza w grafiku.</summary>
@@ -89,7 +107,9 @@ public static class RoleKeys
         {
             { WolnaSluzba, "#6A5C00" },
             { DzienSluzby, "#FFD700" },
-            { NurekCzcionka, "#F80808" }
+            { NurekCzcionka, "#F80808" },
+            { Delegacja, BrakWypelnienia },
+            { Szkolenie, BrakWypelnienia }
         };
 
     /// <summary>Domyślne kolory eksportu Excel (nagłówek i stopka).</summary>
@@ -128,5 +148,33 @@ public static class RoleKeys
         if (DomyslneKoloryKalendarza.TryGetValue(klucz, out var kalendarz))
             return kalendarz;
         return "#2D2D2D";
+    }
+
+    /// <summary>Czy wartość koloru oznacza brak wypełnienia tła komórki.</summary>
+    public static bool IsBrakWypelnienia(string? hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex))
+            return true;
+
+        var trimmed = hex.Trim();
+        return trimmed.Equals(BrakWypelnienia, StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("Brak", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("Transparent", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("#00000000", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static string NormalizeKolorHex(string? hex, string klucz)
+    {
+        if (KoloryOpcjonalneWypelnienia.Contains(klucz) && IsBrakWypelnienia(hex))
+            return BrakWypelnienia;
+
+        if (string.IsNullOrWhiteSpace(hex))
+            return GetDefaultKolorHex(klucz);
+
+        var trimmed = hex.Trim();
+        if (!trimmed.StartsWith('#'))
+            trimmed = "#" + trimmed;
+
+        return trimmed.Length is 7 or 9 ? trimmed.ToUpperInvariant() : GetDefaultKolorHex(klucz);
     }
 }

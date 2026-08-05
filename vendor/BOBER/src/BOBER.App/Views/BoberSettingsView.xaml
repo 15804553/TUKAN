@@ -175,12 +175,6 @@
                                   IsChecked="True"
                                   Margin="0,0,0,12" />
 
-                        <CheckBox x:Name="DelYellowCheckBox"
-                                  Content="Del — żółte tło komórki jak WS (wyłączone: sam tekst „Del” bez zaznaczenia)"
-                                  Foreground="{StaticResource ForegroundBrush}"
-                                  IsChecked="True"
-                                  Margin="0,0,0,12" />
-
                         <CheckBox x:Name="MultiSelectCheckBox"
                                   Content="Zaznaczanie wielu kratek w grafiku służb (Shift/Ctrl w jednym wierszu)"
                                   Foreground="{StaticResource ForegroundBrush}"
@@ -252,19 +246,40 @@
                                 <DataTemplate>
                                     <Grid Margin="0,4">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="200" />
-                                            <ColumnDefinition Width="130" />
+                                            <ColumnDefinition Width="280" />
+                                            <ColumnDefinition Width="110" />
+                                            <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="{Binding Etykieta}"
                                                    Foreground="{StaticResource ForegroundBrush}"
                                                    VerticalAlignment="Center"
-                                                   FontSize="12" />
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap" />
                                         <TextBox Grid.Column="1"
-                                                 Text="{Binding KolorHex, UpdateSourceTrigger=PropertyChanged}"
+                                                 Text="{Binding DisplayHex, UpdateSourceTrigger=PropertyChanged}"
                                                  Style="{StaticResource DarkTextBox}"
-                                                 Margin="8,0,8,0" />
-                                        <Border Grid.Column="2"
+                                                 Margin="8,0,4,0" />
+                                        <Button Grid.Column="2"
+                                                Content="Brak"
+                                                Padding="8,2"
+                                                Margin="0,0,8,0"
+                                                FontSize="11"
+                                                Cursor="Hand"
+                                                ToolTip="Brak wypełnienia tła komórki"
+                                                Click="OnClearColorClick">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding AllowEmpty}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                        <Border Grid.Column="3"
                                                 CornerRadius="4"
                                                 Height="22"
                                                 Cursor="Hand"
