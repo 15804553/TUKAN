@@ -81,9 +81,11 @@ public sealed class WordExportService
 
     private static void AddHeader(Body body, RozkazDzienny rozkaz, string nrJrg)
     {
-        // "Kraków, dn. DD.MM.RRRR"
+        // "Kraków, dn. DD.MM.RRRR" — data fizycznego wystawienia (nie „na dzień”)
+        var dataWystawienia = DateOnly.FromDateTime(
+            rozkaz.DataUtworzenia == default ? DateTime.Now : rozkaz.DataUtworzenia);
         body.AppendChild(MakeParagraph(
-            $"Kraków, dn. {rozkaz.Data.ToString("dd.MM.yyyy")}",
+            $"Kraków, dn. {dataWystawienia.ToString("dd.MM.yyyy")}",
             alignment: JustificationValues.Right,
             fontSize: 20));
 
@@ -314,19 +316,19 @@ public sealed class WordExportService
 
     private static void AddFooter(Body body, string nrJrg)
     {
-        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Right));
-        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Right));
-        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Right));
+        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Left));
+        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Left));
+        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Left));
         body.AppendChild(MakeParagraph(
             $"Rozkaz podpisał D-ca JRG-{nrJrg}",
-            alignment: JustificationValues.Right,
+            alignment: JustificationValues.Left,
             bold: true,
             fontSize: 20));
-        body.AppendChild(MakeParagraph(string.Empty, alignment: JustificationValues.Right));
-        body.AppendChild(MakeParagraph(string.Empty, alignment: JustificationValues.Right));
+        body.AppendChild(MakeParagraph(string.Empty, alignment: JustificationValues.Left));
+        body.AppendChild(MakeParagraph(string.Empty, alignment: JustificationValues.Left));
         body.AppendChild(MakeParagraph(
             "................................",
-            alignment: JustificationValues.Right,
+            alignment: JustificationValues.Left,
             fontSize: 20));
     }
 

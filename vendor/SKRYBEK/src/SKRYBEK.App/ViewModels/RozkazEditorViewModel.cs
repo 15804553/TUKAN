@@ -31,6 +31,11 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(DataDateTime))]
     private DateOnly _data;
 
+    /// <summary>Data fizycznego wystawienia rozkazu („Kraków, dn.”) — niezależna od „na dzień”.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DataWystawieniaDateTime))]
+    private DateOnly _dataWystawienia;
+
     [ObservableProperty] private string _zajecia = string.Empty;
     [ObservableProperty] private string _uwagi = string.Empty;
     [ObservableProperty] private string _nrJrg = "4";
@@ -105,6 +110,16 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         }
     }
 
+    public DateTime? DataWystawieniaDateTime
+    {
+        get => DataWystawienia.ToDateTime(TimeOnly.MinValue);
+        set
+        {
+            if (value.HasValue)
+                DataWystawienia = DateOnly.FromDateTime(value.Value);
+        }
+    }
+
     // ── Personel ──────────────────────────────────────────────────────────────
     public ObservableCollection<Funkcjonariusz> WszystkieOsoby { get; } = [];
     public ObservableCollection<Funkcjonariusz> Przefiltrowane { get; } = [];
@@ -162,6 +177,8 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 
         NumerRozkazu = rozkaz.NumerRozkazu;
         _data        = rozkaz.Data;
+        _dataWystawienia = DateOnly.FromDateTime(
+            rozkaz.DataUtworzenia == default ? DateTime.Now : rozkaz.DataUtworzenia);
         Zajecia      = rozkaz.Zajecia;
         Uwagi        = rozkaz.Uwagi;
         NrJrg        = nrJrg;
@@ -763,6 +780,8 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         _rozkaz.NumerRozkazu = NumerRozkazu;
         _rozkaz.Data         = Data;
         _rozkaz.Rok          = Data.Year;
+        _rozkaz.DataUtworzenia = DataWystawienia.ToDateTime(
+            TimeOnly.FromDateTime(_rozkaz.DataUtworzenia == default ? DateTime.Now : _rozkaz.DataUtworzenia));
         _rozkaz.Zajecia      = Zajecia;
         _rozkaz.Uwagi        = Uwagi;
         _rozkaz.SamochodySnapshotJson = SamochodySnapshot.Serializuj(_samochody);

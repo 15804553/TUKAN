@@ -242,6 +242,18 @@
                                         Style="{StaticResource DarkDatePicker}"
                                         Width="148"
                                         Height="34" />
+                            <TextBlock Text="Kraków, dn.:"
+                                       Foreground="{StaticResource ForegroundBrush}"
+                                       FontSize="16"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center"
+                                       Margin="20,0,8,0" />
+                            <DatePicker SelectedDate="{Binding DataWystawieniaDateTime, UpdateSourceTrigger=PropertyChanged}"
+                                        IsEnabled="{Binding CzyZatwierdzony, Converter={StaticResource InverseBoolConverter}}"
+                                        Style="{StaticResource DarkDatePicker}"
+                                        Width="148"
+                                        Height="34"
+                                        ToolTip="Data fizycznego wystawienia rozkazu (nagłówek „Kraków, dn.” w Word)" />
                         </StackPanel>
 
                         <!-- Przyciski akcji -->
@@ -644,12 +656,17 @@
                          AcceptsReturn="True" />
 
                 <!-- Stopka -->
-                <TextBlock Foreground="{StaticResource ForegroundMutedBrush}"
-                           FontSize="11"
-                           HorizontalAlignment="Right">
-                    <Run Text="Rozkaz podpisał D-ca JRG-" />
-                    <Run Text="{Binding NrJrg}" FontWeight="Bold" />
-                </TextBlock>
+                <StackPanel HorizontalAlignment="Left" Margin="0,8,0,0">
+                    <TextBlock Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="11">
+                        <Run Text="Rozkaz podpisał D-ca JRG-" />
+                        <Run Text="{Binding NrJrg}" FontWeight="Bold" />
+                    </TextBlock>
+                    <TextBlock Text="................................"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="11"
+                               Margin="0,16,0,0" />
+                </StackPanel>
 
             </StackPanel>
         </ScrollViewer>
