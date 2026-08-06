@@ -380,7 +380,7 @@ public static class GrafikGridBuilder
         var contentGrid = new FrameworkElementFactory(typeof(Grid));
 
         var textFactory = new FrameworkElementFactory(typeof(TextBlock));
-        // Typ wpisu + flaga planu → U vs Uₚ (urlop przeniesiony z planu urlopów).
+        // Typ wpisu + flaga planu → U / Uₚ / Uᵣ (urlop przeniesiony z planu urlopów).
         var tekstBinding = new MultiBinding { Converter = WpisTekstConverter.Instance };
         tekstBinding.Bindings.Add(new Binding($"[{day}]"));
         tekstBinding.Bindings.Add(new Binding($"{nameof(GrafikRowViewModel.FromUrlopPlan)}[{day}]"));
@@ -607,7 +607,7 @@ public static class GrafikGridBuilder
             throw new NotSupportedException();
     }
 
-    /// <summary>values[0]=TypWpisu, values[1]=FromUrlopPlan → tekst główny (U / Uₚ).</summary>
+    /// <summary>values[0]=TypWpisu, values[1]=FromUrlopPlan → tekst główny (U / Uₚ / Uᵣ).</summary>
     private sealed class WpisTekstConverter : IMultiValueConverter
     {
         public static readonly WpisTekstConverter Instance = new();

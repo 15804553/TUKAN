@@ -54,7 +54,8 @@ public sealed class UrlopPlanExcelServiceTests
         var wpisy = new List<UrlopPlanWpis>
         {
             new() { FunkcjonariuszId = 1, Rok = 2026, Miesiac = 1, Dzien = 5, TypUrlopu = UrlopTypy.Wypoczynkowy },
-            new() { FunkcjonariuszId = 1, Rok = 2026, Miesiac = 1, Dzien = 6, TypUrlopu = UrlopTypy.Dodatkowy }
+            new() { FunkcjonariuszId = 1, Rok = 2026, Miesiac = 1, Dzien = 6, TypUrlopu = UrlopTypy.Dodatkowy },
+            new() { FunkcjonariuszId = 1, Rok = 2026, Miesiac = 1, Dzien = 7, TypUrlopu = UrlopTypy.Rodzicielski }
         };
 
         try
@@ -62,9 +63,10 @@ public sealed class UrlopPlanExcelServiceTests
             service.Export(1, 2026, funkcjonariusze, wpisy, path);
             var imported = service.Import(path, 2026, funkcjonariusze);
 
-            Assert.Equal(2, imported.Count);
+            Assert.Equal(3, imported.Count);
             Assert.Contains(imported, w => w.Miesiac == 1 && w.Dzien == 5 && w.TypUrlopu == UrlopTypy.Wypoczynkowy);
             Assert.Contains(imported, w => w.Miesiac == 1 && w.Dzien == 6 && w.TypUrlopu == UrlopTypy.Dodatkowy);
+            Assert.Contains(imported, w => w.Miesiac == 1 && w.Dzien == 7 && w.TypUrlopu == UrlopTypy.Rodzicielski);
         }
         finally
         {

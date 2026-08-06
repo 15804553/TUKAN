@@ -32,6 +32,62 @@ public sealed class UrlopPlanValidatorTests
     }
 
     [Fact]
+    public void Validate_ExceedsRodzicielskiLimit_ReturnsR9()
+    {
+        var wpisy = Enumerable.Range(1, 64)
+            .Select(d =>
+            {
+                var date = new DateOnly(2026, 1, 1).AddDays(d - 1);
+                return new UrlopPlanWpis
+                {
+                    FunkcjonariuszId = 1,
+                    Rok = date.Year,
+                    Miesiac = date.Month,
+                    Dzien = date.Day,
+                    TypUrlopu = UrlopTypy.Rodzicielski
+                };
+            })
+            .ToList();
+
+        var issues = _validator.Validate(1, 2026, wpisy,
+            new Dictionary<int, string> { [1] = "Test Test" },
+            (_, _) => false,
+            DefaultMaxNaSluzbie);
+
+        Assert.Contains(issues, i => i.RuleId == "R9" && i.Message.Contains("63"));
+    }
+
+    [Fact]
+    public void Validate_TooManyRodzicielskiParts_ReturnsR9()
+    {
+        // 6 osobnych części po 3 dni (R1), łącznie 18 ≤ 63
+        var wpisy = new List<UrlopPlanWpis>();
+        for (var part = 0; part < 6; part++)
+        {
+            var start = new DateOnly(2026, 1, 1).AddDays(part * 10);
+            for (var i = 0; i < 3; i++)
+            {
+                var date = start.AddDays(i);
+                wpisy.Add(new UrlopPlanWpis
+                {
+                    FunkcjonariuszId = 1,
+                    Rok = date.Year,
+                    Miesiac = date.Month,
+                    Dzien = date.Day,
+                    TypUrlopu = UrlopTypy.Rodzicielski
+                });
+            }
+        }
+
+        var issues = _validator.Validate(1, 2026, wpisy,
+            new Dictionary<int, string> { [1] = "Test Test" },
+            (_, _) => false,
+            DefaultMaxNaSluzbie);
+
+        Assert.Contains(issues, i => i.RuleId == "R9" && i.Message.Contains("5 części"));
+    }
+
+    [Fact]
     public void Validate_BlockedChristmasDay_ReturnsR8()
     {
         var wpisy = new List<UrlopPlanWpis>

@@ -112,6 +112,7 @@ public sealed class UrlopPlanExcelService
         ws.Cell(4, 2).Value = "Nazwisko i imię";
         ws.Cell(1, 34).Value = "Wypoczynkowy";
         ws.Cell(1, 35).Value = "Dodatkowy";
+        ws.Cell(1, 36).Value = "Rodzicielski";
 
         for (var day = 1; day <= daysInMonth; day++)
             ws.Cell(5, FirstDayCol + day - 1).Value = day;
@@ -138,18 +139,24 @@ public sealed class UrlopPlanExcelService
             var dayRange = GetDayColumnRange(daysInMonth);
             ws.Cell(row, 34).FormulaA1 = $"COUNTIF({dayRange}{row},{ws.Cell(27, 2).Address})";
             ws.Cell(row, 35).FormulaA1 = $"COUNTIF({dayRange}{row},{ws.Cell(28, 2).Address})";
+            ws.Cell(row, 36).FormulaA1 = $"COUNTIF({dayRange}{row},{ws.Cell(29, 2).Address})";
         }
 
         ws.Cell(27, 2).Value = UrlopTypy.Wypoczynkowy;
         ws.Cell(28, 2).Value = UrlopTypy.Dodatkowy;
-        ws.Cell(27, 3).Value = "urlop wypoczynkowy, planujemy 20 dni z 26";
+        ws.Cell(29, 2).Value = UrlopTypy.Rodzicielski;
+        ws.Cell(27, 3).Value = $"urlop wypoczynkowy, planujemy {UrlopPlanInstructions.LimitWypoczynkowy} dni z 26";
+        ws.Cell(28, 3).Value =
+            $"urlop dodatkowy, planujemy {UrlopPlanInstructions.LimitDodatkowy} dni (max {UrlopPlanInstructions.MaxCzesciDodatkowy} części, min {UrlopPlanInstructions.MinCzescDodatkowy} dni)";
+        ws.Cell(29, 3).Value =
+            $"urlop rodzicielski, planujemy {UrlopPlanInstructions.LimitRodzicielski} dni (max {UrlopPlanInstructions.MaxCzesciRodzicielski} części); w grafiku Uᵣ";
 
         for (var day = 1; day <= daysInMonth; day++)
         {
             var col = FirstDayCol + day - 1;
             var colLetter = ws.Column(col).ColumnLetter();
             ws.Cell(26, col).FormulaA1 =
-                $"SUMPRODUCT(COUNTIF({colLetter}{FirstDataRow}:{colLetter}{LastDataRow},$B$27:$B$28))";
+                $"SUMPRODUCT(COUNTIF({colLetter}{FirstDataRow}:{colLetter}{LastDataRow},$B$27:$B$29))";
         }
 
         ws.SheetView.FreezeRows(5);
@@ -160,20 +167,8 @@ public sealed class UrlopPlanExcelService
     private static void AddInstructionSheet(XLWorkbook workbook)
     {
         var ws = workbook.Worksheets.Add("Instrukcja");
-        var rules = new[]
-        {
-            "urlopy planujemy \"służbami\" czyli w interwale 3 dniowym",
-            "urlop zaczyna się na służbie a kończy w dniu przed służbą",
-            "planujemy 20 z 26 dni wypoczynkowego",
-            "planujemy 13 dni dodatkowego,UWAGA nie możemy podzielić go więcej niż na dwie części z którzych jedna nie może być krótsza niż 6 dni.",
-            "nie wpisujemy w plan urlopowy urlopów ZALEGŁYCH",
-            "urlop w sezonie wakacyjnym czerwiec wrzesień planujemy max. 15 dni",
-            $"max. na danej służbie na urlopie {UrlopPlanInstructions.DefaultMaxUrlopowNaSluzbie} osoby (wartość w Ustawieniach)",
-            "nie planujemy urlopów w święta Wielkanocne oraz Bożego Narodzenia"
-        };
-
-        for (var i = 0; i < rules.Length; i++)
-            ws.Cell(i + 3, 3).Value = rules[i];
+        for (var i = 0; i < UrlopPlanInstructions.Rules.Count; i++)
+            ws.Cell(i + 3, 3).Value = UrlopPlanInstructions.Rules[i];
     }
 
     private static string GetDayColumnRange(int daysInMonth)

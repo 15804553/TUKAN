@@ -167,6 +167,9 @@ public sealed class UrlopPlanService(
             }
 
             var isUpdate = grafikLookup.ContainsKey(key);
+            var typWpisu = wpis.TypUrlopu == UrlopTypy.Rodzicielski
+                ? GrafikWpisTypy.UrlopRodzicielski
+                : GrafikWpisTypy.Urlop;
             await grafikRepository.UpsertAsync(new GrafikWpis
             {
                 FunkcjonariuszId = wpis.FunkcjonariuszId,
@@ -174,7 +177,7 @@ public sealed class UrlopPlanService(
                 Rok = rok,
                 Miesiac = wpis.Miesiac,
                 Dzien = wpis.Dzien,
-                TypWpisu = GrafikWpisTypy.Urlop,
+                TypWpisu = typWpisu,
                 IsAuto = true
             }, cancellationToken);
 

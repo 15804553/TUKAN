@@ -69,6 +69,17 @@ public static class UrlopPlanGridBuilder
                 UrlopPlanInstructions.LimitDodatkowy)
         });
 
+        grid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "R",
+            Binding = new Binding(nameof(UrlopPlanRowViewModel.RodzicielskiCount)),
+            Width = new DataGridLength(44),
+            IsReadOnly = true,
+            ElementStyle = CreateYearCountCellStyle(
+                nameof(UrlopPlanRowViewModel.RodzicielskiCount),
+                UrlopPlanInstructions.LimitRodzicielski)
+        });
+
         grid.FrozenColumnCount = 2;
 
         var daysInMonth = DateTime.DaysInMonth(year, month);

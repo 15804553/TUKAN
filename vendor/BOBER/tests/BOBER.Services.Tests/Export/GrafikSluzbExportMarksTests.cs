@@ -459,6 +459,7 @@ public sealed class GrafikSluzbExportMarksTests
             Assert.Contains("Wolna służba", CellText(ws, 10, 1));
             Assert.Contains("Urlop", CellText(ws, 10, 1));
             Assert.Contains("Uₚ", CellText(ws, 10, 1));
+            Assert.Contains("Uᵣ", CellText(ws, 10, 1));
             Assert.Contains("Oddaje", CellText(ws, 11, 1));
             Assert.Contains("Nurek", CellText(ws, 11, 1));
             Assert.Contains("Kierowca", CellText(ws, 11, 1));

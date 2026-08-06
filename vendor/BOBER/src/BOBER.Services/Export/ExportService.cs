@@ -297,7 +297,7 @@ public sealed class ExportService
 
     private static readonly string[] LegendLines =
     [
-        "Legenda komórek: (puste) — w pracy | D — Dyżur (żółte tło) | żółte tło — Wolna służba | U — Urlop | Uₚ — Urlop z planu | U na żółtym — Urlop z WS | Del — Delegacja | S — Szkolenie | C — Chory",
+        "Legenda komórek: (puste) — w pracy | D — Dyżur (żółte tło) | żółte tło — Wolna służba | U — Urlop | Uₚ — Urlop z planu | Uᵣ — Urlop rodzicielski | U na żółtym — Urlop z WS | Del — Delegacja | S — Szkolenie | C — Chory",
         "? — potrzebuje wolne | • — chętna oddać | przekreślenie lub — — Oddaje | Oznaczenia: D — Dowódca | N — Nurek | K — Kierowca"
     ];
 

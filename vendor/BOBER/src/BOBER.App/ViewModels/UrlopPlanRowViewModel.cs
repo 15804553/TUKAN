@@ -8,6 +8,7 @@ public sealed class UrlopPlanRowViewModel : INotifyPropertyChanged
     private readonly Dictionary<int, string> _cells = new();
     private int _wypoczynkowyCount;
     private int _dodatkowyCount;
+    private int _rodzicielskiCount;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -26,6 +27,12 @@ public sealed class UrlopPlanRowViewModel : INotifyPropertyChanged
     {
         get => _dodatkowyCount;
         set { _dodatkowyCount = value; OnPropertyChanged(); }
+    }
+
+    public int RodzicielskiCount
+    {
+        get => _rodzicielskiCount;
+        set { _rodzicielskiCount = value; OnPropertyChanged(); }
     }
 
     public string this[int day]

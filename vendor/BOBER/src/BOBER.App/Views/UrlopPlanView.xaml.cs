@@ -264,6 +264,13 @@ public partial class UrlopPlanView : UserControl
         });
         panel.Children.Add(new TextBlock
         {
+            Text = $"• r — urlop rodzicielski (kolumna R, {UrlopPlanInstructions.LimitRodzicielski} dni/os. w roku, max {UrlopPlanInstructions.MaxCzesciRodzicielski} części; w grafiku Uᵣ jak Uₚ; zielony = zaplanowano w całości, czerwony = przekroczono limit)",
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 13,
+            Margin = new Thickness(0, 0, 0, 6)
+        });
+        panel.Children.Add(new TextBlock
+        {
             Text = "• Żółte tło w nagłówku kolumny — dzień służby zmiany (kolor można zmienić w Ustawieniach)",
             TextWrapping = TextWrapping.Wrap,
             FontSize = 13,
@@ -373,7 +380,7 @@ public partial class UrlopPlanView : UserControl
 
         for (var day = 1; day <= daysInMonth; day++)
         {
-            var count = rows.Count(r => r.GetCell(day) is "w" or "d");
+            var count = rows.Count(r => r.GetCell(day) is "w" or "d" or "r");
             if (count > 0)
                 summary.SetCell(day, count.ToString());
         }
@@ -381,7 +388,7 @@ public partial class UrlopPlanView : UserControl
         return summary;
     }
 
-    private static Dictionary<int, (int Wypoczynkowy, int Dodatkowy)> BuildYearCountsByPerson(
+    private static Dictionary<int, (int Wypoczynkowy, int Dodatkowy, int Rodzicielski)> BuildYearCountsByPerson(
         IEnumerable<UrlopPlanWpis> yearWpisy) =>
         yearWpisy
             .GroupBy(w => w.FunkcjonariuszId)
@@ -389,11 +396,12 @@ public partial class UrlopPlanView : UserControl
                 g => g.Key,
                 g => (
                     g.Count(w => w.TypUrlopu == UrlopTypy.Wypoczynkowy),
-                    g.Count(w => w.TypUrlopu == UrlopTypy.Dodatkowy)));
+                    g.Count(w => w.TypUrlopu == UrlopTypy.Dodatkowy),
+                    g.Count(w => w.TypUrlopu == UrlopTypy.Rodzicielski)));
 
     private static void ApplyYearCountsToRow(
         UrlopPlanRowViewModel row,
-        IReadOnlyDictionary<int, (int Wypoczynkowy, int Dodatkowy)> yearCounts)
+        IReadOnlyDictionary<int, (int Wypoczynkowy, int Dodatkowy, int Rodzicielski)> yearCounts)
     {
         if (!row.FunkcjonariuszId.HasValue)
             return;
@@ -402,11 +410,13 @@ public partial class UrlopPlanView : UserControl
         {
             row.WypoczynkowyCount = counts.Wypoczynkowy;
             row.DodatkowyCount = counts.Dodatkowy;
+            row.RodzicielskiCount = counts.Rodzicielski;
         }
         else
         {
             row.WypoczynkowyCount = 0;
             row.DodatkowyCount = 0;
+            row.RodzicielskiCount = 0;
         }
     }
 
@@ -418,7 +428,7 @@ public partial class UrlopPlanView : UserControl
         var yearWpisy = await _controller.GetYearAsync(_year);
         var yearCounts = BuildYearCountsByPerson(yearWpisy);
         if (!yearCounts.TryGetValue(funkcjonariuszId, out var counts))
-            counts = (0, 0);
+            counts = (0, 0, 0);
 
         foreach (var (month, grid) in _monthGrids)
         {
@@ -431,6 +441,7 @@ public partial class UrlopPlanView : UserControl
 
             personRow.WypoczynkowyCount = counts.Wypoczynkowy;
             personRow.DodatkowyCount = counts.Dodatkowy;
+            personRow.RodzicielskiCount = counts.Rodzicielski;
             grid.Items.Refresh();
         }
     }
@@ -551,7 +562,7 @@ public partial class UrlopPlanView : UserControl
         grid.SelectedCells.Where(IsValidDayCell);
 
     private static bool IsValidDayCell(DataGridCellInfo cell) =>
-        cell.Column is { DisplayIndex: > 3 }
+        cell.Column is { DisplayIndex: > 4 }
         && cell.Item is UrlopPlanRowViewModel vm
         && !vm.IsSummaryRow
         && vm.FunkcjonariuszId.HasValue
@@ -607,6 +618,7 @@ public partial class UrlopPlanView : UserControl
         {
             Key.W => UrlopTypy.Wypoczynkowy,
             Key.D => UrlopTypy.Dodatkowy,
+            Key.R => UrlopTypy.Rodzicielski,
             Key.Space => "",
             _ => null
         };
@@ -663,6 +675,7 @@ public partial class UrlopPlanView : UserControl
         var menu = new ContextMenu();
         AddMenuItem(menu, $"w — Wypoczynkowy{labelSuffix}", UrlopTypy.Wypoczynkowy, grid, targets);
         AddMenuItem(menu, $"d — Dodatkowy{labelSuffix}", UrlopTypy.Dodatkowy, grid, targets);
+        AddMenuItem(menu, $"r — Rodzicielski{labelSuffix}", UrlopTypy.Rodzicielski, grid, targets);
         AddMenuItem(menu, $"— Wyczyść{labelSuffix}", "", grid, targets);
         menu.PlacementTarget = cell;
         menu.IsOpen = true;
@@ -721,7 +734,7 @@ public partial class UrlopPlanView : UserControl
                     var daysInMonth = DateTime.DaysInMonth(_year, month);
                     for (var d = 1; d <= daysInMonth; d++)
                     {
-                        var count = rows.Where(r => !r.IsSummaryRow).Count(r => r.GetCell(d) is "w" or "d");
+                        var count = rows.Where(r => !r.IsSummaryRow).Count(r => r.GetCell(d) is "w" or "d" or "r");
                         summary.SetCell(d, count > 0 ? count.ToString() : "");
                     }
                 }
@@ -839,7 +852,7 @@ public partial class UrlopPlanView : UserControl
 
         var confirm = BoberMessageBox.Show(
             OwnerWindow,
-            $"Czy zastosować plan urlopów {_year} na grafiku służb (wpis „Uₚ”)?{warning}",
+            $"Czy zastosować plan urlopów {_year} na grafiku służb (wpisy „Uₚ” / „Uᵣ”)?{warning}",
             "Plan urlopów",
             BoberMessageButtons.YesNo);
 

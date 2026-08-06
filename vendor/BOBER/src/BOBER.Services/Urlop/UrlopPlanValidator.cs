@@ -6,10 +6,13 @@ namespace BOBER.Services.Urlop;
 
 public sealed class UrlopPlanValidator
 {
-    private const int MaxWypoczynkowy = 20;
-    private const int MaxDodatkowy = 13;
-    private const int MinDodatkowyPart = 6;
-    private const int MaxWakacjeWypoczynkowy = 15;
+    private const int MaxWypoczynkowy = UrlopPlanInstructions.LimitWypoczynkowy;
+    private const int MaxDodatkowy = UrlopPlanInstructions.LimitDodatkowy;
+    private const int MaxRodzicielski = UrlopPlanInstructions.LimitRodzicielski;
+    private const int MinDodatkowyPart = UrlopPlanInstructions.MinCzescDodatkowy;
+    private const int MaxCzesciDodatkowy = UrlopPlanInstructions.MaxCzesciDodatkowy;
+    private const int MaxCzesciRodzicielski = UrlopPlanInstructions.MaxCzesciRodzicielski;
+    private const int MaxWakacjeWypoczynkowy = UrlopPlanInstructions.LimitWakacjeWypoczynkowy;
 
     public IReadOnlyList<UrlopPlanValidationIssue> Validate(
         int zmianaId,
@@ -33,6 +36,7 @@ public sealed class UrlopPlanValidator
             ValidateAnnualLimits(personWpisy, fid, name, issues);
             ValidateSummerLimit(personWpisy, fid, name, issues);
             ValidateAdditionalParts(personWpisy, fid, name, issues);
+            ValidateRodzicielskiParts(personWpisy, fid, name, issues);
         }
 
         ValidateDailyShiftLimit(zmianaId, rok, wpisy, isWorkDay, maxNaSluzbie, issues);
@@ -102,6 +106,7 @@ public sealed class UrlopPlanValidator
     {
         var wCount = wpisy.Count(w => w.TypUrlopu == UrlopTypy.Wypoczynkowy);
         var dCount = wpisy.Count(w => w.TypUrlopu == UrlopTypy.Dodatkowy);
+        var rCount = wpisy.Count(w => w.TypUrlopu == UrlopTypy.Rodzicielski);
 
         if (wCount > MaxWypoczynkowy)
         {
@@ -120,6 +125,16 @@ public sealed class UrlopPlanValidator
                 RuleId = "R4",
                 FunkcjonariuszId = fid,
                 Message = $"{name}: przekroczono limit {MaxDodatkowy} dni dodatkowych (zaplanowano {dCount})."
+            });
+        }
+
+        if (rCount > MaxRodzicielski)
+        {
+            issues.Add(new UrlopPlanValidationIssue
+            {
+                RuleId = "R9",
+                FunkcjonariuszId = fid,
+                Message = $"{name}: przekroczono limit {MaxRodzicielski} dni urlopu rodzicielskiego (zaplanowano {rCount})."
             });
         }
     }
@@ -160,13 +175,13 @@ public sealed class UrlopPlanValidator
             return;
 
         var parts = GetContiguousBlocks(dodatkowe);
-        if (parts.Count > 2)
+        if (parts.Count > MaxCzesciDodatkowy)
         {
             issues.Add(new UrlopPlanValidationIssue
             {
                 RuleId = "R4",
                 FunkcjonariuszId = fid,
-                Message = $"{name}: urlop dodatkowy można podzielić maksymalnie na 2 części (zaplanowano {parts.Count})."
+                Message = $"{name}: urlop dodatkowy można podzielić maksymalnie na {MaxCzesciDodatkowy} części (zaplanowano {parts.Count})."
             });
         }
 
@@ -178,6 +193,32 @@ public sealed class UrlopPlanValidator
                 FunkcjonariuszId = fid,
                 Data = part[0].Data,
                 Message = $"{name}: część urlopu dodatkowego ({part.Count} dni) jest krótsza niż {MinDodatkowyPart} dni."
+            });
+        }
+    }
+
+    private static void ValidateRodzicielskiParts(
+        IReadOnlyList<UrlopPlanWpis> wpisy,
+        int fid,
+        string name,
+        List<UrlopPlanValidationIssue> issues)
+    {
+        var rodzicielskie = wpisy
+            .Where(w => w.TypUrlopu == UrlopTypy.Rodzicielski)
+            .OrderBy(w => w.Data)
+            .ToList();
+
+        if (rodzicielskie.Count == 0)
+            return;
+
+        var parts = GetContiguousBlocks(rodzicielskie);
+        if (parts.Count > MaxCzesciRodzicielski)
+        {
+            issues.Add(new UrlopPlanValidationIssue
+            {
+                RuleId = "R9",
+                FunkcjonariuszId = fid,
+                Message = $"{name}: urlop rodzicielski można podzielić maksymalnie na {MaxCzesciRodzicielski} części (zaplanowano {parts.Count})."
             });
         }
     }

@@ -110,6 +110,22 @@ public sealed class GrafikWpisTypyTests
         Assert.Equal("U", GrafikWpisTypy.TekstGlowny("UWS", fromUrlopPlan: false));
     }
 
+    [Fact]
+    public void TekstGlowny_UrlopRodzicielski_PokazujeUrZIndeksem()
+    {
+        Assert.Equal(GrafikWpisTypy.UrlopRodzicielskiTekst, GrafikWpisTypy.TekstGlowny("Ur"));
+        Assert.Equal(GrafikWpisTypy.UrlopRodzicielskiTekst, GrafikWpisTypy.TekstGlowny("Ur", fromUrlopPlan: true));
+        Assert.Equal(GrafikWpisTypy.UrlopRodzicielskiTekst, GrafikWpisTypy.TekstGlowny("Ur."));
+    }
+
+    [Fact]
+    public void JestUrlopem_IncludesRodzicielski()
+    {
+        Assert.True(GrafikWpisTypy.JestUrlopem("Ur"));
+        Assert.True(GrafikWpisTypy.JestUrlopemRodzicielskim("Ur"));
+        Assert.False(GrafikWpisTypy.JestUrlopemRodzicielskim("U"));
+    }
+
     [Theory]
     [InlineData("U.", "\u2022")]
     [InlineData("D.", "\u2022")]

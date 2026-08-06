@@ -7,6 +7,7 @@ namespace BOBER.Core.Constants;
 /// Pytajnik (?) — potrzebuje wolne, tylko gdy osoba jest w pracy (nie wpływa na stan).
 /// UWS — urlop z wolną służbą (żółte tło jak WS, napis „U”; z planu — „Uₚ”).
 /// Urlop z planu urlopów (IsAuto) wyświetlany jako Uₚ; urlop wpisany ręcznie — U.
+/// Urlop rodzicielski z planu — Uᵣ (TypWpisu „Ur”).
 /// </summary>
 public static class GrafikWpisTypy
 {
@@ -15,6 +16,8 @@ public static class GrafikWpisTypy
     public const string Urlop = "U";
     /// <summary>Urlop z wolną służbą — tło WS, tekst „U”; w rozkazie → WOLNA SŁUŻBA.</summary>
     public const string UrlopZWolnaSluzba = "UWS";
+    /// <summary>Urlop rodzicielski przeniesiony z planu urlopów.</summary>
+    public const string UrlopRodzicielski = "Ur";
     public const string Delegacja = "Del";
     public const string Szkolenie = "S";
     public const string Chory = "C";
@@ -28,6 +31,14 @@ public static class GrafikWpisTypy
 
     /// <summary>Tekst urlopu planowanego w UI i Excelu: Uₚ.</summary>
     public const string UrlopPlanowanyTekst = Urlop + UrlopPlanowanyIndeks;
+
+    /// <summary>
+    /// Indeks dolny „r” (U+1D63) — urlop rodzicielski z planu (jak „p” w Uₚ).
+    /// </summary>
+    public const string UrlopRodzicielskiIndeks = "\u1D63";
+
+    /// <summary>Tekst urlopu rodzicielskiego w UI i Excelu: Uᵣ.</summary>
+    public const string UrlopRodzicielskiTekst = Urlop + UrlopRodzicielskiIndeks;
 
     /// <summary>Sufiks Oddaje — bazowy kod (WS/D/U/UWS) zostaje pod spodem.</summary>
     public const char OddalSufiks = '/';
@@ -64,6 +75,7 @@ public static class GrafikWpisTypy
             || kod.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
+            || kod.Equals(UrlopRodzicielski, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Delegacja, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Szkolenie, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Chory, StringComparison.OrdinalIgnoreCase)
@@ -71,23 +83,29 @@ public static class GrafikWpisTypy
             || kod.Equals("DD", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Czy kod bazowy (WS, D, U, UWS) można oddać klawiszem O.</summary>
+    /// <summary>Czy kod bazowy (WS, D, U, UWS, Ur) można oddać klawiszem O.</summary>
     public static bool MoznaOddac(string? typWpisu)
     {
         var kod = BazowyKod(typWpisu);
         return kod.Equals(Dyzur, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
-            || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase);
+            || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
+            || kod.Equals(UrlopRodzicielski, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>U lub UWS — osoba na urlopie w grafiku.</summary>
+    /// <summary>U, UWS lub Ur — osoba na urlopie w grafiku.</summary>
     public static bool JestUrlopem(string? typWpisu)
     {
         var kod = BazowyKod(typWpisu);
         return kod.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
-            || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase);
+            || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
+            || kod.Equals(UrlopRodzicielski, StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>Czy wpis to urlop rodzicielski z planu (TypWpisu „Ur”).</summary>
+    public static bool JestUrlopemRodzicielskim(string? typWpisu) =>
+        BazowyKod(typWpisu).Equals(UrlopRodzicielski, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Czy komórka ma żółte tło wolnej służby (WS, D, UWS). Del/S: własne kolory lub zachowane tło WS (*).</summary>
     public static bool MaTloWolnejSluzby(string? typWpisu)
@@ -110,11 +128,13 @@ public static class GrafikWpisTypy
         {
             if (bazowy.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase))
                 return Urlop;
-            if (bazowy.Equals(Urlop, StringComparison.OrdinalIgnoreCase))
+            if (bazowy.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
+                || bazowy.Equals(UrlopRodzicielski, StringComparison.OrdinalIgnoreCase))
                 return UrlopZWolnaSluzba;
         }
 
-        if (nowy.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
+        if ((nowy.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
+                || nowy.Equals(UrlopRodzicielski, StringComparison.OrdinalIgnoreCase))
             && bazowy.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase))
             return UrlopZWolnaSluzba;
 
@@ -268,7 +288,7 @@ public static class GrafikWpisTypy
 
     /// <summary>
     /// Tekst główny komórki (bez kropki/? — te rysujemy mniejszym znakiem).
-    /// <paramref name="fromUrlopPlan"/> — urlop z planu → Uₚ; ręczny → U.
+    /// <paramref name="fromUrlopPlan"/> — urlop z planu → Uₚ; rodzicielski → Uᵣ; ręczny → U.
     /// </summary>
     public static string TekstGlowny(string? typWpisu, bool fromUrlopPlan = false)
     {
@@ -280,6 +300,10 @@ public static class GrafikWpisTypy
 
         if (jestWs)
             return MaOddal(typWpisu) ? OddalZnak : string.Empty;
+
+        // Ur — urlop rodzicielski z planu → Uᵣ
+        if (JestUrlopemRodzicielskim(typWpisu))
+            return UrlopRodzicielskiTekst;
 
         // U / UWS — żółte tło przy UWS; planowany → Uₚ, ręczny → U
         if (JestUrlopem(typWpisu))
@@ -303,7 +327,7 @@ public static class GrafikWpisTypy
 
     /// <summary>
     /// Tekst do eksportu Excel (główny + znaczek). Oddaje przy U/D → przekreślenie; przy WS → „—”.
-    /// <paramref name="fromUrlopPlan"/> — urlop z planu → Uₚ.
+    /// <paramref name="fromUrlopPlan"/> — urlop z planu → Uₚ; rodzicielski → Uᵣ.
     /// </summary>
     public static string TekstWyswietlany(string? typWpisu, bool fromUrlopPlan = false)
     {
