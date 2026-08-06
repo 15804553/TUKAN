@@ -34,6 +34,14 @@
                 <StackPanel x:Name="ToolbarActionsPanel"
                             Grid.Column="1"
                             Orientation="Horizontal">
+                    <Button x:Name="UndoButton"
+                            Content="Cofnij"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="12,6"
+                            Margin="0,0,8,0"
+                            IsEnabled="False"
+                            ToolTip="Cofnij ostatnią zmianę w grafiku (Ctrl+Z)"
+                            Click="OnUndoClick" />
                     <Button Content="Eksportuj wszystkie miesiące do Excel"
                             Style="{StaticResource SecondaryButton}"
                             Padding="12,6"
@@ -74,7 +82,7 @@
             <TextBlock Foreground="{StaticResource ForegroundMutedBrush}"
                        FontSize="11"
                        VerticalAlignment="Center"
-                       Text="Skróty: Spacja — w pracy | D — Dyżur | W — Wolna służba | U — Urlop | U+W — Urlop z WS | E — Delegacja | S — Szkolenie | C — Chory | O — Oddaje | . — chętna oddać | / — potrzebuje wolne (?)" />
+                       Text="Skróty: Spacja — w pracy | D — Dyżur | W — Wolna służba | U — Urlop | U+W — Urlop z WS | E — Delegacja | S — Szkolenie | C — Chory | O — Oddaje | . — chętna oddać | / — potrzebuje wolne (?) | Ctrl+Z — Cofnij" />
         </Border>
     </Grid>
 </UserControl>

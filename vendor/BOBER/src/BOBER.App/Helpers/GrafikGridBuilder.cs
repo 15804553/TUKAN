@@ -380,8 +380,11 @@ public static class GrafikGridBuilder
         var contentGrid = new FrameworkElementFactory(typeof(Grid));
 
         var textFactory = new FrameworkElementFactory(typeof(TextBlock));
-        textFactory.SetBinding(TextBlock.TextProperty,
-            new Binding($"[{day}]") { Converter = WpisTekstConverter.Instance });
+        // Typ wpisu + flaga planu → U vs Uₚ (urlop przeniesiony z planu urlopów).
+        var tekstBinding = new MultiBinding { Converter = WpisTekstConverter.Instance };
+        tekstBinding.Bindings.Add(new Binding($"[{day}]"));
+        tekstBinding.Bindings.Add(new Binding($"{nameof(GrafikRowViewModel.FromUrlopPlan)}[{day}]"));
+        textFactory.SetBinding(TextBlock.TextProperty, tekstBinding);
         textFactory.SetValue(TextBlock.FontSizeProperty, 15.0);
         textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
@@ -390,15 +393,6 @@ public static class GrafikGridBuilder
         var textStyle = new Style(typeof(TextBlock));
         textStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, NormalDayFg));
         textStyle.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.SemiBold));
-
-        // Urlopy przeniesione z planu urlopów (IsAuto) — pogrubienie Bold.
-        var fromUrlopPlan = new DataTrigger
-        {
-            Binding = new Binding($"{nameof(GrafikRowViewModel.FromUrlopPlan)}[{day}]"),
-            Value = true
-        };
-        fromUrlopPlan.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.Bold));
-        textStyle.Triggers.Add(fromUrlopPlan);
 
         var oddalStrike = new DataTrigger
         {
@@ -613,14 +607,19 @@ public static class GrafikGridBuilder
             throw new NotSupportedException();
     }
 
-    private sealed class WpisTekstConverter : IValueConverter
+    /// <summary>values[0]=TypWpisu, values[1]=FromUrlopPlan → tekst główny (U / Uₚ).</summary>
+    private sealed class WpisTekstConverter : IMultiValueConverter
     {
         public static readonly WpisTekstConverter Instance = new();
 
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-            GrafikWpisTypy.TekstGlowny(value?.ToString());
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            var typ = values.Length > 0 ? values[0]?.ToString() : null;
+            var fromPlan = values.Length > 1 && values[1] is true;
+            return GrafikWpisTypy.TekstGlowny(typ, fromPlan);
+        }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) =>
             throw new NotSupportedException();
     }
 

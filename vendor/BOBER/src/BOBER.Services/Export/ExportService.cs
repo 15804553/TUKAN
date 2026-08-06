@@ -189,16 +189,18 @@ public sealed class ExportService
                 var typ = wpis.TypWpisu;
                 var bazowy = GrafikWpisTypy.BazowyKod(typ);
 
+                // IsAuto = urlop z planu → Uₚ; ręczny → U
+                var fromUrlopPlan = wpis.IsAuto && GrafikWpisTypy.JestUrlopem(typ);
+
                 if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase)
                     || bazowy.Equals(GrafikWpisTypy.UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
                     || bazowy.Equals(GrafikWpisTypy.Dyzur, StringComparison.OrdinalIgnoreCase))
                 {
                     cell.Style.Fill.BackgroundColor = nieobecnoscBg;
-                    cell.Value = GrafikWpisTypy.TekstWyswietlany(typ);
+                    cell.Value = GrafikWpisTypy.TekstWyswietlany(typ, fromUrlopPlan);
                     if (lessColor)
                         cell.Style.Font.FontColor = lessColorText;
                     ApplyOddajeStrikethrough(cell, typ);
-                    ApplyUrlopPlanBold(cell, wpis);
                     continue;
                 }
 
@@ -208,14 +210,13 @@ public sealed class ExportService
                     continue;
                 }
 
-                cell.Value = GrafikWpisTypy.TekstWyswietlany(typ);
+                cell.Value = GrafikWpisTypy.TekstWyswietlany(typ, fromUrlopPlan);
                 // LessColor: tylko WS/UWS/D żółte (powyżej). Del/S — własny kolor lub żółte tylko przy zachowanym tle WS.
                 cell.Style.Fill.BackgroundColor = lessColor
                     ? rowBg
                     : ResolveOptionalWpisBg(typ, bazowy, kolory, rowBg, nieobecnoscBg);
                 cell.Style.Font.FontColor = lessColor ? lessColorText : appText;
                 ApplyOddajeStrikethrough(cell, typ);
-                ApplyUrlopPlanBold(cell, wpis);
             }
         }
 
@@ -296,7 +297,7 @@ public sealed class ExportService
 
     private static readonly string[] LegendLines =
     [
-        "Legenda komórek: (puste) — w pracy | D — Dyżur (żółte tło) | żółte tło — Wolna służba | U — Urlop | U na żółtym — Urlop z WS | Del — Delegacja | S — Szkolenie | C — Chory",
+        "Legenda komórek: (puste) — w pracy | D — Dyżur (żółte tło) | żółte tło — Wolna służba | U — Urlop | Uₚ — Urlop z planu | U na żółtym — Urlop z WS | Del — Delegacja | S — Szkolenie | C — Chory",
         "? — potrzebuje wolne | • — chętna oddać | przekreślenie lub — — Oddaje | Oznaczenia: D — Dowódca | N — Nurek | K — Kierowca"
     ];
 
@@ -400,13 +401,6 @@ public sealed class ExportService
             return;
 
         cell.Style.Font.Strikethrough = true;
-    }
-
-    /// <summary>Pogrubienie urlopów przeniesionych z planu urlopów (IsAuto).</summary>
-    private static void ApplyUrlopPlanBold(IXLCell cell, GrafikWpis wpis)
-    {
-        if (wpis.IsAuto && GrafikWpisTypy.JestUrlopem(wpis.TypWpisu))
-            cell.Style.Font.Bold = true;
     }
 
     private static string ResolveHex(

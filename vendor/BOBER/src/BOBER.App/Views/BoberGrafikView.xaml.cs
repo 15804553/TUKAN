@@ -11,6 +11,7 @@ using BOBER.App.Logging;
 using BOBER.App.ViewModels;
 using BOBER.App.Views.Chrome;
 using BOBER.Core.Constants;
+using BOBER.Core.Grafik;
 
 namespace BOBER.App.Views;
 
@@ -24,6 +25,8 @@ public partial class BoberGrafikView : UserControl
     private bool _initializeCalled;
     private int _setupGeneration;
     private bool _isRestrictingSelection;
+    private readonly GrafikUndoStack _undoStack = new();
+    private bool _isUndoing;
 
     private static readonly string[] MonthNames =
     [
@@ -40,6 +43,8 @@ public partial class BoberGrafikView : UserControl
         InitializeComponent();
         Loaded += OnLoaded;
         IsVisibleChanged += OnIsVisibleChanged;
+        PreviewKeyDown += OnPreviewUndoKeyDown;
+        _undoStack.Changed += (_, _) => UpdateUndoButtonState();
     }
 
     public void Initialize(MainController controller)
@@ -64,6 +69,7 @@ public partial class BoberGrafikView : UserControl
 
         await _controller.LoadAsync();
         Array.Fill(_monthLoaded, false);
+        _undoStack.Clear();
 
         var selected = MonthTabControl.SelectedIndex + 1;
         if (selected >= 1)
@@ -122,6 +128,7 @@ public partial class BoberGrafikView : UserControl
         MonthTabControl.Items.Clear();
         Array.Fill(_monthLoaded, false);
         _selectedCell = null;
+        _undoStack.Clear();
 
         ZmianaTextBlock.Text = _controller.NazwaZmiany;
         RokTextBlock.Text = $"Rok {_year}";
@@ -450,6 +457,108 @@ public partial class BoberGrafikView : UserControl
         if (targets.Count == 0 && _selectedCell is not null)
             targets = [_selectedCell.Value];
         return targets;
+    }
+
+    private async void OnPreviewUndoKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Z || Keyboard.Modifiers != ModifierKeys.Control)
+            return;
+
+        e.Handled = true;
+        await UndoLastChangeAsync();
+    }
+
+    private async void OnUndoClick(object sender, RoutedEventArgs e) =>
+        await UndoLastChangeAsync();
+
+    private void UpdateUndoButtonState()
+    {
+        if (UndoButton is not null)
+            UndoButton.IsEnabled = _undoStack.CanUndo && !_isUndoing;
+    }
+
+    private static GrafikUndoCell CaptureUndoCell(GrafikRowViewModel vm, int month, int day) =>
+        new()
+        {
+            FunkcjonariuszId = vm.FunkcjonariuszId!.Value,
+            Month = month,
+            Day = day,
+            PreviousTyp = vm.GetCell(day),
+            PreviousFromUrlopPlan = vm.FromUrlopPlan[day]
+        };
+
+    private void CommitUndoEntry(List<GrafikUndoCell> cells)
+    {
+        if (_isUndoing || cells.Count == 0)
+            return;
+
+        _undoStack.Push(new GrafikUndoEntry { Cells = cells });
+    }
+
+    private async Task UndoLastChangeAsync()
+    {
+        if (_controller is null || _isUndoing || !_undoStack.TryPop(out var entry))
+            return;
+
+        _isUndoing = true;
+        UpdateUndoButtonState();
+
+        try
+        {
+            var months = new HashSet<int>();
+
+            foreach (var cell in entry.Cells)
+            {
+                var dataGrid = FindMonthGrid(cell.Month);
+                var vm = FindRowByFunkcjonariuszId(dataGrid, cell.FunkcjonariuszId);
+                if (vm is null)
+                    continue;
+
+                if (string.IsNullOrEmpty(cell.PreviousTyp))
+                {
+                    await _controller.ClearWpisAsync(cell.FunkcjonariuszId, _year, cell.Month, cell.Day);
+                    vm.ClearCell(cell.Day);
+                }
+                else
+                {
+                    var fromPlan = cell.PreviousFromUrlopPlan
+                        && GrafikWpisTypy.JestUrlopem(cell.PreviousTyp);
+                    await _controller.SetWpisAsync(
+                        cell.FunkcjonariuszId, _year, cell.Month, cell.Day,
+                        cell.PreviousTyp, isAuto: fromPlan);
+                    vm.SetCell(cell.Day, cell.PreviousTyp, fromUrlopPlan: fromPlan);
+                }
+
+                months.Add(cell.Month);
+            }
+
+            foreach (var month in months)
+            {
+                var dataGrid = FindMonthGrid(month);
+                if (dataGrid is null)
+                    continue;
+
+                dataGrid.Items.Refresh();
+                await RefreshSummaryRowAsync(dataGrid, month);
+            }
+        }
+        catch (Exception ex)
+        {
+            UiErrorReporter.Show(OwnerWindow, ex, "Nie udało się cofnąć zmiany w grafiku.");
+        }
+        finally
+        {
+            _isUndoing = false;
+            UpdateUndoButtonState();
+        }
+    }
+
+    private static GrafikRowViewModel? FindRowByFunkcjonariuszId(DataGrid? dataGrid, int funkcjonariuszId)
+    {
+        if (dataGrid?.ItemsSource is not IEnumerable<GrafikRowViewModel> rows)
+            return null;
+
+        return rows.FirstOrDefault(r => r.FunkcjonariuszId == funkcjonariuszId);
     }
 
     private async void OnDataGridKeyDown(object sender, KeyEventArgs e)
@@ -795,6 +904,7 @@ public partial class BoberGrafikView : UserControl
         {
             var hasForbidden = false;
             var applied = false;
+            var undoCells = new List<GrafikUndoCell>();
 
             foreach (var (vm, month, day) in cells)
             {
@@ -812,6 +922,7 @@ public partial class BoberGrafikView : UserControl
                 if (nowy is null)
                     continue;
 
+                undoCells.Add(CaptureUndoCell(vm, month, day));
                 await ApplyWpisSilentAsync(vm, month, day, nowy);
                 applied = true;
             }
@@ -827,6 +938,7 @@ public partial class BoberGrafikView : UserControl
 
             if (applied)
             {
+                CommitUndoEntry(undoCells);
                 dataGrid.Items.Refresh();
                 await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
             }
@@ -848,6 +960,7 @@ public partial class BoberGrafikView : UserControl
         {
             var applied = false;
             var anyInvalid = false;
+            var undoCells = new List<GrafikUndoCell>();
 
             foreach (var (vm, month, day) in cells)
             {
@@ -861,6 +974,7 @@ public partial class BoberGrafikView : UserControl
                     continue;
                 }
 
+                undoCells.Add(CaptureUndoCell(vm, month, day));
                 await ApplyWpisSilentAsync(vm, month, day, nowy);
                 applied = true;
             }
@@ -876,6 +990,7 @@ public partial class BoberGrafikView : UserControl
 
             if (applied)
             {
+                CommitUndoEntry(undoCells);
                 dataGrid.Items.Refresh();
                 await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
             }
@@ -897,6 +1012,7 @@ public partial class BoberGrafikView : UserControl
         {
             var applied = false;
             var anyInvalid = false;
+            var undoCells = new List<GrafikUndoCell>();
 
             foreach (var (vm, month, day) in cells)
             {
@@ -910,6 +1026,7 @@ public partial class BoberGrafikView : UserControl
                     continue;
                 }
 
+                undoCells.Add(CaptureUndoCell(vm, month, day));
                 await ApplyWpisSilentAsync(vm, month, day, nowy);
                 applied = true;
             }
@@ -925,6 +1042,7 @@ public partial class BoberGrafikView : UserControl
 
             if (applied)
             {
+                CommitUndoEntry(undoCells);
                 dataGrid.Items.Refresh();
                 await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
             }
@@ -945,6 +1063,8 @@ public partial class BoberGrafikView : UserControl
 
         try
         {
+            var undoCells = new List<GrafikUndoCell>();
+
             foreach (var (vm, month, day) in cells)
             {
                 if (!vm.FunkcjonariuszId.HasValue)
@@ -954,9 +1074,11 @@ public partial class BoberGrafikView : UserControl
                     ? typWpisu
                     : GrafikWpisTypy.ResolvePoNalozeniu(vm.GetCell(day), typWpisu);
 
+                undoCells.Add(CaptureUndoCell(vm, month, day));
                 await ApplyWpisSilentAsync(vm, month, day, resolved);
             }
 
+            CommitUndoEntry(undoCells);
             dataGrid.Items.Refresh();
             await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
         }
@@ -1118,6 +1240,7 @@ public partial class BoberGrafikView : UserControl
             }
 
             Array.Fill(_monthLoaded, false);
+            _undoStack.Clear();
             var selected = MonthTabControl.SelectedIndex + 1;
             await LoadMonthAsync(selected);
         }

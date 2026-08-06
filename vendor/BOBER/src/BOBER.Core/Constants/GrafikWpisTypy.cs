@@ -5,7 +5,8 @@ namespace BOBER.Core.Constants;
 /// Oddaje (O) — nakładka „/” na WS/D/U/UWS (obecność).
 /// Kropka (.) — chętna oddać, tylko z D, U, UWS lub WS (nie wpływa na stan etatowy).
 /// Pytajnik (?) — potrzebuje wolne, tylko gdy osoba jest w pracy (nie wpływa na stan).
-/// UWS — urlop z wolną służbą (żółte tło jak WS, napis „U”).
+/// UWS — urlop z wolną służbą (żółte tło jak WS, napis „U”; z planu — „Uₚ”).
+/// Urlop z planu urlopów (IsAuto) wyświetlany jako Uₚ; urlop wpisany ręcznie — U.
 /// </summary>
 public static class GrafikWpisTypy
 {
@@ -18,6 +19,15 @@ public static class GrafikWpisTypy
     public const string Szkolenie = "S";
     public const string Chory = "C";
     public const string PotrzebujeWolne = "?";
+
+    /// <summary>
+    /// Indeks dolny „p” (U+209A) — urlop przeniesiony z planu urlopów (IsAuto).
+    /// Ręczny urlop w grafiku miesięcznym pozostaje zwykłym „U”.
+    /// </summary>
+    public const string UrlopPlanowanyIndeks = "\u209A";
+
+    /// <summary>Tekst urlopu planowanego w UI i Excelu: Uₚ.</summary>
+    public const string UrlopPlanowanyTekst = Urlop + UrlopPlanowanyIndeks;
 
     /// <summary>Sufiks Oddaje — bazowy kod (WS/D/U/UWS) zostaje pod spodem.</summary>
     public const char OddalSufiks = '/';
@@ -256,8 +266,11 @@ public static class GrafikWpisTypy
         return PotrzebujeWolne;
     }
 
-    /// <summary>Tekst główny komórki (bez kropki/? — te rysujemy mniejszym znakiem).</summary>
-    public static string TekstGlowny(string? typWpisu)
+    /// <summary>
+    /// Tekst główny komórki (bez kropki/? — te rysujemy mniejszym znakiem).
+    /// <paramref name="fromUrlopPlan"/> — urlop z planu → Uₚ; ręczny → U.
+    /// </summary>
+    public static string TekstGlowny(string? typWpisu, bool fromUrlopPlan = false)
     {
         if (MaPytajnik(typWpisu))
             return string.Empty;
@@ -268,9 +281,9 @@ public static class GrafikWpisTypy
         if (jestWs)
             return MaOddal(typWpisu) ? OddalZnak : string.Empty;
 
-        // UWS — żółte tło jak WS, ale napis „U”
-        if (bazowy.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase))
-            return Urlop;
+        // U / UWS — żółte tło przy UWS; planowany → Uₚ, ręczny → U
+        if (JestUrlopem(typWpisu))
+            return fromUrlopPlan ? UrlopPlanowanyTekst : Urlop;
 
         if (string.IsNullOrEmpty(bazowy))
             return string.Empty;
@@ -288,10 +301,13 @@ public static class GrafikWpisTypy
         return string.Empty;
     }
 
-    /// <summary>Tekst do eksportu Excel (główny + znaczek). Oddaje przy U/D → przekreślenie; przy WS → „—”.</summary>
-    public static string TekstWyswietlany(string? typWpisu)
+    /// <summary>
+    /// Tekst do eksportu Excel (główny + znaczek). Oddaje przy U/D → przekreślenie; przy WS → „—”.
+    /// <paramref name="fromUrlopPlan"/> — urlop z planu → Uₚ.
+    /// </summary>
+    public static string TekstWyswietlany(string? typWpisu, bool fromUrlopPlan = false)
     {
-        var glowny = TekstGlowny(typWpisu);
+        var glowny = TekstGlowny(typWpisu, fromUrlopPlan);
         var znaczek = TekstZnaczka(typWpisu);
 
         if (string.IsNullOrEmpty(znaczek))

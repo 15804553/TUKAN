@@ -94,6 +94,23 @@ public sealed class GrafikWpisTypyTests
     }
 
     [Theory]
+    [InlineData("U", "U\u209A")]
+    [InlineData("UWS", "U\u209A")]
+    [InlineData("U.", "U\u209A")]
+    [InlineData("UWS/", "U\u209A")]
+    public void TekstGlowny_ZPlanuUrlopow_PokazujeUp(string? typ, string expected)
+    {
+        Assert.Equal(expected, GrafikWpisTypy.TekstGlowny(typ, fromUrlopPlan: true));
+    }
+
+    [Fact]
+    public void TekstGlowny_RecznyUrlop_ZawszeDuzeU()
+    {
+        Assert.Equal("U", GrafikWpisTypy.TekstGlowny("U", fromUrlopPlan: false));
+        Assert.Equal("U", GrafikWpisTypy.TekstGlowny("UWS", fromUrlopPlan: false));
+    }
+
+    [Theory]
     [InlineData("U.", "\u2022")]
     [InlineData("D.", "\u2022")]
     [InlineData("?", "?")]

@@ -25,6 +25,61 @@ public sealed class GrafikSluzbExportMarksTests
         Assert.Equal(expected, GrafikWpisTypy.TekstWyswietlany(kod));
     }
 
+    [Theory]
+    [InlineData("U", "U\u209A")]
+    [InlineData("UWS", "U\u209A")]
+    [InlineData("U.", "U\u209A•")]
+    [InlineData("U/", "U\u209A")]
+    public void TekstWyswietlany_UrlopZPlanu_Up(string kod, string expected)
+    {
+        Assert.Equal(expected, GrafikWpisTypy.TekstWyswietlany(kod, fromUrlopPlan: true));
+    }
+
+    [Fact]
+    public void ExportMonth_UrlopZPlanu_ZapisujeUp_RecznyZostajeU()
+    {
+        var funkcjonariusze = new List<Funkcjonariusz>
+        {
+            new() { Id = 1, Imie = "Anna", Nazwisko = "Nowak", Stanowisko = "Strażak" },
+            new() { Id = 2, Imie = "Jan", Nazwisko = "Kowalski", Stanowisko = "Strażak" },
+            new() { Id = 3, Imie = "Piotr", Nazwisko = "Wiśniewski", Stanowisko = "Strażak" },
+        };
+
+        var wpisy = new List<GrafikWpis>
+        {
+            Wpis(1, 1, "U", isAuto: true),
+            Wpis(2, 1, "U", isAuto: false),
+            Wpis(3, 1, "UWS", isAuto: true),
+        };
+
+        var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-urlop-plan-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            new ExportService().ExportMonth(
+                path,
+                rok: 2026,
+                miesiac: 7,
+                funkcjonariusze,
+                wpisy,
+                stanZmiany: 3,
+                stanMinimalny: 2,
+                kolory: DefaultKolory(),
+                workDays: [1]);
+
+            using var wb = new XLWorkbook(path);
+            var ws = wb.Worksheet(1);
+
+            Assert.Equal(GrafikWpisTypy.UrlopPlanowanyTekst, CellText(ws, 3, 3));
+            Assert.Equal("U", CellText(ws, 4, 3));
+            Assert.Equal(GrafikWpisTypy.UrlopPlanowanyTekst, CellText(ws, 5, 3));
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
     [Fact]
     public void ExportMonth_ZapisujeWszystkieNoweZnaczkiWKomorkach()
     {
@@ -403,6 +458,7 @@ public sealed class GrafikSluzbExportMarksTests
             Assert.Contains("Dyżur", CellText(ws, 10, 1));
             Assert.Contains("Wolna służba", CellText(ws, 10, 1));
             Assert.Contains("Urlop", CellText(ws, 10, 1));
+            Assert.Contains("Uₚ", CellText(ws, 10, 1));
             Assert.Contains("Oddaje", CellText(ws, 11, 1));
             Assert.Contains("Nurek", CellText(ws, 11, 1));
             Assert.Contains("Kierowca", CellText(ws, 11, 1));
@@ -426,14 +482,15 @@ public sealed class GrafikSluzbExportMarksTests
         return map;
     }
 
-    private static GrafikWpis Wpis(int fid, int dzien, string typ) => new()
+    private static GrafikWpis Wpis(int fid, int dzien, string typ, bool isAuto = false) => new()
     {
         FunkcjonariuszId = fid,
         ZmianaId = 1,
         Rok = 2026,
         Miesiac = 7,
         Dzien = dzien,
-        TypWpisu = typ
+        TypWpisu = typ,
+        IsAuto = isAuto
     };
 
     private static string CellText(IXLWorksheet ws, int row, int col)

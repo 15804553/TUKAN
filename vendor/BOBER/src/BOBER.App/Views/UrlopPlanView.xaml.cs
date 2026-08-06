@@ -839,7 +839,7 @@ public partial class UrlopPlanView : UserControl
 
         var confirm = BoberMessageBox.Show(
             OwnerWindow,
-            $"Czy zastosować plan urlopów {_year} na grafiku służb (wpis „U”)?{warning}",
+            $"Czy zastosować plan urlopów {_year} na grafiku służb (wpis „Uₚ”)?{warning}",
             "Plan urlopów",
             BoberMessageButtons.YesNo);
 

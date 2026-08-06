@@ -29,6 +29,7 @@ public sealed class GrafikService(
         int miesiac,
         int dzien,
         string typWpisu,
+        bool isAuto = false,
         CancellationToken cancellationToken = default) =>
         grafikRepository.UpsertAsync(new GrafikWpis
         {
@@ -38,7 +39,7 @@ public sealed class GrafikService(
             Miesiac = miesiac,
             Dzien = dzien,
             TypWpisu = typWpisu,
-            IsAuto = false
+            IsAuto = isAuto
         }, cancellationToken);
 
     public Task ClearWpisAsync(

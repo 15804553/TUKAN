@@ -229,10 +229,12 @@ public sealed class MainController(AppServices services)
         int miesiac,
         int dzien,
         string typWpisu,
+        bool isAuto = false,
         CancellationToken cancellationToken = default)
     {
         var oldTyp = await ResolveCurrentTypAsync(funkcjonariuszId, rok, miesiac, dzien, cancellationToken);
-        await services.Grafik.SetWpisAsync(funkcjonariuszId, ZmianaId, rok, miesiac, dzien, typWpisu, cancellationToken);
+        await services.Grafik.SetWpisAsync(
+            funkcjonariuszId, ZmianaId, rok, miesiac, dzien, typWpisu, isAuto, cancellationToken);
         await TryAuditGrafikAsync(funkcjonariuszId, oldTyp, typWpisu);
     }
 
