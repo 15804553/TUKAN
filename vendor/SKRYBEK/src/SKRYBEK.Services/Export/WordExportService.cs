@@ -20,9 +20,6 @@ public sealed class WordExportService
         mainPart.Document = new Document(new Body());
         var body = mainPart.Document.Body!;
 
-        // Ustawienia strony A4, marginesy
-        SetPageProperties(mainPart);
-
         // Nagłówek dokumentu
         AddHeader(body, rozkaz, nrJrg);
 
@@ -37,22 +34,21 @@ public sealed class WordExportService
         // DYŻURNI RATOWNICY MEDYCZNI PSP
         AddRatwnicyMedyczni(body, rozkaz.RatwnicyMedyczni);
 
-        // 3) ZAJĘCIA
+        // 3) ZAJĘCIA — bez pustego akapitu po treści (łamanie zaraz potem)
         AddSectionTitle(body, "3)   ZAJĘCIA");
         AddZajecia(body, rozkaz.Zajecia);
 
-        // 4) NIEOBECNI W SŁUŻBIE — od nowej strony
+        // 4) NIEOBECNI W SŁUŻBIE — strona 2
         body.AppendChild(new Paragraph(new Run(new Break { Type = BreakValues.Page })));
         AddSectionTitle(body, "4)   NIEOBECNI W SŁUŻBIE");
         AddNieobecniTable(body, rozkaz.Nieobecni);
 
         // 5) UWAGI
-        body.AppendChild(EmptyParagraph());
         AddSectionTitle(body, "5)   UWAGI");
         AddUwagi(body, rozkaz.Uwagi);
 
-        // Stopka
-        AddFooter(body, nrJrg);
+        // sectPr musi być ostatnim elementem Body (marginesy, duplex, stopka z podpisem)
+        SetPageProperties(mainPart, nrJrg);
 
         mainPart.Document.Save();
         SkrybekLog.Info($"Wyeksportowano rozkaz: {path}");
@@ -64,7 +60,10 @@ public sealed class WordExportService
     /// <summary>Id relacji do części printerSettings (druk dwustronny).</summary>
     private const string PrinterSettingsRelationshipId = "rIdPrinterSettings";
 
-    private static void SetPageProperties(MainDocumentPart mainPart)
+    /// <summary>Marginesy „Normalne” w Wordzie — 2,54 cm (1440 twips) z każdej strony.</summary>
+    private const int NormalMarginTwips = 1440;
+
+    private static void SetPageProperties(MainDocumentPart mainPart, string nrJrg)
     {
         // Osadź DEVMODE z DMDUP_VERTICAL — Word pokaże domyślnie
         // „Drukuj dwustronnie / Przerzucaj strony wzdłuż długiej krawędzi”.
@@ -73,19 +72,47 @@ public sealed class WordExportService
         using (var stream = printerPart.GetStream(FileMode.Create, FileAccess.Write))
             stream.Write(BuildDuplexLongEdgeDevMode());
 
+        // Stopka z podpisem tylko od 2. strony (titlePg = inna pierwsza strona).
+        var footerPart = mainPart.AddNewPart<FooterPart>();
+        footerPart.Footer = BuildSignatureFooter(nrJrg);
+        var footerRelId = mainPart.GetIdOfPart(footerPart);
+
+        var firstFooterPart = mainPart.AddNewPart<FooterPart>();
+        firstFooterPart.Footer = new Footer(EmptyParagraph());
+        var firstFooterRelId = mainPart.GetIdOfPart(firstFooterPart);
+
         var sectionProps = new SectionProperties(
+            new FooterReference { Type = HeaderFooterValues.Default, Id = footerRelId },
+            new FooterReference { Type = HeaderFooterValues.First, Id = firstFooterRelId },
+            new TitlePage(),
             new PageSize { Width = 11906, Height = 16838 },
             new PageMargin
             {
-                Top    = 720,
-                Right  = 720,
-                Bottom = 720,
-                Left   = 1134,
-                Header = 360,
-                Footer = 360
+                Top    = NormalMarginTwips,
+                Right  = NormalMarginTwips,
+                Bottom = NormalMarginTwips,
+                Left   = NormalMarginTwips,
+                Header = 720,
+                Footer = 720
             },
             new PrinterSettingsReference { Id = PrinterSettingsRelationshipId });
         mainPart.Document.Body!.AppendChild(sectionProps);
+    }
+
+    private static Footer BuildSignatureFooter(string nrJrg)
+    {
+        var footer = new Footer();
+        footer.AppendChild(MakeParagraph(
+            $"Rozkaz podpisał D-ca JRG-{nrJrg}",
+            alignment: JustificationValues.Left,
+            bold: true,
+            fontSize: 20));
+        footer.AppendChild(SpacerParagraph(fontSize: 16));
+        footer.AppendChild(MakeParagraph(
+            "................................",
+            alignment: JustificationValues.Left,
+            fontSize: 20));
+        return footer;
     }
 
     /// <summary>
@@ -157,9 +184,8 @@ public sealed class WordExportService
             alignment: JustificationValues.Right,
             fontSize: 20));
 
-        // Odstęp przed tytułem
-        body.AppendChild(MakeParagraph(string.Empty, bold: true, fontSize: 32, alignment: JustificationValues.Center));
-        body.AppendChild(MakeParagraph(string.Empty, bold: true, fontSize: 32, alignment: JustificationValues.Center));
+        // Jeden krótki odstęp przed tytułem (zamiast dwóch dużych pustych wierszy)
+        body.AppendChild(SpacerParagraph(fontSize: 16));
 
         body.AppendChild(MakeParagraph(
             $"ROZKAZ DZIENNY NR {rozkaz.NumerFormatowany}",
@@ -179,7 +205,6 @@ public sealed class WordExportService
             alignment: JustificationValues.Center));
 
         body.AppendChild(EmptyParagraph());
-        body.AppendChild(MakeParagraph(string.Empty, alignment: JustificationValues.Center));
     }
 
     // ── Sekcja SŁUŻBA ─────────────────────────────────────────────────────────
@@ -211,7 +236,7 @@ public sealed class WordExportService
         }
 
         body.AppendChild(table);
-        body.AppendChild(MakeParagraph(string.Empty, fontSize: 28));
+        body.AppendChild(EmptyParagraph());
     }
 
     // ── Podział bojowy ────────────────────────────────────────────────────────
@@ -300,10 +325,10 @@ public sealed class WordExportService
 
     private static void AddZajecia(Body body, string zajecia)
     {
+        // Bez pustego akapitu na końcu — zaraz potem jest łamanie strony do sekcji 4.
         body.AppendChild(MakeParagraph(
             string.IsNullOrWhiteSpace(zajecia) ? "............................................................................" : zajecia,
             fontSize: 20));
-        body.AppendChild(EmptyParagraph());
     }
 
     // ── Nieobecni ─────────────────────────────────────────────────────────────
@@ -361,7 +386,11 @@ public sealed class WordExportService
             domTbl.AppendChild(row);
         }
         body.AppendChild(domTbl);
-        body.AppendChild(EmptyParagraph());
+
+        // Większy odstęp przed sekcją 5) UWAGI
+        body.AppendChild(SpacerParagraph(fontSize: 20));
+        body.AppendChild(SpacerParagraph(fontSize: 20));
+        body.AppendChild(SpacerParagraph(fontSize: 20));
     }
 
     private static string FormatNieobecny(List<NieobecnyWSluzbie> lista, int idx)
@@ -371,32 +400,10 @@ public sealed class WordExportService
 
     private static void AddUwagi(Body body, string uwagi)
     {
-        body.AppendChild(EmptyParagraph());
         if (!string.IsNullOrWhiteSpace(uwagi))
             body.AppendChild(MakeParagraph(uwagi, fontSize: 20));
         body.AppendChild(MakeParagraph(
             new string('.', 180),
-            fontSize: 20));
-        body.AppendChild(EmptyParagraph());
-    }
-
-    // ── Stopka ────────────────────────────────────────────────────────────────
-
-    private static void AddFooter(Body body, string nrJrg)
-    {
-        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Left));
-        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Left));
-        body.AppendChild(MakeParagraph(string.Empty, bold: true, alignment: JustificationValues.Left));
-        body.AppendChild(MakeParagraph(
-            $"Rozkaz podpisał D-ca JRG-{nrJrg}",
-            alignment: JustificationValues.Left,
-            bold: true,
-            fontSize: 20));
-        body.AppendChild(MakeParagraph(string.Empty, alignment: JustificationValues.Left));
-        body.AppendChild(MakeParagraph(string.Empty, alignment: JustificationValues.Left));
-        body.AppendChild(MakeParagraph(
-            "................................",
-            alignment: JustificationValues.Left,
             fontSize: 20));
     }
 
@@ -408,7 +415,11 @@ public sealed class WordExportService
     }
 
     private static Paragraph EmptyParagraph()
-        => new(new ParagraphProperties(new SpacingBetweenLines { Before = "0", After = "60" }));
+        => new(new ParagraphProperties(
+            new SpacingBetweenLines { Before = "0", After = "40", Line = "240", LineRule = LineSpacingRuleValues.Auto }));
+
+    private static Paragraph SpacerParagraph(int fontSize) =>
+        MakeParagraph(string.Empty, fontSize: fontSize);
 
     private static Paragraph MakeParagraph(
         string text,
@@ -425,7 +436,7 @@ public sealed class WordExportService
         var para = new Paragraph(
             new ParagraphProperties(
                 new Justification { Val = align },
-                new SpacingBetweenLines { Before = "0", After = "60" }),
+                new SpacingBetweenLines { Before = "0", After = "40", Line = "240", LineRule = LineSpacingRuleValues.Auto }),
             new Run(runProps, new Text(text) { Space = SpaceProcessingModeValues.Preserve }));
         return para;
     }
@@ -481,7 +492,7 @@ public sealed class WordExportService
         cell.AppendChild(new Paragraph(
             new ParagraphProperties(
                 new Justification { Val = alignment },
-                new SpacingBetweenLines { Before = "0", After = "40" }),
+                new SpacingBetweenLines { Before = "0", After = "20", Line = "240", LineRule = LineSpacingRuleValues.Auto }),
             new Run(runProps, new Text(text) { Space = SpaceProcessingModeValues.Preserve })));
         return cell;
     }
