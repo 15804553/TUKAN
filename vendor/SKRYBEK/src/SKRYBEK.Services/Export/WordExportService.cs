@@ -61,8 +61,18 @@ public sealed class WordExportService
 
     // ── Ustawienia strony ─────────────────────────────────────────────────────
 
+    /// <summary>Id relacji do części printerSettings (druk dwustronny).</summary>
+    private const string PrinterSettingsRelationshipId = "rIdPrinterSettings";
+
     private static void SetPageProperties(MainDocumentPart mainPart)
     {
+        // Osadź DEVMODE z DMDUP_VERTICAL — Word pokaże domyślnie
+        // „Drukuj dwustronnie / Przerzucaj strony wzdłuż długiej krawędzi”.
+        var printerPart = mainPart.AddNewPart<WordprocessingPrinterSettingsPart>(
+            PrinterSettingsRelationshipId);
+        using (var stream = printerPart.GetStream(FileMode.Create, FileAccess.Write))
+            stream.Write(BuildDuplexLongEdgeDevMode());
+
         var sectionProps = new SectionProperties(
             new PageSize { Width = 11906, Height = 16838 },
             new PageMargin
@@ -73,8 +83,66 @@ public sealed class WordExportService
                 Left   = 1134,
                 Header = 360,
                 Footer = 360
-            });
+            },
+            new PrinterSettingsReference { Id = PrinterSettingsRelationshipId });
         mainPart.Document.Body!.AppendChild(sectionProps);
+    }
+
+    /// <summary>
+    /// Minimalny DEVMODEW (220 B) z A4, pionowo i dwustronnie wzdłuż długiej krawędzi
+    /// (dmDuplex = DMDUP_VERTICAL = 2).
+    /// </summary>
+    private static byte[] BuildDuplexLongEdgeDevMode()
+    {
+        const int cchDeviceName = 32;
+        const int cchFormName = 32;
+        const ushort dmSpecVersion = 0x0401;
+        const ushort dmSize = 220;
+        const uint dmOrientation = 0x0000_0001;
+        const uint dmPaperSize = 0x0000_0002;
+        const uint dmCopies = 0x0000_0100;
+        const uint dmDuplex = 0x0000_1000;
+        const short dmOrientPortrait = 1;
+        const short dmPaperA4 = 9;
+        const short dmDupVertical = 2; // długa krawędź
+        const short dmColorMonochrome = 1;
+
+        var buffer = new byte[dmSize];
+        using var ms = new MemoryStream(buffer);
+        using var bw = new BinaryWriter(ms);
+
+        WriteFixedUnicode(bw, "WINSPOOL", cchDeviceName);
+        bw.Write(dmSpecVersion);
+        bw.Write((ushort)0); // dmDriverVersion
+        bw.Write(dmSize);
+        bw.Write((ushort)0); // dmDriverExtra
+        bw.Write(dmOrientation | dmPaperSize | dmCopies | dmDuplex);
+        bw.Write(dmOrientPortrait);
+        bw.Write(dmPaperA4);
+        bw.Write((short)0); // dmPaperLength
+        bw.Write((short)0); // dmPaperWidth
+        bw.Write((short)100); // dmScale
+        bw.Write((short)1); // dmCopies
+        bw.Write((short)0); // dmDefaultSource
+        bw.Write((short)0); // dmPrintQuality
+        bw.Write(dmColorMonochrome);
+        bw.Write(dmDupVertical);
+        bw.Write((short)0); // dmYResolution
+        bw.Write((short)0); // dmTTOption
+        bw.Write((short)0); // dmCollate
+        WriteFixedUnicode(bw, "A4", cchFormName);
+        // Pozostałe pola (dmLogPixels … dmPanningHeight) zostają zerami.
+
+        return buffer;
+    }
+
+    private static void WriteFixedUnicode(BinaryWriter writer, string value, int charCount)
+    {
+        for (var i = 0; i < charCount; i++)
+        {
+            var ch = i < value.Length ? value[i] : '\0';
+            writer.Write((ushort)ch);
+        }
     }
 
     // ── Nagłówek ──────────────────────────────────────────────────────────────
