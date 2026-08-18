@@ -17,12 +17,12 @@ cd TUKAN
 dotnet run --project src/Tukan.App/Tukan.App.csproj
 ```
 
-Przy pierwszym uruchomieniu TUKAN tworzy wspólną bazę `TukanDatabase.accdb` (hasło: `5359`) w katalogu programu.
+Przy pierwszym uruchomieniu TUKAN tworzy wspólną bazę `TukanDatabase.accdb` (hasło: `5359`) w katalogu programu. Ścieżkę można wskazać w `databasepath.txt` obok EXE (dysk lokalny, mapa sieciowa lub UNC) — program nie nadpisuje ręcznie ustawionej lokalizacji.
 
 | Plik | Opis |
 |------|------|
 | **`TukanDatabase.accdb`** | Wspólna baza — personel, grafik i rozkazy |
-| `databasepath.txt` | Ścieżka do bazy (tworzona/aktualizowana automatycznie) |
+| `databasepath.txt` | Ścieżka do bazy (tworzona automatycznie tylko gdy brak pliku) |
 
 Słowniki stopni, stanowisk, uprawnień oraz medali/odznaczeń zarządza użytkownik **DCA JRG** w **Ustawieniach**.
 

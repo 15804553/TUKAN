@@ -1,6 +1,5 @@
 using System.IO;
 using BOBER.Services.Logging;
-using BOBER.Services.Startup;
 using Serilog;
 using SKRYBEK.App;
 using SKRYBEK.Services.Logging;
@@ -34,6 +33,7 @@ public sealed class TukanAppServices : IDisposable
         ConfigureLogging();
 
         var unifiedPath = TukanDatabaseOptions.GetFullPath();
+        TukanDatabaseOptions.EnsurePathFileExists();
 
         await TukanUnifiedDatabaseBootstrapper.EnsureSchemaAsync(unifiedPath);
         var databasePassword = TukanDatabaseOptions.ResolvePassword();
@@ -50,7 +50,6 @@ public sealed class TukanAppServices : IDisposable
         bober.ChomikOptions.FilePath = unifiedPath;
         bober.ChomikOptions.DatabasePassword = databasePassword;
         bober.ChomikOptions.UseDatabasePassword = true;
-        DatabasePathFile.Write(unifiedPath);
 
         var skrybek = await SKRYBEK.Services.AppServices.CreateAsync(
             unifiedPath,
@@ -59,7 +58,7 @@ public sealed class TukanAppServices : IDisposable
             databasePassword: databasePassword);
         ServiceProvider.Services = skrybek;
 
-        BoberLog.Information("TUKAN: wspólna baza skonfigurowana");
+        BoberLog.Information("TUKAN: wspólna baza: {Path}", unifiedPath);
 
         var guestAudit = new GuestAuditFacade(
             new GuestAuditLogService(),

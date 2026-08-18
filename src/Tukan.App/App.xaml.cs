@@ -53,8 +53,11 @@ public partial class App : Application
         catch (Exception ex)
         {
             var aceArch = Environment.Is64BitProcess ? "x64" : "x86 (32-bit)";
+            var databasePath = TukanDatabaseOptions.GetFullPath();
             MessageBox.Show(
-                $"Nie udało się przygotować bazy danych.\n\n{ex.Message}\n\n" +
+                $"Nie udało się przygotować bazy danych.\n\n" +
+                $"Ścieżka: {databasePath}\n\n{ex.Message}\n\n" +
+                $"Sprawdź plik databasepath.txt obok TUKAN.exe oraz dostęp do dysku.\n\n" +
                 $"Aplikacja działa jako proces {aceArch}. " +
                 $"Zainstaluj Microsoft Access Database Engine (ACE) w tej samej architekturze ({aceArch}).",
                 ApplicationTitle,
