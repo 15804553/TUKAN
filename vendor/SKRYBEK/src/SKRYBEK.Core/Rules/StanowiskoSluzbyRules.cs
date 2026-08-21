@@ -9,7 +9,7 @@ public static class StanowiskoSluzbyRules
     /// <summary>
     /// Sprawdza czy osoba spełnia wymagania danego stanowiska służby:
     /// <list type="bullet">
-    ///   <item>DowodcaZmiany — stanowisko: dowódca zmiany / zastępca d-cy zmiany / dowódca sekcji</item>
+    ///   <item>DowodcaZmiany — stanowisko dowódcze albo uprawnienie „Dowodzenie przy akcji”</item>
     ///   <item>Garazomistrz — uprawnienia kierowcy kat. C lub C+E</item>
     ///   <item>Bosman, DowodcaDzialanRatowniczychSGRWN — uprawnienia nurka</item>
     ///   <item>Sonarzysta — uprawnienie sonarzysty</item>
@@ -20,7 +20,8 @@ public static class StanowiskoSluzbyRules
         => stanowisko switch
         {
             StanowiskoSluzby.DowodcaZmiany =>
-                ChomikSlowniki.StanowiskaUprawnioneNaDowodceZmiany.Contains(osoba.StanowiskoId),
+                ChomikSlowniki.StanowiskaUprawnioneNaDowodceZmiany.Contains(osoba.StanowiskoId)
+                || osoba.MaUprawnienieDowodzeniePrzyAkcji,
             StanowiskoSluzby.Garazomistrz =>
                 osoba.MaUprawnieniaKierowca,
             StanowiskoSluzby.Bosman =>
@@ -35,7 +36,7 @@ public static class StanowiskoSluzbyRules
     public static string OpisWymagania(StanowiskoSluzby stanowisko) => stanowisko switch
     {
         StanowiskoSluzby.DowodcaZmiany =>
-            "Dowódca zmiany — wymagane stanowisko: dowódca zmiany, zastępca d-cy zmiany lub dowódca sekcji.",
+            "Dowódca zmiany — wymagane stanowisko dowódcze albo uprawnienie „Dowodzenie przy akcji”.",
         StanowiskoSluzby.Garazomistrz =>
             "Garażomistrz — wymagane uprawnienia kierowcy (kat. C lub C+E).",
         StanowiskoSluzby.Bosman =>

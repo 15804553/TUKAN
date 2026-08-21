@@ -34,6 +34,16 @@ public static class ChomikSlowniki
     public static bool CzyMozeNaMiejsce1DPojazdu(int stanowiskoId) =>
         StanowiskaMiejsca1D.Contains(stanowiskoId);
 
+    /// <summary>
+    /// Nazwa uprawnienia z TypyUprawnien — osoba z tym uprawnieniem jest traktowana jak dowódca
+    /// (miejsce 1.D w pojeździe oraz combo Dowódca zmiany).
+    /// </summary>
+    public const string UprawnienieDowodzeniePrzyAkcjiNazwa = "Dowodzenie przy akcji";
+
+    public static bool CzyUprawnienieDowodzeniePrzyAkcji(string? etykieta) =>
+        !string.IsNullOrWhiteSpace(etykieta)
+        && etykieta.Contains(UprawnienieDowodzeniePrzyAkcjiNazwa, StringComparison.OrdinalIgnoreCase);
+
     public const int UprawnienieKierowcaKatC  = 2;
     public const int UprawnienieKierowcaKatCE = 3;
     public const int UprawnienieNurek          = 9;

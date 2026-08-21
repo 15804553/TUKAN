@@ -51,7 +51,11 @@ public sealed class Funkcjonariusz
     public bool MaUprawnieniaObslugaLodzi =>
         NazwyUprawnien.Any(PoziomGotowosciNurkowejRules.CzyEtykietaObslugiLodzi);
 
-    /// <summary>Miejsce 1.D — stanowisko z CHOMIK.</summary>
+    public bool MaUprawnienieDowodzeniePrzyAkcji =>
+        NazwyUprawnien.Any(ChomikSlowniki.CzyUprawnienieDowodzeniePrzyAkcji);
+
+    /// <summary>Miejsce 1.D — stanowisko dowódcze z CHOMIK albo uprawnienie „Dowodzenie przy akcji”.</summary>
     public bool CzyMozeNaMiejsce1DPojazdu =>
-        ChomikSlowniki.CzyMozeNaMiejsce1DPojazdu(StanowiskoId);
+        ChomikSlowniki.CzyMozeNaMiejsce1DPojazdu(StanowiskoId)
+        || MaUprawnienieDowodzeniePrzyAkcji;
 }

@@ -134,7 +134,7 @@ public static class PozycjaSamochoduRules
 
     public static string OpisWymagania(int pozycja) => pozycja switch
     {
-        PozycjaDowodca => "Miejsce 1.D — dowódca zmiany, zastępca dowódcy zmiany, dowódca zastępu lub dowódca sekcji.",
+        PozycjaDowodca => "Miejsce 1.D — stanowisko dowódcze albo uprawnienie „Dowodzenie przy akcji”.",
         PozycjaKierowca => "Miejsce 2.K — tylko kierowca z prawem jazdy kat. C lub C+E.",
         _ => string.Empty
     };
@@ -143,7 +143,7 @@ public static class PozycjaSamochoduRules
     {
         var czesci = new List<string>();
         if (liczbaPozycjiPojazdu >= PozycjaDowodca)
-            czesci.Add("1.D — dowódca zmiany, zastępca dowódcy zmiany, dowódca zastępu lub dowódca sekcji");
+            czesci.Add("1.D — stanowisko dowódcze albo uprawnienie „Dowodzenie przy akcji”");
         if (liczbaPozycjiPojazdu >= PozycjaKierowca)
             czesci.Add("2.K — prawo jazdy kat. C lub C+E");
         return string.Join("; ", czesci);
@@ -165,7 +165,7 @@ public static class PozycjaSamochoduRules
         {
             linie.Add(CzyPozycja1DSpelniona(dowodca, samochod.LiczbaPozycji)
                 ? "✓ 1.D — dowódca (spełnione)"
-                : "✗ 1.D — dowódca zmiany, zastępca, zastępu lub sekcji (brak lub niespełnione)");
+                : "✗ 1.D — stanowisko dowódcze albo „Dowodzenie przy akcji” (brak lub niespełnione)");
         }
 
         if (samochod.LiczbaPozycji >= PozycjaKierowca)

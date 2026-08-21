@@ -43,6 +43,7 @@ public sealed class DatabaseBootstrapper(DatabaseOptions options)
         else
         {
             await MlodszyNurekUprawnienieMigration.ApplyAsync(connection, cancellationToken);
+            await DowodzeniePrzyAkcjiUprawnienieMigration.ApplyAsync(connection, cancellationToken);
             await GoscUsersMigration.ApplyAsync(connection, cancellationToken);
         }
     }

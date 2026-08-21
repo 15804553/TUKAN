@@ -60,7 +60,8 @@ public static class RoleKolorHelper
         if (ChomikSlowniki.StanowiskaDowodcySekcji.Contains(sid))
             return RoleKeys.DowodcaSekcji;
 
-        if (sid == ChomikSlowniki.StanowiskoDowodcaZastepu)
+        if (sid == ChomikSlowniki.StanowiskoDowodcaZastepu
+            || osoba.MaUprawnienieDowodzeniePrzyAkcji)
             return RoleKeys.DowodcaZastepu;
 
         if (osoba.MaUprawnieniaKierowca)

@@ -181,6 +181,7 @@ public partial class MainWindow : Window
         _sidebarExpanded = !_sidebarExpanded;
         SidebarColumn.Width = _sidebarExpanded ? new GridLength(220) : new GridLength(56);
         BrandTextBlock.Visibility = _sidebarExpanded ? Visibility.Visible : Visibility.Collapsed;
+        AuthorCreditTextBlock.Visibility = _sidebarExpanded ? Visibility.Visible : Visibility.Collapsed;
 
         foreach (var button in new[]
         {
@@ -299,9 +300,9 @@ public partial class MainWindow : Window
 
         var dictionaries = await personnelController.GetDictionariesAsync();
         var window = new PersonnelEditWindow(personnelController, dictionaries, entity) { Owner = this };
-        if (window.ShowDialog() == true && _generalView is not null)
+        if (window.ShowDialog() == true)
         {
-            await _generalView.LoadPersonnelAsync();
+            await RefreshGeneralViewAsync();
         }
     }
 

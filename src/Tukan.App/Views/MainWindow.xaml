@@ -64,12 +64,24 @@
                         </Grid>
                     </StackPanel>
 
-                    <Button DockPanel.Dock="Bottom"
-                            x:Name="LogoutButton"
-                            Content="Wyloguj"
-                            Style="{StaticResource TukanSidebarButton}"
-                            Margin="8"
-                            Click="OnLogoutClick" />
+                    <StackPanel DockPanel.Dock="Bottom">
+                        <TextBlock x:Name="AuthorCreditTextBlock"
+                                   TextAlignment="Center"
+                                   Margin="8,4,8,0"
+                                   FontSize="10"
+                                   LineHeight="14"
+                                   Foreground="{StaticResource TukanSidebarMutedBrush}"
+                                   ToolTip="Autor programu">
+                            <Run Text="Autor programu" />
+                            <LineBreak />
+                            <Run Text="© Maciej Wnęk" />
+                        </TextBlock>
+                        <Button x:Name="LogoutButton"
+                                Content="Wyloguj"
+                                Style="{StaticResource TukanSidebarButton}"
+                                Margin="8"
+                                Click="OnLogoutClick" />
+                    </StackPanel>
 
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,8,0,8">
                         <StackPanel x:Name="NavigationPanel">
