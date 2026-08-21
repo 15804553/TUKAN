@@ -60,8 +60,17 @@ public sealed class WordExportService
     /// <summary>Id relacji do części printerSettings (druk dwustronny).</summary>
     private const string PrinterSettingsRelationshipId = "rIdPrinterSettings";
 
+    /// <summary>Szerokość A4 w twips (210 mm).</summary>
+    private const int A4WidthTwips = 11906;
+
+    /// <summary>Wysokość A4 w twips (297 mm).</summary>
+    private const int A4HeightTwips = 16838;
+
     /// <summary>Marginesy „Normalne” w Wordzie — 2,54 cm (1440 twips) z każdej strony.</summary>
     private const int NormalMarginTwips = 1440;
+
+    /// <summary>Szerokość obszaru tekstu (A4 minus marginesy normalne).</summary>
+    private const int ContentWidthTwips = A4WidthTwips - 2 * NormalMarginTwips;
 
     private static void SetPageProperties(MainDocumentPart mainPart, string nrJrg)
     {
@@ -85,7 +94,7 @@ public sealed class WordExportService
             new FooterReference { Type = HeaderFooterValues.Default, Id = footerRelId },
             new FooterReference { Type = HeaderFooterValues.First, Id = firstFooterRelId },
             new TitlePage(),
-            new PageSize { Width = 11906, Height = 16838 },
+            new PageSize { Width = A4WidthTwips, Height = A4HeightTwips },
             new PageMargin
             {
                 Top    = NormalMarginTwips,
@@ -402,9 +411,29 @@ public sealed class WordExportService
     {
         if (!string.IsNullOrWhiteSpace(uwagi))
             body.AppendChild(MakeParagraph(uwagi, fontSize: 20));
-        body.AppendChild(MakeParagraph(
-            new string('.', 180),
-            fontSize: 20));
+        body.AppendChild(SingleDottedLineParagraph());
+    }
+
+    /// <summary>
+    /// Jedna linia kropek na szerokość kolumny tekstu — tab z liderem, bez zawijania.
+    /// </summary>
+    private static Paragraph SingleDottedLineParagraph()
+    {
+        var runProps = new RunProperties(
+            new FontSize { Val = "20" },
+            new RunFonts { Ascii = "Times New Roman", HighAnsi = "Times New Roman" });
+
+        return new Paragraph(
+            new ParagraphProperties(
+                new Tabs(
+                    new TabStop
+                    {
+                        Val = TabStopValues.Right,
+                        Leader = TabStopLeaderCharValues.Dot,
+                        Position = ContentWidthTwips
+                    }),
+                new SpacingBetweenLines { Before = "0", After = "40", Line = "240", LineRule = LineSpacingRuleValues.Auto }),
+            new Run(runProps, new TabChar()));
     }
 
     // ── Pomocniki ─────────────────────────────────────────────────────────────
