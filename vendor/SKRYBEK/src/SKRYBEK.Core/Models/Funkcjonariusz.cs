@@ -8,6 +8,8 @@ public sealed class Funkcjonariusz
 {
     public int Id { get; set; }
     public int NumerZmiany { get; set; }
+    /// <summary>Numer kolejności w zmianie — ta sama numeracja co w widoku ogólnym i grafiku.</summary>
+    public int NumerPorzadkowy { get; set; }
     public int StopienId { get; set; }
     public int StanowiskoId { get; set; }
     public string Stopien { get; set; } = string.Empty;

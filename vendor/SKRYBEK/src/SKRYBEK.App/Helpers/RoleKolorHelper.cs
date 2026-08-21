@@ -49,25 +49,46 @@ public static class RoleKolorHelper
     public static bool CzyNurek(Funkcjonariusz osoba) =>
         osoba.MaUprawnieniaNumek || osoba.MaUprawnieniaKPP;
 
-    /// <summary>Rola tła wiersza — nurek nie zmienia tła (tylko czcionka / obramowanie).</summary>
+    /// <summary>
+    /// Rola tła kafelka — jak w grafiku: stanowisko (i uprawnienia kierowcy), nie „Dowodzenie przy akcji”.
+    /// Nurek nie zmienia tła (tylko czcionka / obramowanie).
+    /// </summary>
     private static string WyznaczKluczRoliTla(Funkcjonariusz osoba)
     {
         var sid = osoba.StanowiskoId;
 
-        if (ChomikSlowniki.StanowiskaDowodcyZmiany.Contains(sid))
+        if (ChomikSlowniki.StanowiskaDowodcyZmiany.Contains(sid)
+            || PasujeStanowisko(osoba, "dowódca zmiany", "dowodca zmiany"))
             return RoleKeys.DowodcaZmiany;
 
-        if (ChomikSlowniki.StanowiskaDowodcySekcji.Contains(sid))
+        if (ChomikSlowniki.StanowiskaDowodcySekcji.Contains(sid)
+            || PasujeStanowisko(osoba, "dowódca sekcji", "dowodca sekcji",
+                "zastępca dowódcy zmiany", "zastepca dowodcy zmiany"))
             return RoleKeys.DowodcaSekcji;
 
         if (sid == ChomikSlowniki.StanowiskoDowodcaZastepu
-            || osoba.MaUprawnienieDowodzeniePrzyAkcji)
+            || PasujeStanowisko(osoba, "dowódca zastępu", "dowodca zastepu"))
             return RoleKeys.DowodcaZastepu;
 
-        if (osoba.MaUprawnieniaKierowca)
+        if (osoba.MaUprawnieniaKierowca || PasujeStanowisko(osoba, "kierowca"))
             return RoleKeys.Kierowca;
 
         return RoleKeys.Zwykly;
+    }
+
+    private static bool PasujeStanowisko(Funkcjonariusz osoba, params string[] fragmenty)
+    {
+        if (string.IsNullOrWhiteSpace(osoba.Stanowisko))
+            return false;
+
+        var nazwa = osoba.Stanowisko.ToLowerInvariant();
+        foreach (var fragment in fragmenty)
+        {
+            if (nazwa.Contains(fragment))
+                return true;
+        }
+
+        return false;
     }
 
     private static Color PobierzKolorTlaRoli(string klucz) =>

@@ -25,17 +25,18 @@ public sealed class RozkazService
 
     public async Task<RozkazDzienny> NowyRozkazAsync(DateOnly data, int nrZmiany)
     {
-        // Numer = dzień roku wybranej daty (umożliwia rozkaz z datą wsteczną)
-        var numer = data.DayOfYear;
+        // Numer i rok z „Kraków, dn.” = dzień służby minus cykl zmian (3 dni)
+        var dataWystawienia = data.AddDays(-3);
+        var numer = dataWystawienia.DayOfYear;
         var samochody = await _samochodyRepo.GetAktywneAsync();
 
         var rozkaz = new RozkazDzienny
         {
             NumerRozkazu   = numer,
-            Rok            = data.Year,
+            Rok            = dataWystawienia.Year,
             Data           = data,
             ZmianaId       = nrZmiany,
-            DataUtworzenia = DateTime.Now,
+            DataUtworzenia = dataWystawienia.ToDateTime(TimeOnly.FromDateTime(DateTime.Now)),
             Status         = StatusRozkazu.Roboczy,
             Zajecia        = "Według planu doskonalenia zawodowego"
         };
@@ -76,6 +77,7 @@ public sealed class RozkazService
 
         await WalidujUnikalnoscAsync(rozkaz);
         var samochody = await _samochodyRepo.GetAktywneAsync();
+        ValidateSluzba(rozkaz);
         ValidatePodzialBojowy(rozkaz, samochody, personel);
         var id = await _repo.SaveAsync(rozkaz);
         SkrybekLog.Info($"Zapisano rozkaz nr {rozkaz.NumerRozkazu}/{rozkaz.Rok}, Id={id}");
@@ -206,6 +208,13 @@ public sealed class RozkazService
         return !rozkaz.PodzialBojowy.Any(p =>
             p.FunkcjonariuszId == funkcjonariuszId &&
             podstawoweIds.Contains(p.SamochodId));
+    }
+
+    public static void ValidateSluzba(RozkazDzienny rozkaz)
+    {
+        var konflikt = StanowiskoSluzbyRules.ZnajdzKonfliktWylacznosciWSluzbie(rozkaz.Sluzba);
+        if (konflikt is not null)
+            throw new InvalidOperationException(konflikt);
     }
 
     public static void ValidatePodzialBojowy(

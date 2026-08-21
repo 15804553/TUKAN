@@ -21,6 +21,10 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     private readonly bool _isNew;
     private readonly Dictionary<int, string> _nazwyTypowUprawnien;
     private readonly List<RatownikMedycznyPozycjaUstawienie> _ustawieniaRatownikow;
+    private bool _synchronizacjaDat;
+
+    /// <summary>Odstęp cyklu zmian PSP: służba co 3 dni (1 praca, 2 wolne).</summary>
+    private const int PrzesuniecieDniHarmonogramu = 3;
 
     public event EventHandler<int>? Saved;
 
@@ -31,10 +35,14 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(DataDateTime))]
     private DateOnly _data;
 
-    /// <summary>Data fizycznego wystawienia rozkazu („Kraków, dn.”) — niezależna od „na dzień”.</summary>
+    /// <summary>Data wystawienia („Kraków, dn.”) — o 3 dni wcześniej niż „Na dzień”.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DataWystawieniaDateTime))]
+    [NotifyPropertyChangedFor(nameof(RokNumeru))]
     private DateOnly _dataWystawienia;
+
+    /// <summary>Rok w numerze rozkazu (z daty „Kraków, dn.”).</summary>
+    public int RokNumeru => DataWystawienia.Year;
 
     [ObservableProperty] private string _zajecia = string.Empty;
     [ObservableProperty] private string _uwagi = string.Empty;
@@ -305,25 +313,70 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             samVm.OdswiezOznaczeniaRatownika();
     }
 
-    // ── Zmiana daty — numer = dzień roku + odświeżenie personelu ─────────────
+    // ── Daty: „Kraków, dn.” +3 dni = „Na dzień”; personel zawsze z „Na dzień”
     partial void OnDataChanged(DateOnly value)
     {
-        NumerRozkazu = value.DayOfYear;
+        if (!_synchronizacjaDat)
+            UstawKrakowZNaDzien(value);
+
         _ = PoZmianieDatyAsync(value);
+    }
+
+    partial void OnDataWystawieniaChanged(DateOnly value)
+    {
+        NumerRozkazu = value.DayOfYear;
+        if (!_synchronizacjaDat)
+            UstawNaDzienZKrakowa(value);
+    }
+
+    private void UstawNaDzienZKrakowa(DateOnly krakow)
+    {
+        var naDzien = krakow.AddDays(PrzesuniecieDniHarmonogramu);
+        if (Data == naDzien)
+            return;
+
+        _synchronizacjaDat = true;
+        try
+        {
+            Data = naDzien;
+        }
+        finally
+        {
+            _synchronizacjaDat = false;
+        }
+    }
+
+    private void UstawKrakowZNaDzien(DateOnly naDzien)
+    {
+        var krakow = naDzien.AddDays(-PrzesuniecieDniHarmonogramu);
+        if (DataWystawienia == krakow)
+            return;
+
+        _synchronizacjaDat = true;
+        try
+        {
+            DataWystawienia = krakow;
+        }
+        finally
+        {
+            _synchronizacjaDat = false;
+        }
     }
 
     private async Task PoZmianieDatyAsync(DateOnly data)
     {
         await OdswiezPersonelNaDateAsync(data);
-        await SprawdzUnikalnoscPoZmianieDatyAsync(data);
+        await SprawdzUnikalnoscNaglowkaAsync();
+        if (string.IsNullOrEmpty(StatusMessage))
+            StatusMessage = PersonelInfo;
     }
 
-    private async Task SprawdzUnikalnoscPoZmianieDatyAsync(DateOnly data)
+    private async Task SprawdzUnikalnoscNaglowkaAsync()
     {
         try
         {
             var konflikt = await ServiceProvider.Services.Rozkaz.SprawdzUnikalnoscAsync(
-                data, NumerRozkazu, data.Year, _rozkaz.Id);
+                Data, NumerRozkazu, DataWystawienia.Year, _rozkaz.Id);
             StatusMessage = konflikt ?? string.Empty;
         }
         catch (Exception ex)
@@ -343,10 +396,6 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     {
         if (IsReadOnly || IsReloadingPersonel) return;
 
-        var nrZmiany = _rozkaz.ZmianaId > 0 ? _rozkaz.ZmianaId
-            : (_session.NumerZmiany > 0 ? _session.NumerZmiany : 1);
-
-        _wszyscyZmiany = await ServiceProvider.Services.Personnel.GetWszyscyZmianaAsync(nrZmiany);
         await PrzeladujDostepnyPersonelAsync(Data, odswiezNieobecnych: true);
     }
 
@@ -362,14 +411,40 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         await PrzeladujDostepnyPersonelAsync(Data, odswiezNieobecnych: false);
     }
 
+    /// <summary>
+    /// Ustawia zmianę rozkazu na tę, która pełni służbę w dniu „na dzień”
+    /// (cykl 3-dniowy BOBER) i odświeża listę funkcjonariuszy tej zmiany.
+    /// </summary>
+    private async Task<int> UstalZmianeNaDateAsync(DateOnly data)
+    {
+        var zKalendarza = await ServiceProvider.Services.Personnel.GetZmianaNaDzienAsync(data);
+        var nrZmiany = zKalendarza is >= 1 and <= 3
+            ? zKalendarza
+            : NrZmianyRozkazu;
+
+        var zmianaSieZmienila = nrZmiany != _rozkaz.ZmianaId;
+        _rozkaz.ZmianaId = nrZmiany;
+
+        _wszyscyZmiany = await ServiceProvider.Services.Personnel.GetWszyscyZmianaAsync(nrZmiany);
+
+        if (zmianaSieZmienila)
+        {
+            var ustawienia = await ServiceProvider.Services.RatownikMedycznyUstawieniaRepo
+                .GetDlaZmianyAsync(nrZmiany);
+            _ustawieniaRatownikow.Clear();
+            _ustawieniaRatownikow.AddRange(ustawienia);
+            SkrybekLog.Info($"Rozkaz na {data:yyyy-MM-dd}: służbę pełni zmiana {nrZmiany}");
+        }
+
+        return nrZmiany;
+    }
+
     private async Task PrzeladujDostepnyPersonelAsync(DateOnly data, bool odswiezNieobecnych)
     {
         IsReloadingPersonel = true;
         try
         {
-            var nrZmiany = _rozkaz.ZmianaId > 0 ? _rozkaz.ZmianaId
-                : (_session.NumerZmiany > 0 ? _session.NumerZmiany : 1);
-
+            var nrZmiany = await UstalZmianeNaDateAsync(data);
             var nowyPersonel = await ServiceProvider.Services.Personnel.GetDostepniAsync(data, nrZmiany);
 
             WszystkieOsoby.Clear();
@@ -379,8 +454,8 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             ApplyFilter();
             LiczbaDostepnych = Przefiltrowane.Count;
             PersonelInfo = nowyPersonel.Count == 0
-                ? "Brak osób w pracy w tym dniu — sprawdź grafik BOBER."
-                : $"{nowyPersonel.Count} os. dostępnych na {data:dd.MM.yyyy}";
+                ? $"Brak osób w pracy {data:dd.MM.yyyy} (zmiana {nrZmiany}) — sprawdź grafik BOBER."
+                : $"{nowyPersonel.Count} os. dostępnych na {data:dd.MM.yyyy} (zmiana {nrZmiany})";
 
             UsunNiedostepnePrzypisania(nowyPersonel);
 
@@ -412,8 +487,8 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
                 await OdswiezNieobecnychZBoberaAsync(data, nrZmiany);
             else
                 StatusMessage = nowyPersonel.Count == 0
-                    ? $"Brak personelu na {data:dd.MM.yyyy} — sprawdź grafik BOBER."
-                    : $"Odświeżono personel z grafiku — dostępnych: {nowyPersonel.Count}";
+                    ? $"Brak personelu na {data:dd.MM.yyyy} (zmiana {nrZmiany}) — sprawdź grafik BOBER."
+                    : $"Odświeżono personel z grafiku — {nowyPersonel.Count} os. na {data:dd.MM.yyyy} (zmiana {nrZmiany})";
         }
         catch (Exception ex)
         {
@@ -748,6 +823,44 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         Sluzba.Any(s => s.Stanowisko == StanowiskoSluzby.DyzurnyPAJRG
                      && s.WybranaOsoba?.Id == funkcjonariuszId);
 
+    /// <summary>
+    /// True, gdy osoba jest dowódcą zmiany albo dyżurnym PA na innym stanowisku służby.
+    /// </summary>
+    public bool CzyOsobaZajetaNaStanowiskuWylaczonym(int funkcjonariuszId, StanowiskoSluzby pominStanowisko)
+        => PobierzStanowiskoWylaczajaceOsoby(funkcjonariuszId, pominStanowisko) is not null;
+
+    public PozycjaSluzbyViewModel? PobierzStanowiskoWylaczajaceOsoby(
+        int funkcjonariuszId, StanowiskoSluzby pominStanowisko)
+        => Sluzba.FirstOrDefault(s =>
+            s.Stanowisko != pominStanowisko
+            && StanowiskoSluzbyRules.CzyStanowiskoWylaczaInneWSluzbie(s.Stanowisko)
+            && s.WybranaOsoba?.Id == funkcjonariuszId);
+
+    /// <summary>
+    /// Zdejmuje osobę z pozostałych stanowisk służby (np. po wpisaniu na DZ lub PA).
+    /// </summary>
+    public void WyczyscOsobeZInnychStanowiskSluzby(int funkcjonariuszId, StanowiskoSluzby pominStanowisko)
+    {
+        foreach (var poz in Sluzba)
+        {
+            if (poz.Stanowisko == pominStanowisko)
+                continue;
+            if (poz.WybranaOsoba?.Id == funkcjonariuszId)
+                poz.WyczyscOsobe();
+        }
+    }
+
+    /// <summary>Odświeża listy comboboxów stanowisk służby (poza wskazanym).</summary>
+    public void OdswiezStanowiskaSluzby(StanowiskoSluzby? pominStanowisko = null)
+    {
+        foreach (var poz in Sluzba)
+        {
+            if (pominStanowisko is { } pomin && poz.Stanowisko == pomin)
+                continue;
+            poz.OdswiezDostepneOsoby();
+        }
+    }
+
     /// <summary>Usuwa osobę z obsady wszystkich pojazdów podstawowych (np. po wpisaniu na PA).</summary>
     public void WyczyscOsobeZPojazdowPodstawowych(int funkcjonariuszId)
     {
@@ -779,7 +892,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     {
         _rozkaz.NumerRozkazu = NumerRozkazu;
         _rozkaz.Data         = Data;
-        _rozkaz.Rok          = Data.Year;
+        _rozkaz.Rok          = DataWystawienia.Year;
         _rozkaz.DataUtworzenia = DataWystawienia.ToDateTime(
             TimeOnly.FromDateTime(_rozkaz.DataUtworzenia == default ? DateTime.Now : _rozkaz.DataUtworzenia));
         _rozkaz.Zajecia      = Zajecia;

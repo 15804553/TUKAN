@@ -36,12 +36,12 @@ public sealed class PersonnelRepository
         await conn.OpenAsync();
 
         const string sql =
-            "SELECT f.Id, f.NumerZmiany, f.StopienId, f.Imie, f.Nazwisko, f.StanowiskoId, f.Telefon, f.StazLat," +
-            " ss.Nazwa AS Stopien, st.Nazwa AS Stanowisko" +
+            "SELECT f.Id, f.NumerZmiany, f.NumerPorzadkowy, f.StopienId, f.Imie, f.Nazwisko, f.StanowiskoId," +
+            " f.Telefon, f.StazLat, ss.Nazwa AS Stopien, st.Nazwa AS Stanowisko" +
             " FROM (Funkcjonariusze AS f INNER JOIN StopnieSlownik AS ss ON ss.Id = f.StopienId)" +
             " INNER JOIN StanowiskaSlownik AS st ON st.Id = f.StanowiskoId" +
             " WHERE f.NumerZmiany = ?" +
-            " ORDER BY f.Id";
+            " ORDER BY f.NumerPorzadkowy, f.Id";
 
         await using var cmd = new OleDbCommand(sql, conn);
         cmd.Parameters.AddWithValue("@p1", (short)nrZmiany);
@@ -51,22 +51,24 @@ public sealed class PersonnelRepository
         {
             list.Add(new Funkcjonariusz
             {
-                Id           = r.GetIntSafe(0),
-                NumerZmiany  = r.GetIntSafe(1),
-                StopienId    = r.GetIntSafe(2),
-                Imie         = r.GetStringSafe(3),
-                Nazwisko     = r.GetStringSafe(4),
-                StanowiskoId = r.GetIntSafe(5),
-                Telefon      = r.IsDBNull(6) ? null : r.GetStringSafe(6),
-                StazLat      = r.GetIntOrNull(7),
-                Stopien      = r.GetStringSafe(8),
-                Stanowisko   = r.GetStringSafe(9)
+                Id              = r.GetIntSafe(0),
+                NumerZmiany     = r.GetIntSafe(1),
+                NumerPorzadkowy = r.GetIntSafe(2),
+                StopienId       = r.GetIntSafe(3),
+                Imie            = r.GetStringSafe(4),
+                Nazwisko        = r.GetStringSafe(5),
+                StanowiskoId    = r.GetIntSafe(6),
+                Telefon         = r.IsDBNull(7) ? null : r.GetStringSafe(7),
+                StazLat         = r.GetIntOrNull(8),
+                Stopien         = r.GetStringSafe(9),
+                Stanowisko      = r.GetStringSafe(10)
             });
         }
 
         await AttachUprawnieniaAsync(conn, list);
 
-        return list;
+        var kolejnosc = await PobierzKolejnoscZBoberAsync(nrZmiany);
+        return PosortujJakWGrafiku(list, kolejnosc);
     }
 
     /// <summary>
@@ -98,6 +100,53 @@ public sealed class PersonnelRepository
             return wszyscy;
         }
     }
+
+    /// <summary>
+    /// Kolejność wierszy z grafiku (KolejnoscFunkcjonariuszy). Pusta mapa, gdy BOBER niedostępny.
+    /// </summary>
+    private async Task<Dictionary<int, int>> PobierzKolejnoscZBoberAsync(int nrZmiany)
+    {
+        var wynik = new Dictionary<int, int>();
+        if (string.IsNullOrWhiteSpace(_bober.DatabasePath))
+            return wynik;
+
+        try
+        {
+            await using var conn = _bober.Create();
+            await conn.OpenAsync();
+
+            const string sql = """
+                SELECT FunkcjonariuszId, Pozycja
+                FROM KolejnoscFunkcjonariuszy
+                WHERE ZmianaId = ?
+                """;
+
+            await using var cmd = new OleDbCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@p1", (short)nrZmiany);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                wynik[reader.GetIntSafe(0)] = reader.GetIntSafe(1);
+        }
+        catch
+        {
+            // fallback: NumerPorzadkowy z CHOMIK
+        }
+
+        return wynik;
+    }
+
+    /// <summary>
+    /// Ta sama kolejność co grafik miesięczny (Pozycja) i widok ogólny (NumerPorzadkowy).
+    /// </summary>
+    private static List<Funkcjonariusz> PosortujJakWGrafiku(
+        List<Funkcjonariusz> lista,
+        IReadOnlyDictionary<int, int> kolejnosc) =>
+        lista
+            .OrderBy(f => kolejnosc.TryGetValue(f.Id, out var pozycja)
+                ? pozycja
+                : (f.NumerPorzadkowy > 0 ? f.NumerPorzadkowy : int.MaxValue))
+            .ThenBy(f => f.Id)
+            .ToList();
 
     private async Task<HashSet<int>> PobierzNieobecnychZBoberAsync(DateOnly data, int nrZmiany)
     {

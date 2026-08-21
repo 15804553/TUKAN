@@ -223,7 +223,7 @@
                                        FontWeight="Bold" FontSize="16"
                                        Foreground="{StaticResource ForegroundBrush}"
                                        VerticalAlignment="Center" Margin="2,0" />
-                            <TextBlock Text="{Binding Data.Year}"
+                            <TextBlock Text="{Binding RokNumeru}"
                                        FontWeight="Bold" FontSize="16"
                                        Foreground="{StaticResource ForegroundBrush}"
                                        VerticalAlignment="Center" />
@@ -241,7 +241,8 @@
                                         IsEnabled="{Binding CzyZatwierdzony, Converter={StaticResource InverseBoolConverter}}"
                                         Style="{StaticResource DarkDatePicker}"
                                         Width="148"
-                                        Height="34" />
+                                        Height="34"
+                                        ToolTip="Dzień służby — personel z grafiku na tę datę. Ustawia „Kraków, dn.” o 3 dni wstecz." />
                             <TextBlock Text="Kraków, dn.:"
                                        Foreground="{StaticResource ForegroundBrush}"
                                        FontSize="16"
@@ -253,7 +254,7 @@
                                         Style="{StaticResource DarkDatePicker}"
                                         Width="148"
                                         Height="34"
-                                        ToolTip="Data fizycznego wystawienia rozkazu (nagłówek „Kraków, dn.” w Word)" />
+                                        ToolTip="Data wystawienia rozkazu — ustawia „Na dzień” o 3 dni do przodu (cykl zmian) i numer rozkazu." />
                         </StackPanel>
 
                         <!-- Przyciski akcji -->

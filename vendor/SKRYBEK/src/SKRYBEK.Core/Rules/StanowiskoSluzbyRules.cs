@@ -57,4 +57,39 @@ public static class StanowiskoSluzbyRules
         StanowiskoSluzby.Sonarzysta => true,
         _ => false
     };
+
+    /// <summary>
+    /// Dowódca zmiany i dyżurny PA JRG nie mogą pełnić innych funkcji w dziale Służba.
+    /// Dowódca zmiany może być na pojeździe (podstawowym lub dodatkowym);
+    /// dyżurny PA — tylko na dodatkowym.
+    /// </summary>
+    public static bool CzyStanowiskoWylaczaInneWSluzbie(StanowiskoSluzby stanowisko)
+        => stanowisko is StanowiskoSluzby.DowodcaZmiany or StanowiskoSluzby.DyzurnyPAJRG;
+
+    public static string OpisKonfliktuWylacznosciWSluzbie(string nazwisko, string nazwaStanowiskaWylaczajacego)
+        => $"{nazwisko} jest na stanowisku {nazwaStanowiskaWylaczajacego}.\n" +
+           "Osoba na tym stanowisku nie może pełnić innych funkcji w dziale Służba.";
+
+    /// <summary>
+    /// Zwraca komunikat konfliktu, gdy osoba z DZ lub PA jest też na innym stanowisku służby.
+    /// </summary>
+    public static string? ZnajdzKonfliktWylacznosciWSluzbie(IEnumerable<PozycjaSluzby> sluzba)
+    {
+        var obsadzone = sluzba.Where(s => s.FunkcjonariuszId.HasValue).ToList();
+        foreach (var wylaczajace in obsadzone.Where(s => CzyStanowiskoWylaczaInneWSluzbie(s.Stanowisko)))
+        {
+            var inne = obsadzone.FirstOrDefault(s =>
+                s.Stanowisko != wylaczajace.Stanowisko
+                && s.FunkcjonariuszId == wylaczajace.FunkcjonariuszId);
+
+            if (inne is null)
+                continue;
+
+            return $"{wylaczajace.Nazwisko} jest na stanowisku {wylaczajace.NazwaStanowiska} " +
+                   $"i nie może pełnić innych funkcji w dziale Służba " +
+                   $"(jest też na stanowisku {inne.NazwaStanowiska}).";
+        }
+
+        return null;
+    }
 }

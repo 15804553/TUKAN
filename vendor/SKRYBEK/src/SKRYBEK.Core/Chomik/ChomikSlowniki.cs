@@ -15,9 +15,12 @@ public static class ChomikSlowniki
         13  // Dowódca zmiany
     ];
 
-    /// <summary>Grupy stanowisk do mapowania kolorów ról w TUKAN.</summary>
-    public static readonly HashSet<int> StanowiskaDowodcyZmiany = [12, 13]; // zastępca + dowódca zmiany
-    public static readonly HashSet<int> StanowiskaDowodcySekcji = [10, 11]; // ratownik specjalista + dowódca sekcji
+    /// <summary>
+    /// Grupy stanowisk do koloru kafelka — jak w grafiku BOBER, wyłącznie stanowiska dowódcze.
+    /// Ratownik specjalista (10) nie jest stanowiskiem dowódczym.
+    /// </summary>
+    public static readonly HashSet<int> StanowiskaDowodcyZmiany = [13]; // Dowódca zmiany
+    public static readonly HashSet<int> StanowiskaDowodcySekcji = [11, 12]; // Dowódca sekcji + zastępca dowódcy zmiany
     public const int StanowiskoDowodcaZastepu = 9;
 
     /// <summary>

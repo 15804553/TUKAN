@@ -124,10 +124,15 @@ public sealed partial class PozycjaSluzbyViewModel : ObservableObject
             var sugerowane = new List<Funkcjonariusz>();
             var pozostale  = new List<Funkcjonariusz>();
 
-        foreach (var osoba in _personel)
-        {
-            bool dozwolona = StanowiskoSluzbyRules.CzyOsobaDozwolonaNaStanowisko(osoba, Stanowisko);
+            foreach (var osoba in _personel)
+            {
+                bool dozwolona = StanowiskoSluzbyRules.CzyOsobaDozwolonaNaStanowisko(osoba, Stanowisko);
                 if (!dozwolona && _wybranaOsoba?.Id != osoba.Id)
+                    continue;
+
+                // DZ i PA nie mogą pojawić się na żadnym innym stanowisku służby (w tym wzajemnie).
+                if (_editor.CzyOsobaZajetaNaStanowiskuWylaczonym(osoba.Id, Stanowisko)
+                    && _wybranaOsoba?.Id != osoba.Id)
                     continue;
 
                 if (dozwolona)
@@ -187,6 +192,25 @@ public sealed partial class PozycjaSluzbyViewModel : ObservableObject
             }
         }
 
+        if (osoba is not null)
+        {
+            var wylaczajace = _editor.PobierzStanowiskoWylaczajaceOsoby(osoba.Id, Stanowisko);
+            if (wylaczajace is not null)
+            {
+                SkrybekMessageBox.ShowWarning(
+                    StanowiskoSluzbyRules.OpisKonfliktuWylacznosciWSluzbie(
+                        osoba.StopienINazwisko, wylaczajace.NazwaStanowiska),
+                    "Konflikt w dziale Służba");
+                OnPropertyChanged(nameof(WybranaOsoba));
+                OnPropertyChanged(nameof(WybranyItem));
+                if (aktualizujTekst)
+                    UstawTekstProgramowo(_model.Nazwisko);
+                return;
+            }
+        }
+
+        var bylaPa = osoba is not null && _editor.CzyOsobaJestPa(osoba.Id);
+
         SetProperty(ref _wybranaOsoba, osoba);
         OnPropertyChanged(nameof(WybranaOsoba));
         OnPropertyChanged(nameof(WybranyItem));
@@ -196,6 +220,9 @@ public sealed partial class PozycjaSluzbyViewModel : ObservableObject
             ? osoba.StopienINazwisko
             : _tekstOsoby;
 
+        if (osoba is not null && StanowiskoSluzbyRules.CzyStanowiskoWylaczaInneWSluzbie(Stanowisko))
+            _editor.WyczyscOsobeZInnychStanowiskSluzby(osoba.Id, Stanowisko);
+
         // PA nie może być na pojeździe podstawowym — usuń z obsady i odśwież listy.
         if (Stanowisko == StanowiskoSluzby.DyzurnyPAJRG)
         {
@@ -203,6 +230,14 @@ public sealed partial class PozycjaSluzbyViewModel : ObservableObject
                 _editor.WyczyscOsobeZPojazdowPodstawowych(osoba.Id);
             _editor.OdswiezPozycjePodstawowe();
         }
+        else if (bylaPa)
+        {
+            // Osoba zdjęta z PA (np. wpisana jako dowódca zmiany) wraca na listy pojazdów podstawowych.
+            _editor.OdswiezPozycjePodstawowe();
+        }
+
+        if (StanowiskoSluzbyRules.CzyStanowiskoWylaczaInneWSluzbie(Stanowisko))
+            _editor.OdswiezStanowiskaSluzby(Stanowisko);
 
         if (!aktualizujTekst) return;
         UstawTekstProgramowo(_model.Nazwisko);
@@ -235,6 +270,15 @@ public sealed partial class PozycjaSluzbyViewModel : ObservableObject
             return;
 
         if (dostepnyPersonel.Any(f => f.Id == _wybranaOsoba.Id))
+            return;
+
+        WyczyscOsobe();
+    }
+
+    /// <summary>Cicho czyści obsadę — bez walidacji i bez odświeżania pozostałych list.</summary>
+    public void WyczyscOsobe()
+    {
+        if (_wybranaOsoba is null && string.IsNullOrEmpty(_model.Nazwisko))
             return;
 
         SetProperty(ref _wybranaOsoba, null);

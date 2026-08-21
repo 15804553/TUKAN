@@ -84,4 +84,22 @@ public sealed class ShiftCalendarEngine
         var slot = ((dayOffset % 3) + 3) % 3;
         return _offsets!.TryGetValue(zmianaId, out var zmianaOffset) && slot == zmianaOffset;
     }
+
+    /// <summary>Numer zmiany pełniącej służbę w danym dniu (1–3) albo 0, gdy nie ustalono.</summary>
+    public async Task<int> GetWorkingShiftAsync(DateOnly date)
+    {
+        await EnsureLoadedAsync();
+        return ComputeWorkingShift(date);
+    }
+
+    private int ComputeWorkingShift(DateOnly date)
+    {
+        foreach (var zmiana in _offsets!.Keys.OrderBy(z => z))
+        {
+            if (ComputeIsWorkDay(zmiana, date))
+                return zmiana;
+        }
+
+        return 0;
+    }
 }

@@ -38,6 +38,10 @@ public sealed class PersonnelService
     public Task<bool> CzyDzienSluzbyAsync(int nrZmiany, DateOnly data) =>
         _calendar.IsWorkDayAsync(nrZmiany, data);
 
+    /// <summary>Zmiana pełniąca służbę w dniu „na dzień” (1–3) albo 0, gdy kalendarz nie rozstrzyga.</summary>
+    public Task<int> GetZmianaNaDzienAsync(DateOnly data) =>
+        _calendar.GetWorkingShiftAsync(data);
+
     public async Task<List<Funkcjonariusz>> GetWszyscyZmianaAsync(int nrZmiany)
     {
         return await _repo.GetByZmianaAsync(nrZmiany);
