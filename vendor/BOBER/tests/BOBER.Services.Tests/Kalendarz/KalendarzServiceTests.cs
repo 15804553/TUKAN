@@ -400,6 +400,10 @@ public sealed class KalendarzServiceTests
             Task.FromResult(new GrafikRowColorSettings());
         public Task SetGrafikRowColorSettingsAsync(GrafikRowColorSettings settings, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+        public Task<GrafikExportAlternatingSettings> GetGrafikExportAlternatingSettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new GrafikExportAlternatingSettings());
+        public Task SetGrafikExportAlternatingSettingsAsync(GrafikExportAlternatingSettings settings, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
         public Task<KalendarzAutoDeleteMode> GetKalendarzAutoDeleteModeAsync(int? shiftNumber, CancellationToken cancellationToken = default) =>
             Task.FromResult(AutoDeleteModes.TryGetValue(BuildKey(shiftNumber), out var mode) ? mode : KalendarzAutoDeleteMode.Nigdy);
         public Task SetKalendarzAutoDeleteModeAsync(int? shiftNumber, KalendarzAutoDeleteMode mode, CancellationToken cancellationToken = default)

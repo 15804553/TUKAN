@@ -43,6 +43,17 @@ public interface ISettingsService
         GrafikRowColorSettings settings,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Kolorowanie naprzemienne wierszy w eksporcie Excel. Domyślnie wyłączone.
+    /// Gdy kolory eksportu nie są zapisane, używane są kolory naprzemienne widoku.
+    /// </summary>
+    Task<GrafikExportAlternatingSettings> GetGrafikExportAlternatingSettingsAsync(
+        CancellationToken cancellationToken = default);
+
+    Task SetGrafikExportAlternatingSettingsAsync(
+        GrafikExportAlternatingSettings settings,
+        CancellationToken cancellationToken = default);
+
     Task<KalendarzAutoDeleteMode> GetKalendarzAutoDeleteModeAsync(
         int? shiftNumber,
         CancellationToken cancellationToken = default);

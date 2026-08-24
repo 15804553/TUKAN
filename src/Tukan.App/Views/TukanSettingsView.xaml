@@ -34,6 +34,12 @@
                               Visibility="Collapsed">
                         <ContentControl x:Name="KolejnoscHost" />
                     </Expander>
+                    <Expander x:Name="ZarzadzanieGrafikiemExpander"
+                              Header="Zarządzanie grafikiem"
+                              Style="{StaticResource TukanSettingsExpander}"
+                              Visibility="Collapsed">
+                        <ContentControl x:Name="ZarzadzanieGrafikiemHost" />
+                    </Expander>
                 </StackPanel>
             </ScrollViewer>
         </TabItem>
@@ -52,7 +58,7 @@
         <TabItem x:Name="ExportPathsTab" Header="Ścieżki eksportu" Visibility="Collapsed">
             <ContentControl x:Name="ExportPathsHost" />
         </TabItem>
-        <TabItem x:Name="GuestAuditTab" Header="Audyt Gościa" Visibility="Collapsed">
+        <TabItem x:Name="GuestAuditTab" Header="Konto Gość" Visibility="Collapsed">
             <ContentControl x:Name="GuestAuditHost" />
         </TabItem>
     </TabControl>

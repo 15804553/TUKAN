@@ -284,6 +284,7 @@ public sealed class MainController(AppServices services)
         var wpisy = await services.Grafik.GetMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
         var workDays = await GetWorkDaysForMonthAsync(rok, miesiac, cancellationToken);
         var lessColor = await services.Settings.GetLessColorAsync(cancellationToken);
+        var exportAlt = await services.Settings.GetGrafikExportAlternatingSettingsAsync(cancellationToken);
         services.Export.ExportMonth(
             filePath, rok, miesiac,
             _funkcjonariusze ?? [],
@@ -292,7 +293,12 @@ public sealed class MainController(AppServices services)
             _stanMinimalny,
             _kolory ?? new Dictionary<string, string>(),
             workDays,
-            lessColor);
+            lessColor,
+            exportAlt.Enabled,
+            exportAlt.ColorA,
+            exportAlt.ColorB,
+            NazwaZmiany,
+            ZmianaId);
     }
 
     public async Task ExportYearAsync(
@@ -313,6 +319,7 @@ public sealed class MainController(AppServices services)
         }
 
         var lessColor = await services.Settings.GetLessColorAsync(cancellationToken);
+        var exportAlt = await services.Settings.GetGrafikExportAlternatingSettingsAsync(cancellationToken);
         services.Export.ExportYear(
             filePath, rok,
             _funkcjonariusze ?? [],
@@ -321,7 +328,12 @@ public sealed class MainController(AppServices services)
             _stanZmiany,
             _stanMinimalny,
             _kolory ?? new Dictionary<string, string>(),
-            lessColor);
+            lessColor,
+            exportAlt.Enabled,
+            exportAlt.ColorA,
+            exportAlt.ColorB,
+            NazwaZmiany,
+            ZmianaId);
     }
 
     public Task<string> GetExportPathGrafikSluzbAsync(CancellationToken cancellationToken = default) =>

@@ -19,12 +19,17 @@ public sealed class ExportService
         int stanMinimalny,
         IReadOnlyDictionary<string, string> kolory,
         IReadOnlyCollection<int>? workDays = null,
-        bool lessColor = true)
+        bool lessColor = true,
+        bool alternatingRows = false,
+        string? alternatingColorA = null,
+        string? alternatingColorB = null,
+        string? nazwaZmiany = null,
+        int zmianaId = 1)
     {
         using var workbook = new XLWorkbook();
         AddMonthWorksheet(
             workbook, rok, miesiac, funkcjonariusze, wpisy, stanZmiany, stanMinimalny, kolory, workDays,
-            lessColor);
+            lessColor, alternatingRows, alternatingColorA, alternatingColorB, nazwaZmiany, zmianaId);
         workbook.SaveAs(filePath);
     }
 
@@ -38,7 +43,12 @@ public sealed class ExportService
         int stanZmiany,
         int stanMinimalny,
         IReadOnlyDictionary<string, string> kolory,
-        bool lessColor = true)
+        bool lessColor = true,
+        bool alternatingRows = false,
+        string? alternatingColorA = null,
+        string? alternatingColorB = null,
+        string? nazwaZmiany = null,
+        int zmianaId = 1)
     {
         using var workbook = new XLWorkbook();
         for (var miesiac = 1; miesiac <= 12; miesiac++)
@@ -53,7 +63,12 @@ public sealed class ExportService
                 stanMinimalny,
                 kolory,
                 workDays,
-                lessColor);
+                lessColor,
+                alternatingRows,
+                alternatingColorA,
+                alternatingColorB,
+                nazwaZmiany,
+                zmianaId);
         }
 
         workbook.SaveAs(filePath);
@@ -69,9 +84,16 @@ public sealed class ExportService
         int stanMinimalny,
         IReadOnlyDictionary<string, string> kolory,
         IReadOnlyCollection<int>? workDays,
-        bool lessColor)
+        bool lessColor,
+        bool alternatingRows,
+        string? alternatingColorA,
+        string? alternatingColorB,
+        string? nazwaZmiany,
+        int zmianaId)
     {
         var ws = workbook.Worksheets.Add(GetMonthName(miesiac));
+        var altA = ResolveAlternatingHex(alternatingColorA, GrafikRowColorSettings.DefaultColorA);
+        var altB = ResolveAlternatingHex(alternatingColorB, GrafikRowColorSettings.DefaultColorB);
 
         var nieobecnoscBg = ToXl(ResolveHex(kolory, RoleKeys.WolnaSluzba, RoleKeys.DomyslneKoloryWpisow));
         var appText = ToXl(AppColors.ForegroundHex);
@@ -97,13 +119,21 @@ public sealed class ExportService
         if (lessColor)
             ws.Style.Font.FontColor = lessColorText;
 
+        var titleRange = ws.Range(TitleRow, colMarks, TitleRow, lastCol);
+        titleRange.Merge();
+        titleRange.Value = FormatSheetTitle(nazwaZmiany, zmianaId, miesiac, rok);
+        StyleBandCell(titleRange.FirstCell(), bandBg, bandFg);
+        titleRange.Style.Font.FontSize = TitleFontSize;
+        titleRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        ws.Row(TitleRow).Height = TitleRowHeight;
+
         // Wąska kolumna oznaczeń ról (D/N/K) — pusty nagłówek
-        var marksHeader = ws.Range(1, colMarks, 2, colMarks);
+        var marksHeader = ws.Range(HeaderRow1, colMarks, HeaderRow2, colMarks);
         marksHeader.Merge();
         StyleBandCell(marksHeader.FirstCell(), bandBg, bandFg);
 
         // Nagłówek "Imię i Nazwisko"
-        var nameHeader = ws.Range(1, colName, 2, colName);
+        var nameHeader = ws.Range(HeaderRow1, colName, HeaderRow2, colName);
         nameHeader.Merge();
         nameHeader.Value = "Imię i Nazwisko";
         StyleBandCell(nameHeader.FirstCell(), bandBg, bandFg);
@@ -116,14 +146,14 @@ public sealed class ExportService
             var date = new DateTime(rok, miesiac, day);
             var col = i + firstDayCol;
 
-            ws.Cell(1, col).Value = day;
-            ws.Cell(2, col).Value = date.ToString("ddd");
-            StyleBandCell(ws.Cell(1, col), bandBg, bandFg);
-            StyleBandCell(ws.Cell(2, col), bandBg, bandFg);
+            ws.Cell(HeaderRow1, col).Value = day;
+            ws.Cell(HeaderRow2, col).Value = date.ToString("ddd");
+            StyleBandCell(ws.Cell(HeaderRow1, col), bandBg, bandFg);
+            StyleBandCell(ws.Cell(HeaderRow2, col), bandBg, bandFg);
         }
 
-        ws.Row(1).Height = 22;
-        ws.Row(2).Height = 18;
+        ws.Row(HeaderRow1).Height = 22;
+        ws.Row(HeaderRow2).Height = 18;
         ws.Column(colMarks).Width = MarksColumnWidth;
         ws.Style.Font.FontSize = 14;
 
@@ -138,12 +168,20 @@ public sealed class ExportService
         for (int i = 0; i < funkcjonariusze.Count; i++)
         {
             var f = funkcjonariusze[i];
-            var row = i + 3;
+            var row = i + FirstDataRow;
             string rowBgHex;
             XLColor rowBg;
             XLColor nameText;
 
-            if (lessColor)
+            if (alternatingRows)
+            {
+                rowBgHex = i % 2 == 0 ? altA : altB;
+                rowBg = ToXl(rowBgHex);
+                nameText = lessColor
+                    ? lessColorText
+                    : ToXl(AppColors.ContrastTextHex(rowBgHex));
+            }
+            else if (lessColor)
             {
                 rowBgHex = "#FFFFFF";
                 rowBg = lessColorRowBg;
@@ -220,7 +258,7 @@ public sealed class ExportService
             }
         }
 
-        int sumBase = funkcjonariusze.Count + 3;
+        int sumBase = funkcjonariusze.Count + FirstDataRow;
         var sumLabels = new[] { "Wolne miejsca", "Dowódcy", "Nurkowie", "Kierowcy", "Poziom A/AB" };
 
         for (int s = 0; s < sumLabels.Length; s++)
@@ -280,48 +318,41 @@ public sealed class ExportService
         dataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
         dataRange.Style.Border.OutsideBorderColor = XLColor.FromHtml("#707070");
 
-        AddFooterLegend(ws, lastRow + 2, lastCol, lessColor ? lessColorText : appText);
-
-        ws.SheetView.FreezeRows(2);
+        ws.SheetView.FreezeRows(HeaderRow2);
         ws.SheetView.FreezeColumns(2);
 
         ws.PageSetup.PageOrientation = XLPageOrientation.Landscape;
         ws.PageSetup.PaperSize = XLPaperSize.A4Paper;
+        ws.PageSetup.SetRowsToRepeatAtTop(TitleRow, HeaderRow2);
         ws.PageSetup.Margins.Left = 0.25;
         ws.PageSetup.Margins.Right = 0.25;
         ws.PageSetup.Margins.Top = 0.4;
-        ws.PageSetup.Margins.Bottom = 0.4;
-        // Dopasuj szerokość do 1 strony; wysokość bez limitu stron.
+        ws.PageSetup.Margins.Bottom = 0.7;
+        ws.PageSetup.Margins.Footer = 0.25;
         ws.PageSetup.FitToPages(1, 0);
+        ws.PageSetup.ScaleHFWithDocument = false;
+        ws.PageSetup.AlignHFWithMargins = true;
+        AddPageFooterLegend(ws);
     }
 
-    private static readonly string[] LegendLines =
-    [
-        "Legenda komórek: (puste) — w pracy | D — Dyżur (żółte tło) | żółte tło — Wolna służba | U — Urlop | Uₚ — Urlop z planu | Uᵣ — Urlop rodzicielski | U na żółtym — Urlop z WS | Del — Delegacja | S — Szkolenie | C — Chory",
-        "? — potrzebuje wolne | • — chętna oddać | przekreślenie lub — — Oddaje | Oznaczenia: D — Dowódca | N — Nurek | K — Kierowca"
-    ];
+    private static readonly string LegendLine1 =
+        "Legenda: puste=praca | D=Dyżur (żółte) | żółte=WS | U=Urlop | Uₚ=z planu | Uᵣ=rodz. | U na żółtym=U z WS | Del=Delegacja | S=Szkolenie | C=Chory";
 
-    private static void AddFooterLegend(IXLWorksheet ws, int startRow, int lastCol, XLColor textColor)
+    private static readonly string LegendLine2 =
+        "?=potrzebuje wolne | •=chętna oddać | przekreśl./—=Oddaje | D=Dowódca | N=Nurek | K=Kierowca";
+
+    private static void AddPageFooterLegend(IXLWorksheet ws)
     {
-        for (var i = 0; i < LegendLines.Length; i++)
-        {
-            var row = startRow + i;
-            var range = ws.Range(row, 1, row, lastCol);
-            range.Merge();
-            var cell = range.FirstCell();
-            cell.Value = LegendLines[i];
-            cell.Style.Font.FontColor = textColor;
-            cell.Style.Font.FontSize = LegendFontSize;
-            cell.Style.Font.Bold = false;
-            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
-            cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-            cell.Style.Alignment.WrapText = true;
-            ws.Row(row).Height = LegendRowHeight;
-        }
+        // Excel: cały footer razem z kodami &L/&C max 255 znaków — bez SetFontSize/Color.
+        ws.PageSetup.Footer.Left.AddText(LegendLine1 + "\n" + LegendLine2, XLHFOccurrence.AllPages);
     }
 
-    private const double LegendFontSize = 9;
-    private const double LegendRowHeight = 16;
+    private const int TitleRow = 1;
+    private const int HeaderRow1 = 2;
+    private const int HeaderRow2 = 3;
+    private const int FirstDataRow = 4;
+    private const double TitleFontSize = 16;
+    private const double TitleRowHeight = 24;
     private const double RoleMarkFontSize = 8;
     private const double MarksColumnWidth = 4.5;
     private const double PreferredDayColumnWidth = 9;
@@ -389,6 +420,18 @@ public sealed class ExportService
     }
 
     private static XLColor ToXl(string hex) => XLColor.FromHtml(hex);
+
+    private static string ResolveAlternatingHex(string? hex, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(hex))
+            return fallback;
+
+        var trimmed = hex.Trim();
+        if (!trimmed.StartsWith('#'))
+            trimmed = "#" + trimmed;
+
+        return trimmed.Length is 7 or 9 ? trimmed : fallback;
+    }
 
     private static void ApplyOddajeStrikethrough(IXLCell cell, string? typWpisu)
     {
@@ -464,6 +507,14 @@ public sealed class ExportService
         cell.Style.Fill.BackgroundColor = bg;
         cell.Style.Font.FontColor = fg;
         cell.Style.Font.Bold = true;
+    }
+
+    private static string FormatSheetTitle(string? nazwaZmiany, int zmianaId, int miesiac, int rok)
+    {
+        var zmiana = string.IsNullOrWhiteSpace(nazwaZmiany)
+            ? $"Zmiana {zmianaId}"
+            : nazwaZmiany.Trim();
+        return $"{zmiana} — {GetMonthName(miesiac)} {rok}";
     }
 
     private static string GetMonthName(int month) => month switch

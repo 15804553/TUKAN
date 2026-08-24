@@ -119,6 +119,50 @@ public sealed class SettingsService(IUstawieniaRepository ustawieniaRepository) 
             cancellationToken);
     }
 
+    public async Task<GrafikExportAlternatingSettings> GetGrafikExportAlternatingSettingsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var enabled = await GetBoolSettingAsync("GrafikExportAltColors", defaultValue: false, cancellationToken);
+        var colorA = await ustawieniaRepository.GetAsync("GrafikExportAltColorA", cancellationToken);
+        var colorB = await ustawieniaRepository.GetAsync("GrafikExportAltColorB", cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(colorA) || string.IsNullOrWhiteSpace(colorB))
+        {
+            var ui = await GetGrafikRowColorSettingsAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(colorA))
+                colorA = ui.ColorA;
+            if (string.IsNullOrWhiteSpace(colorB))
+                colorB = ui.ColorB;
+        }
+
+        return new GrafikExportAlternatingSettings
+        {
+            Enabled = enabled,
+            ColorA = NormalizeHex(colorA, GrafikRowColorSettings.DefaultColorA),
+            ColorB = NormalizeHex(colorB, GrafikRowColorSettings.DefaultColorB)
+        };
+    }
+
+    public async Task SetGrafikExportAlternatingSettingsAsync(
+        GrafikExportAlternatingSettings settings,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        await ustawieniaRepository.SetAsync(
+            "GrafikExportAltColors",
+            settings.Enabled ? "True" : "False",
+            cancellationToken);
+        await ustawieniaRepository.SetAsync(
+            "GrafikExportAltColorA",
+            NormalizeHex(settings.ColorA, GrafikRowColorSettings.DefaultColorA),
+            cancellationToken);
+        await ustawieniaRepository.SetAsync(
+            "GrafikExportAltColorB",
+            NormalizeHex(settings.ColorB, GrafikRowColorSettings.DefaultColorB),
+            cancellationToken);
+    }
+
     public async Task<KalendarzAutoDeleteMode> GetKalendarzAutoDeleteModeAsync(
         int? shiftNumber,
         CancellationToken cancellationToken = default)

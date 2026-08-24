@@ -9,5 +9,6 @@ public enum BoberSettingsSection
     All,
     Grafik,
     ParametryZmiany,
-    Kolejnosc
+    Kolejnosc,
+    ZarzadzanieGrafikiem
 }

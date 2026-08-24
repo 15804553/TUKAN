@@ -80,6 +80,14 @@ public sealed class SettingsController(AppServices services)
     public Task SetGrafikRowColorSettingsAsync(GrafikRowColorSettings settings, CancellationToken ct = default) =>
         services.Settings.SetGrafikRowColorSettingsAsync(settings, ct);
 
+    public Task<GrafikExportAlternatingSettings> GetGrafikExportAlternatingSettingsAsync(CancellationToken ct = default) =>
+        services.Settings.GetGrafikExportAlternatingSettingsAsync(ct);
+
+    public Task SetGrafikExportAlternatingSettingsAsync(
+        GrafikExportAlternatingSettings settings,
+        CancellationToken ct = default) =>
+        services.Settings.SetGrafikExportAlternatingSettingsAsync(settings, ct);
+
     public async Task ClearHalfYearAsync(int polrocze, bool alsoClearUrlopPlan = false, CancellationToken ct = default)
     {
         await EnsureGuestCanManageGrafikAsync(ct);
@@ -117,7 +125,7 @@ public sealed class SettingsController(AppServices services)
             return;
 
         throw new InvalidOperationException(
-            "Zarządzanie grafikiem jest wyłączone dla użytkownika Gość — włącz je w Audycie Gościa (użytkownik Zmiana).");
+            "Zarządzanie grafikiem jest wyłączone dla użytkownika Gość — włącz je w Konto Gość (użytkownik Zmiana).");
     }
 
     public IReadOnlyList<(string Klucz, string Etykieta)> GetKolorKeys() =>

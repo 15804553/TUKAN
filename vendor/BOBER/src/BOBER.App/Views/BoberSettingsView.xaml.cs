@@ -49,6 +49,9 @@ public partial class BoberSettingsView : UserControl
     private bool IncludesKolory =>
         _section is BoberSettingsSection.All or BoberSettingsSection.Grafik;
 
+    private bool IncludesZarzadzanieGrafikiem =>
+        _section is BoberSettingsSection.All or BoberSettingsSection.ZarzadzanieGrafikiem;
+
     public BoberSettingsView(
         SettingsController controller,
         BoberSettingsSection section = BoberSettingsSection.All)
@@ -91,13 +94,20 @@ public partial class BoberSettingsView : UserControl
         ParametryZmianySection.Visibility = IncludesParametry ? Visibility.Visible : Visibility.Collapsed;
         KolejnoscSection.Visibility = IncludesKolejnosc ? Visibility.Visible : Visibility.Collapsed;
         KolorySection.Visibility = IncludesKolory ? Visibility.Visible : Visibility.Collapsed;
-        if (!IncludesKolory)
-            GrafikManagementSection.Visibility = Visibility.Collapsed;
+        GrafikManagementSection.Visibility = IncludesZarzadzanieGrafikiem
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
-        if (_section is BoberSettingsSection.ParametryZmiany or BoberSettingsSection.Kolejnosc)
+        if (_section is BoberSettingsSection.ParametryZmiany
+            or BoberSettingsSection.Kolejnosc
+            or BoberSettingsSection.ZarzadzanieGrafikiem)
         {
             ParametryZmianyHeader.Visibility = Visibility.Collapsed;
             KolejnoscHeader.Visibility = Visibility.Collapsed;
+            GrafikManagementHeader.Visibility = Visibility.Collapsed;
+            SaveBar.Visibility = _section is BoberSettingsSection.ZarzadzanieGrafikiem
+                ? Visibility.Collapsed
+                : Visibility.Visible;
             SectionsPanel.Margin = new Thickness(0, 4, 0, 4);
         }
     }
@@ -166,13 +176,28 @@ public partial class BoberSettingsView : UserControl
                 if (generation != _loadGeneration)
                     return;
 
-                AlternatingColorsCheckBox.IsChecked = rowColors.Mode == GrafikRowColorMode.Alternating;
+                RoleColorsRadio.IsChecked = rowColors.Mode != GrafikRowColorMode.Alternating;
+                AlternatingColorsRadio.IsChecked = rowColors.Mode == GrafikRowColorMode.Alternating;
                 AltColorATextBox.Text = rowColors.ColorA;
                 AltColorBTextBox.Text = rowColors.ColorB;
-                UpdateAlternatingColorsPanel();
+                UpdateGrafikColorModePanels();
                 RefreshAltColorPreview(AltColorAPreview, AltColorATextBox.Text);
                 RefreshAltColorPreview(AltColorBPreview, AltColorBTextBox.Text);
 
+                var exportAlt = await _controller.GetGrafikExportAlternatingSettingsAsync();
+                if (generation != _loadGeneration)
+                    return;
+
+                ExportAlternatingColorsCheckBox.IsChecked = exportAlt.Enabled;
+                ExportAltColorATextBox.Text = exportAlt.ColorA;
+                ExportAltColorBTextBox.Text = exportAlt.ColorB;
+                UpdateExportAlternatingColorsPanel();
+                RefreshAltColorPreview(ExportAltColorAPreview, ExportAltColorATextBox.Text);
+                RefreshAltColorPreview(ExportAltColorBPreview, ExportAltColorBTextBox.Text);
+            }
+
+            if (IncludesZarzadzanieGrafikiem)
+            {
                 var showGrafikMgmt = await _controller.CanShowGrafikManagementAsync();
                 if (generation != _loadGeneration)
                     return;
@@ -199,11 +224,29 @@ public partial class BoberSettingsView : UserControl
         }
     }
 
-    private void OnAlternatingColorsChanged(object sender, RoutedEventArgs e) =>
-        UpdateAlternatingColorsPanel();
+    private void OnGrafikColorModeChanged(object sender, RoutedEventArgs e) =>
+        UpdateGrafikColorModePanels();
 
-    private void UpdateAlternatingColorsPanel() =>
-        AlternatingColorsPanel.IsEnabled = AlternatingColorsCheckBox.IsChecked == true;
+    private void UpdateGrafikColorModePanels()
+    {
+        if (AlternatingColorsPanel is null || KoloryItemsControl is null)
+            return;
+
+        var alternating = AlternatingColorsRadio.IsChecked == true;
+        AlternatingColorsPanel.IsEnabled = alternating;
+        KoloryItemsControl.IsEnabled = !alternating;
+    }
+
+    private void OnExportAlternatingColorsChanged(object sender, RoutedEventArgs e) =>
+        UpdateExportAlternatingColorsPanel();
+
+    private void UpdateExportAlternatingColorsPanel()
+    {
+        if (ExportAlternatingColorsPanel is null)
+            return;
+
+        ExportAlternatingColorsPanel.IsEnabled = ExportAlternatingColorsCheckBox.IsChecked == true;
+    }
 
     private void OnAltColorTextChanged(object sender, TextChangedEventArgs e)
     {
@@ -211,6 +254,10 @@ public partial class BoberSettingsView : UserControl
             RefreshAltColorPreview(AltColorAPreview, AltColorATextBox.Text);
         else if (sender == AltColorBTextBox)
             RefreshAltColorPreview(AltColorBPreview, AltColorBTextBox.Text);
+        else if (sender == ExportAltColorATextBox)
+            RefreshAltColorPreview(ExportAltColorAPreview, ExportAltColorATextBox.Text);
+        else if (sender == ExportAltColorBTextBox)
+            RefreshAltColorPreview(ExportAltColorBPreview, ExportAltColorBTextBox.Text);
     }
 
     private void OnAltColorPreviewClick(object sender, MouseButtonEventArgs e)
@@ -218,8 +265,13 @@ public partial class BoberSettingsView : UserControl
         if (sender is not FrameworkElement { Tag: string tag })
             return;
 
-        var textBox = tag == "B" ? AltColorBTextBox : AltColorATextBox;
-        var preview = tag == "B" ? AltColorBPreview : AltColorAPreview;
+        var (textBox, preview) = tag switch
+        {
+            "B" => (AltColorBTextBox, AltColorBPreview),
+            "ExportA" => (ExportAltColorATextBox, ExportAltColorAPreview),
+            "ExportB" => (ExportAltColorBTextBox, ExportAltColorBPreview),
+            _ => (AltColorATextBox, AltColorAPreview)
+        };
         var chosen = PickColor(textBox.Text);
         if (chosen is null)
             return;
@@ -368,7 +420,7 @@ public partial class BoberSettingsView : UserControl
                 await _controller.SetLessColorAsync(LessColorCheckBox.IsChecked == true);
                 await _controller.SetGrafikRowColorSettingsAsync(new GrafikRowColorSettings
                 {
-                    Mode = AlternatingColorsCheckBox.IsChecked == true
+                    Mode = AlternatingColorsRadio.IsChecked == true
                         ? GrafikRowColorMode.Alternating
                         : GrafikRowColorMode.Role,
                     ColorA = string.IsNullOrWhiteSpace(AltColorATextBox.Text)
@@ -377,6 +429,16 @@ public partial class BoberSettingsView : UserControl
                     ColorB = string.IsNullOrWhiteSpace(AltColorBTextBox.Text)
                         ? GrafikRowColorSettings.DefaultColorB
                         : AltColorBTextBox.Text.Trim()
+                });
+                await _controller.SetGrafikExportAlternatingSettingsAsync(new GrafikExportAlternatingSettings
+                {
+                    Enabled = ExportAlternatingColorsCheckBox.IsChecked == true,
+                    ColorA = string.IsNullOrWhiteSpace(ExportAltColorATextBox.Text)
+                        ? GrafikRowColorSettings.DefaultColorA
+                        : ExportAltColorATextBox.Text.Trim(),
+                    ColorB = string.IsNullOrWhiteSpace(ExportAltColorBTextBox.Text)
+                        ? GrafikRowColorSettings.DefaultColorB
+                        : ExportAltColorBTextBox.Text.Trim()
                 });
             }
 

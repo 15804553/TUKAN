@@ -197,6 +197,7 @@ public partial class TukanSettingsView : UserControl
         RatownicyExpander.IsExpanded = false;
         ParametryZmianExpander.IsExpanded = false;
         KolejnoscExpander.IsExpanded = false;
+        ZarzadzanieGrafikiemExpander.IsExpanded = false;
         if (BoberSettingsHost.Content is BoberSettingsView bober)
             bober.CollapseExpanders();
     }
@@ -273,6 +274,20 @@ public partial class TukanSettingsView : UserControl
         KolejnoscHost.Content = CreateBoberSection(
             controller, BoberSettingsSection.Kolejnosc, "Kolejność funkcjonariuszy");
         KolejnoscExpander.Visibility = Visibility.Visible;
+
+        _ = InitializeZarzadzanieGrafikiemAsync(controller);
+    }
+
+    private async Task InitializeZarzadzanieGrafikiemAsync(
+        BOBER.App.Controllers.SettingsController controller)
+    {
+        if (!await controller.CanShowGrafikManagementAsync())
+            return;
+
+        ZarzadzanieGrafikiemHost.Content = CreateBoberSection(
+            controller, BoberSettingsSection.ZarzadzanieGrafikiem, "Zarządzanie grafikiem");
+        ZarzadzanieGrafikiemExpander.Visibility = Visibility.Visible;
+        RefreshUzytkoweTabVisibility();
     }
 
     private BoberSettingsView CreateBoberSection(
@@ -298,7 +313,8 @@ public partial class TukanSettingsView : UserControl
             KolumnyExpander.Visibility == Visibility.Visible
             || RatownicyExpander.Visibility == Visibility.Visible
             || ParametryZmianExpander.Visibility == Visibility.Visible
-            || KolejnoscExpander.Visibility == Visibility.Visible;
+            || KolejnoscExpander.Visibility == Visibility.Visible
+            || ZarzadzanieGrafikiemExpander.Visibility == Visibility.Visible;
         UzytkoweTab.Visibility = anyVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 }
