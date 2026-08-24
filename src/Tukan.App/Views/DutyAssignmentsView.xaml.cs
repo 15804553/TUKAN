@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using BOBER.App.Helpers;
 using Tukan.App.Controllers;
 using Tukan.App.Views.Chrome;
 
@@ -22,6 +23,7 @@ public partial class DutyAssignmentsView : UserControl
 
     public DutyAssignmentsView()
     {
+        Resources = UrlopPlanPalette.CreateResources();
         InitializeComponent();
         Loaded += OnLoaded;
         IsVisibleChanged += OnIsVisibleChanged;
@@ -132,7 +134,7 @@ public partial class DutyAssignmentsView : UserControl
     {
         var dataGrid = new DataGrid
         {
-            Style = (Style)FindResource("BoberDataGrid"),
+            Style = (Style)FindResource("UrlopPlanDataGrid"),
             Tag = month,
             Name = $"DutyAssignmentsGrid_{month}",
             IsReadOnly = true

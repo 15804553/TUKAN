@@ -16,11 +16,9 @@ namespace BOBER.App.Helpers;
 /// </summary>
 public static class GrafikGridBuilder
 {
-    private static readonly SolidColorBrush SummaryRowBg =
-        new(Color.FromRgb(0xA8, 0x98, 0x68));
+    private static SolidColorBrush SummaryRowBg => UrlopPlanPalette.SurfaceVariantBrush;
 
-    private static readonly SolidColorBrush NormalDayFg =
-        new(Color.FromRgb(0x2C, 0x28, 0x18));
+    private static SolidColorBrush NormalDayFg => UrlopPlanPalette.ForegroundBrush;
 
     private static readonly SolidColorBrush DayNumberFg = Brushes.White;
 
@@ -200,11 +198,9 @@ public static class GrafikGridBuilder
     private const double SummaryLineFontSize = 12.0;
     private const double SummaryLineHeight = 15.0;
 
-    private static readonly SolidColorBrush SelectionBorderBrush =
-        new(Color.FromRgb(0x1A, 0x16, 0x0A));
+    private static SolidColorBrush SelectionBorderBrush => UrlopPlanPalette.PrimaryBrush;
 
-    private static Brush SelectionHighlightBg =>
-        GetThemeBrush("AccentBrush");
+    private static SolidColorBrush SelectionHighlightBg => UrlopPlanPalette.AccentBrush;
 
     private static DataTemplate CreateNameCellTemplate()
     {
@@ -276,6 +272,7 @@ public static class GrafikGridBuilder
         summaryText.Setters.Add(new Setter(TextBlock.LineStackingStrategyProperty, LineStackingStrategy.BlockLineHeight));
         summaryText.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top));
         summaryText.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(2, 0, 2, 0)));
+        summaryText.Setters.Add(new Setter(TextBlock.ForegroundProperty, NormalDayFg));
         textStyle.Triggers.Add(summaryText);
         textFactory.SetValue(FrameworkElement.StyleProperty, textStyle);
 

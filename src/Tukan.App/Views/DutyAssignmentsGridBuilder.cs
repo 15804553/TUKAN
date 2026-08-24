@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
+using BOBER.App.Helpers;
 using BOBER.App.ViewModels;
 using Tukan.App.ViewModels;
 
@@ -10,8 +11,8 @@ namespace Tukan.App.Views;
 
 internal static class DutyAssignmentsGridBuilder
 {
-    private static readonly Brush HeaderForeground = Brushes.White;
-    private static readonly Brush CellForeground = new SolidColorBrush(Color.FromRgb(0x2C, 0x28, 0x18));
+    private static readonly Brush HeaderForeground = UrlopPlanPalette.TitleForegroundBrush;
+    private static readonly Brush CellForeground = UrlopPlanPalette.ForegroundBrush;
 
     public static void BuildColumns(DataGrid grid, int year, int month, IReadOnlyCollection<int> workDays)
     {

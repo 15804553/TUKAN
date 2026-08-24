@@ -108,7 +108,8 @@ public sealed class MainController(AppServices services)
         {
             IsSummaryRow = true,
             ImieNazwisko = "Wolne miejsca\nDowódcy\nNurkowie\nKierowcy\nPoziom A/AB",
-            RowBackground = new SolidColorBrush(Color.FromRgb(0xA8, 0x98, 0x68))
+            RowBackground = UrlopPlanPalette.SurfaceVariantBrush,
+            RowForeground = UrlopPlanPalette.ForegroundBrush
         };
 
         for (var day = 1; day <= daysInMonth; day++)
@@ -122,7 +123,7 @@ public sealed class MainController(AppServices services)
             IsNotesRow = true,
             ImieNazwisko = string.Empty,
             RowBackground = Brushes.Transparent,
-            RowForeground = new SolidColorBrush(Color.FromRgb(0x2C, 0x28, 0x18))
+            RowForeground = UrlopPlanPalette.ForegroundBrush
         };
 
         foreach (var notatka in notatki)

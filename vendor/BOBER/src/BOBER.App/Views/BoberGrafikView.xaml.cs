@@ -40,6 +40,7 @@ public partial class BoberGrafikView : UserControl
 
     public BoberGrafikView()
     {
+        Resources = UrlopPlanPalette.CreateResources();
         InitializeComponent();
         Loaded += OnLoaded;
         IsVisibleChanged += OnIsVisibleChanged;
@@ -188,7 +189,7 @@ public partial class BoberGrafikView : UserControl
         var exportBtn = new Button
         {
             Content = $"Eksportuj {MonthNames[month]} do Excel",
-            Style = (Style)FindResource("SecondaryButton"),
+            Style = (Style)FindResource("UrlopPlanSecondaryButton"),
             Margin = new Thickness(0, 0, 6, 0),
             Padding = compactButtonPadding,
             FontSize = 12,
@@ -203,7 +204,7 @@ public partial class BoberGrafikView : UserControl
             var nurkowyBtn = new Button
             {
                 Content = $"Generuj / aktualizuj grafik nurkowy — {MonthNames[month]}",
-                Style = (Style)FindResource("SecondaryButton"),
+                Style = (Style)FindResource("UrlopPlanSecondaryButton"),
                 Margin = new Thickness(0, 0, 6, 0),
                 Padding = compactButtonPadding,
                 FontSize = 12,
@@ -226,7 +227,7 @@ public partial class BoberGrafikView : UserControl
 
         var dataGrid = new DataGrid
         {
-            Style = (Style)FindResource("BoberDataGrid"),
+            Style = (Style)FindResource("UrlopPlanDataGrid"),
             Tag = month,
             Name = $"MonthGrid_{month}",
             SelectionMode = ResolveSelectionMode()
@@ -618,14 +619,14 @@ public partial class BoberGrafikView : UserControl
             if (row.IsSummaryRow)
             {
                 e.Row.FontWeight = FontWeights.SemiBold;
-                e.Row.Foreground = new SolidColorBrush(Color.FromRgb(0x2C, 0x28, 0x18));
+                e.Row.Foreground = UrlopPlanPalette.ForegroundBrush;
                 e.Row.MinHeight = 88;
             }
             else if (row.IsNotesRow)
             {
                 e.Row.MinHeight = 28;
                 e.Row.Height = 28;
-                e.Row.Background = new SolidColorBrush(Color.FromRgb(0x3A, 0x42, 0x38));
+                e.Row.Background = UrlopPlanPalette.SurfaceVariantBrush;
                 e.Row.IsHitTestVisible = true;
                 e.Row.Focusable = false;
             }
@@ -738,8 +739,8 @@ public partial class BoberGrafikView : UserControl
         DataGrid grid,
         List<(GrafikRowViewModel Vm, int Month, int Day)> targets)
     {
-        var darkBg = new SolidColorBrush(Color.FromRgb(0xC2, 0xB2, 0x80));
-        var lightFg = new SolidColorBrush(Color.FromRgb(0x2C, 0x28, 0x18));
+        var darkBg = UrlopPlanPalette.CardBrush;
+        var lightFg = UrlopPlanPalette.ForegroundBrush;
         var labelSuffix = targets.Count > 1 ? $" ({targets.Count} dni)" : string.Empty;
 
         var menu = new ContextMenu
@@ -775,7 +776,7 @@ public partial class BoberGrafikView : UserControl
                 menu.Items.Add(new Separator
                 {
                     Margin = new Thickness(4, 4, 4, 4),
-                    Background = new SolidColorBrush(Color.FromRgb(0xA8, 0x98, 0x68))
+                    Background = UrlopPlanPalette.BorderBrush
                 });
             }
 
@@ -1307,8 +1308,8 @@ public partial class BoberGrafikView : UserControl
         var template = new ControlTemplate(typeof(ContextMenu));
 
         var borderFactory = new FrameworkElementFactory(typeof(Border));
-        borderFactory.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0xC2, 0xB2, 0x80)));
-        borderFactory.SetValue(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0xA8, 0x98, 0x68)));
+        borderFactory.SetValue(Border.BackgroundProperty, UrlopPlanPalette.CardBrush);
+        borderFactory.SetValue(Border.BorderBrushProperty, UrlopPlanPalette.BorderBrush);
         borderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1));
         borderFactory.SetValue(Border.PaddingProperty, new Thickness(0, 3, 0, 3));
         borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(3));
@@ -1360,7 +1361,7 @@ public partial class BoberGrafikView : UserControl
         var highlightTrigger = new Trigger { Property = MenuItem.IsHighlightedProperty, Value = true };
         highlightTrigger.Setters.Add(new Setter(
             Border.BackgroundProperty,
-            new SolidColorBrush(Color.FromRgb(0x8B, 0x7D, 0x56)),
+            UrlopPlanPalette.SurfaceVariantBrush,
             "Bd"));
         template.Triggers.Add(highlightTrigger);
 

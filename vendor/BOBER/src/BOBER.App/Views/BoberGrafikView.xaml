@@ -36,26 +36,26 @@
                             Orientation="Horizontal">
                     <Button x:Name="UndoButton"
                             Content="Cofnij"
-                            Style="{StaticResource SecondaryButton}"
+                            Style="{StaticResource UrlopPlanSecondaryButton}"
                             Padding="12,6"
                             Margin="0,0,8,0"
                             IsEnabled="False"
                             ToolTip="Cofnij ostatnią zmianę w grafiku (Ctrl+Z)"
                             Click="OnUndoClick" />
                     <Button Content="Eksportuj wszystkie miesiące do Excel"
-                            Style="{StaticResource SecondaryButton}"
+                            Style="{StaticResource UrlopPlanSecondaryButton}"
                             Padding="12,6"
                             Margin="0,0,8,0"
                             Click="OnExportYearClick" />
                     <Button x:Name="SettingsButton"
                             Content="Ustawienia"
-                            Style="{StaticResource SecondaryButton}"
+                            Style="{StaticResource UrlopPlanSecondaryButton}"
                             Padding="12,6"
                             Margin="0,0,8,0"
                             Click="OnSettingsClick" />
                     <Button x:Name="LogoutButton"
                             Content="Wyloguj"
-                            Style="{StaticResource SecondaryButton}"
+                            Style="{StaticResource UrlopPlanSecondaryButton}"
                             Padding="12,6"
                             Click="OnLogoutClick" />
                 </StackPanel>
@@ -70,7 +70,7 @@
                     Margin="8,8,8,0"
                     SelectionChanged="OnMonthTabChanged">
             <TabControl.ItemContainerStyle>
-                <Style TargetType="TabItem" BasedOn="{StaticResource BoberTabItem}" />
+                <Style TargetType="TabItem" BasedOn="{StaticResource UrlopPlanTabItem}" />
             </TabControl.ItemContainerStyle>
         </TabControl>
 

@@ -4,9 +4,9 @@ using System.Windows.Media;
 namespace BOBER.App.Helpers;
 
 /// <summary>
-/// Paleta planu urlopów — tożsama z TukanAppTheme, bez barw piaskowych BOBER.
+/// Paleta TUKAN dla widoków BOBER (plan urlopów, grafik służb, grafik nurkowy) — bez barw piaskowych.
 /// </summary>
-internal static class UrlopPlanPalette
+public static class UrlopPlanPalette
 {
     public static readonly SolidColorBrush BackgroundBrush = F("#F2F4F5");
     public static readonly SolidColorBrush SurfaceBrush = F("#F2F4F5");
