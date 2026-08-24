@@ -10,20 +10,16 @@ namespace BOBER.App.Helpers;
 
 public static class UrlopPlanGridBuilder
 {
-    private static readonly SolidColorBrush SummaryRowBg = new(Color.FromRgb(0xA8, 0x98, 0x68));
-    private static readonly SolidColorBrush NormalFg = new(Color.FromRgb(0x2C, 0x28, 0x18));
-    private static readonly SolidColorBrush DayNumberFg = Brushes.White;
     private static readonly SolidColorBrush Transparent = new(Colors.Transparent);
-    private static readonly SolidColorBrush OverLimitBg = new(Color.FromRgb(0xC4, 0x2B, 0x1C));
-    private static readonly SolidColorBrush FullLimitBg = new(Color.FromRgb(0x4A, 0x8C, 0x2A));
-    private static readonly SolidColorBrush WarningBg = new(Color.FromRgb(0xE8, 0x94, 0x3A));
-    private static readonly SolidColorBrush StatusFg = Brushes.White;
-    private static readonly SolidColorBrush SelectionBorderBrush = new(Color.FromRgb(0x1A, 0x16, 0x0A));
 
-    private static Brush GetThemeBrush(string key) =>
-        Application.Current?.TryFindResource(key) as Brush ?? Brushes.Black;
-
-    private static Brush SelectionHighlightBg => GetThemeBrush("AccentBrush");
+    private static SolidColorBrush SummaryRowBg => UrlopPlanPalette.SurfaceVariantBrush;
+    private static SolidColorBrush NormalFg => UrlopPlanPalette.ForegroundBrush;
+    private static SolidColorBrush OverLimitBg => UrlopPlanPalette.ButtonCloseBrush;
+    private static SolidColorBrush FullLimitBg => UrlopPlanPalette.OkBrush;
+    private static SolidColorBrush WarningBg => UrlopPlanPalette.AccentLightBrush;
+    private static SolidColorBrush StatusFg => UrlopPlanPalette.OnAccentBrush;
+    private static SolidColorBrush SelectionHighlightBg => UrlopPlanPalette.AccentBrush;
+    private static SolidColorBrush SelectionBorderBrush => UrlopPlanPalette.PrimaryBrush;
 
     public static void BuildColumns(
         DataGrid grid,
@@ -88,7 +84,7 @@ public static class UrlopPlanGridBuilder
         grid.FrozenColumnCount = 2;
 
         var daysInMonth = DateTime.DaysInMonth(year, month);
-        var workDayBrush = dzienSluzbyBrush ?? new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0x00));
+        var workDayBrush = dzienSluzbyBrush ?? UrlopPlanPalette.AccentLightBrush;
         for (var day = 1; day <= daysInMonth; day++)
         {
             var header = DayHeaderViewModel.Create(year, month, day);
@@ -122,7 +118,8 @@ public static class UrlopPlanGridBuilder
         dayNumFactory.SetValue(TextBlock.TextProperty, header.Day.ToString());
         dayNumFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
         dayNumFactory.SetValue(TextBlock.FontSizeProperty, 12.0);
-        dayNumFactory.SetValue(TextBlock.ForegroundProperty, DayNumberFg);
+        dayNumFactory.SetValue(TextBlock.ForegroundProperty,
+            isWorkDay ? UrlopPlanPalette.ForegroundBrush : UrlopPlanPalette.TitleForegroundBrush);
         dayNumFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         dayNumFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
 
@@ -233,6 +230,7 @@ public static class UrlopPlanGridBuilder
             Value = true
         };
         selectionFg.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.Bold));
+        selectionFg.Setters.Add(new Setter(TextBlock.ForegroundProperty, UrlopPlanPalette.OnAccentBrush));
         textStyle.Triggers.Add(selectionFg);
         textFactory.SetValue(FrameworkElement.StyleProperty, textStyle);
 

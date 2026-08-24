@@ -39,6 +39,7 @@ public partial class UrlopPlanView : UserControl
 
     public UrlopPlanView()
     {
+        Resources = UrlopPlanPalette.CreateResources();
         InitializeComponent();
         Loaded += OnLoaded;
         IsVisibleChanged += OnIsVisibleChanged;
@@ -119,7 +120,6 @@ public partial class UrlopPlanView : UserControl
             _monthGrids.Clear();
             Array.Fill(_monthLoaded, false);
             _selectedCell = null;
-            ZmianaTextBlock.Text = $"{_controller.NazwaZmiany} (zmiana {_controller.ZmianaId})";
 
             await _controller.LoadAsync();
             if (generation != _setupGeneration)
@@ -195,7 +195,7 @@ public partial class UrlopPlanView : UserControl
         var dataGrid = new DataGrid
         {
             Name = $"UrlopMonthGrid_{month}",
-            Style = (Style)FindResource("BoberDataGrid"),
+            Style = (Style)FindResource("UrlopPlanDataGrid"),
             Tag = month,
             IsReadOnly = true,
             Focusable = true,
@@ -214,16 +214,19 @@ public partial class UrlopPlanView : UserControl
         return grid;
     }
 
+    private static Brush ThemeForeground => UrlopPlanPalette.ForegroundBrush;
+
     private static ScrollViewer CreateInstructionPanel()
     {
         var panel = new StackPanel { Margin = new Thickness(20, 16, 20, 16) };
+        var fg = ThemeForeground;
 
         panel.Children.Add(new TextBlock
         {
             Text = "Wytyczne planowania urlopów",
             FontSize = 16,
             FontWeight = FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x2C, 0x28, 0x18)),
+            Foreground = fg,
             Margin = new Thickness(0, 0, 0, 12)
         });
 
@@ -234,7 +237,7 @@ public partial class UrlopPlanView : UserControl
                 Text = $"• {rule}",
                 TextWrapping = TextWrapping.Wrap,
                 FontSize = 13,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x2C, 0x28, 0x18)),
+                Foreground = fg,
                 Margin = new Thickness(0, 0, 0, 8)
             });
         }
@@ -244,7 +247,7 @@ public partial class UrlopPlanView : UserControl
             Text = "Oznaczenia w siatce",
             FontSize = 14,
             FontWeight = FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x2C, 0x28, 0x18)),
+            Foreground = fg,
             Margin = new Thickness(0, 12, 0, 8)
         });
 
@@ -253,6 +256,7 @@ public partial class UrlopPlanView : UserControl
             Text = $"• w — urlop wypoczynkowy (kolumna W, {UrlopPlanInstructions.LimitWypoczynkowy} dni/os. w roku; zielony = zaplanowano w całości, czerwony = przekroczono limit)",
             TextWrapping = TextWrapping.Wrap,
             FontSize = 13,
+            Foreground = fg,
             Margin = new Thickness(0, 0, 0, 6)
         });
         panel.Children.Add(new TextBlock
@@ -260,6 +264,7 @@ public partial class UrlopPlanView : UserControl
             Text = $"• d — urlop dodatkowy (kolumna D, {UrlopPlanInstructions.LimitDodatkowy} dni/os. w roku; zielony = zaplanowano w całości, czerwony = przekroczono limit)",
             TextWrapping = TextWrapping.Wrap,
             FontSize = 13,
+            Foreground = fg,
             Margin = new Thickness(0, 0, 0, 6)
         });
         panel.Children.Add(new TextBlock
@@ -267,6 +272,7 @@ public partial class UrlopPlanView : UserControl
             Text = $"• r — urlop rodzicielski (kolumna R, {UrlopPlanInstructions.LimitRodzicielski} dni/os. w roku, max {UrlopPlanInstructions.MaxCzesciRodzicielski} części; w grafiku Uᵣ jak Uₚ; zielony = zaplanowano w całości, czerwony = przekroczono limit)",
             TextWrapping = TextWrapping.Wrap,
             FontSize = 13,
+            Foreground = fg,
             Margin = new Thickness(0, 0, 0, 6)
         });
         panel.Children.Add(new TextBlock
@@ -274,6 +280,7 @@ public partial class UrlopPlanView : UserControl
             Text = "• Żółte tło w nagłówku kolumny — dzień służby zmiany (kolor można zmienić w Ustawieniach)",
             TextWrapping = TextWrapping.Wrap,
             FontSize = 13,
+            Foreground = fg,
             Margin = new Thickness(0, 0, 0, 12)
         });
 
@@ -282,6 +289,7 @@ public partial class UrlopPlanView : UserControl
             Text = "• Wiersz „Na urlopie”: zielony = max−2 osoby, pomarańczowy = max−1, czerwony = max osób na urlopie w dniu służby",
             TextWrapping = TextWrapping.Wrap,
             FontSize = 13,
+            Foreground = fg,
             Margin = new Thickness(0, 0, 0, 12)
         });
 
@@ -290,7 +298,7 @@ public partial class UrlopPlanView : UserControl
             Text = "Skróty klawiszowe",
             FontSize = 14,
             FontWeight = FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x2C, 0x28, 0x18)),
+            Foreground = fg,
             Margin = new Thickness(0, 0, 0, 8)
         });
 
@@ -300,6 +308,7 @@ public partial class UrlopPlanView : UserControl
             {
                 Text = $"• {skrot}",
                 FontSize = 13,
+                Foreground = fg,
                 Margin = new Thickness(0, 0, 0, 6)
             });
         }

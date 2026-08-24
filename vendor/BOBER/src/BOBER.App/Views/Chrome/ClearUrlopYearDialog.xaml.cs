@@ -1,4 +1,5 @@
 using System.Windows;
+using BOBER.App.Helpers;
 
 namespace BOBER.App.Views.Chrome;
 
@@ -6,6 +7,7 @@ public partial class ClearUrlopYearDialog : Window
 {
     public ClearUrlopYearDialog(int rok, string nazwaZmiany)
     {
+        Resources = UrlopPlanPalette.CreateResources();
         InitializeComponent();
         MessageTextBlock.Text =
             $"Czy na pewno usunąć cały plan urlopów na rok {rok} dla {nazwaZmiany}?";

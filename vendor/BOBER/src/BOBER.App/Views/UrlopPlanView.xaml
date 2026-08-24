@@ -23,10 +23,6 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock x:Name="ZmianaTextBlock"
-                               Foreground="{StaticResource ForegroundMutedBrush}"
-                               FontSize="12"
-                               Margin="0,0,16,0" />
                     <TextBlock Text="Rok planu:"
                                Foreground="{StaticResource ForegroundMutedBrush}"
                                FontSize="12"
@@ -34,29 +30,30 @@
                                Margin="0,0,6,0" />
                     <ComboBox x:Name="YearComboBox"
                               Width="90"
+                              Style="{StaticResource UrlopPlanComboBox}"
                               SelectionChanged="OnYearChanged" />
                 </StackPanel>
                 <StackPanel x:Name="EditActionsPanel" Grid.Column="1" Orientation="Horizontal">
                     <Button x:Name="ImportButton"
                             Content="Importuj z Excel"
-                            Style="{StaticResource SecondaryButton}"
+                            Style="{StaticResource UrlopPlanSecondaryButton}"
                             Padding="12,6"
                             Margin="0,0,8,0"
                             Click="OnImportClick" />
                     <Button Content="Eksportuj do Excel"
-                            Style="{StaticResource SecondaryButton}"
+                            Style="{StaticResource UrlopPlanSecondaryButton}"
                             Padding="12,6"
                             Margin="0,0,8,0"
                             Click="OnExportClick" />
                     <Button x:Name="ClearYearButton"
                             Content="Wyczyść plan roku"
-                            Style="{StaticResource DangerButton}"
+                            Style="{StaticResource UrlopPlanDangerButton}"
                             Padding="12,6"
                             Margin="0,0,8,0"
                             Click="OnClearYearClick" />
                     <Button x:Name="ApplyToGrafikButton"
                             Content="Zastosuj na grafiku"
-                            Style="{StaticResource PrimaryButton}"
+                            Style="{StaticResource UrlopPlanPrimaryButton}"
                             Padding="12,6"
                             Click="OnApplyToGrafikClick" />
                 </StackPanel>
@@ -74,7 +71,7 @@
                            Margin="0,0,0,6"
                            Visibility="Collapsed" />
                 <TextBlock x:Name="ValidationTextBlock"
-                           Foreground="#C87830"
+                           Foreground="{StaticResource AccentBrush}"
                            TextWrapping="Wrap"
                            FontSize="11"
                            Visibility="Collapsed" />
@@ -84,10 +81,12 @@
         <TabControl x:Name="MonthTabControl"
                     Grid.Row="2"
                     Background="{StaticResource BackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0"
                     Margin="8,8,8,0"
                     SelectionChanged="OnMonthTabChanged">
             <TabControl.ItemContainerStyle>
-                <Style TargetType="TabItem" BasedOn="{StaticResource BoberTabItem}" />
+                <Style TargetType="TabItem" BasedOn="{StaticResource UrlopPlanTabItem}" />
             </TabControl.ItemContainerStyle>
         </TabControl>
 

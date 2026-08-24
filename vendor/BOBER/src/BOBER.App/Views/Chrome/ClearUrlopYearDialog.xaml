@@ -25,12 +25,12 @@
                        Margin="0,0,0,16" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Usuń plan roku"
-                        Style="{StaticResource DangerButton}"
+                        Style="{StaticResource UrlopPlanDangerButton}"
                         Width="130"
                         Margin="0,0,8,0"
                         Click="OnYesClick" />
                 <Button Content="Anuluj"
-                        Style="{StaticResource SecondaryButton}"
+                        Style="{StaticResource UrlopPlanSecondaryButton}"
                         Width="90"
                         Click="OnNoClick" />
             </StackPanel>
