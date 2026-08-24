@@ -4,13 +4,40 @@
     <TabControl x:Name="SettingsTabControl">
         <TabItem x:Name="ChomikTab" Header="Personel">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel>
-                    <ContentControl x:Name="ChomikSettingsHost" />
-                    <ContentControl x:Name="RatownikMedycznySettingsHost" />
+                <ContentControl x:Name="ChomikSettingsHost" />
+            </ScrollViewer>
+        </TabItem>
+        <TabItem x:Name="UzytkoweTab" Header="Użytkowe">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="16,12">
+                    <Expander x:Name="KolumnyExpander"
+                              Header="Kolumny widoku ogólnego"
+                              Style="{StaticResource TukanSettingsExpander}"
+                              Visibility="Collapsed">
+                        <ContentControl x:Name="KolumnyHost" />
+                    </Expander>
+                    <Expander x:Name="RatownicyExpander"
+                              Header="Dyżurni ratownicy medyczni"
+                              Style="{StaticResource TukanSettingsExpander}"
+                              Visibility="Collapsed">
+                        <ContentControl x:Name="RatownikMedycznySettingsHost" />
+                    </Expander>
+                    <Expander x:Name="ParametryZmianExpander"
+                              Header="Parametry zmian"
+                              Style="{StaticResource TukanSettingsExpander}"
+                              Visibility="Collapsed">
+                        <ContentControl x:Name="ParametryZmianHost" />
+                    </Expander>
+                    <Expander x:Name="KolejnoscExpander"
+                              Header="Kolejność funkcjonariuszy"
+                              Style="{StaticResource TukanSettingsExpander}"
+                              Visibility="Collapsed">
+                        <ContentControl x:Name="KolejnoscHost" />
+                    </Expander>
                 </StackPanel>
             </ScrollViewer>
         </TabItem>
-        <TabItem x:Name="GrafikTab" Header="Grafik">
+        <TabItem x:Name="GrafikTab" Header="Kolorowanie">
             <ContentControl x:Name="BoberSettingsHost" />
         </TabItem>
         <TabItem x:Name="PojazdyTab" Header="Pojazdy" Visibility="Collapsed">

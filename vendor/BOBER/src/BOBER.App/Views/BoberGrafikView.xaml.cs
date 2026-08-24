@@ -230,7 +230,7 @@ public partial class BoberGrafikView : UserControl
             Style = (Style)FindResource("UrlopPlanDataGrid"),
             Tag = month,
             Name = $"MonthGrid_{month}",
-            SelectionMode = ResolveSelectionMode()
+            SelectionMode = DataGridSelectionMode.Extended
         };
 
         dataGrid.LoadingRow += OnDataGridLoadingRow;
@@ -278,7 +278,7 @@ public partial class BoberGrafikView : UserControl
         try
         {
             var workDays = await _controller.GetWorkDaysForMonthAsync(_year, month);
-            dataGrid.SelectionMode = ResolveSelectionMode();
+            dataGrid.SelectionMode = DataGridSelectionMode.Extended;
             GrafikGridBuilder.BuildColumns(dataGrid, _year, month, workDays, _controller.GetCellColors());
             var rows = await _controller.BuildRowsAsync(_year, month);
             dataGrid.ItemsSource = rows;
@@ -289,11 +289,6 @@ public partial class BoberGrafikView : UserControl
             UiErrorReporter.Show(OwnerWindow, ex, "Błąd ładowania grafiku");
         }
     }
-
-    private DataGridSelectionMode ResolveSelectionMode() =>
-        _controller?.GrafikMultiSelect == true
-            ? DataGridSelectionMode.Extended
-            : DataGridSelectionMode.Single;
 
     private void OnDataGridPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -308,12 +303,6 @@ public partial class BoberGrafikView : UserControl
     {
         if (_isRestrictingSelection || sender is not DataGrid grid)
             return;
-
-        if (_controller?.GrafikMultiSelect != true)
-        {
-            OnSelectedCellsChangedSingle(grid, e);
-            return;
-        }
 
         var validCells = GetValidDayCellInfos(grid).ToList();
         if (validCells.Count == 0)
@@ -343,35 +332,6 @@ public partial class BoberGrafikView : UserControl
             UpdateRowSelectionHighlight(grid, row);
             grid.Focus();
             Keyboard.Focus(grid);
-        }
-        else
-        {
-            _selectedCell = null;
-            UpdateRowSelectionHighlight(grid, null);
-        }
-    }
-
-    private void OnSelectedCellsChangedSingle(DataGrid grid, SelectedCellsChangedEventArgs e)
-    {
-        var hasInvalid = e.AddedCells.Any(c =>
-            c.Column.DisplayIndex == 0 ||
-            (c.Item is GrafikRowViewModel vm && (vm.IsSummaryRow || vm.IsNotesRow || !vm.FunkcjonariuszId.HasValue)));
-
-        if (hasInvalid)
-        {
-            grid.UnselectAllCells();
-            _selectedCell = null;
-            UpdateRowSelectionHighlight(grid, null);
-            return;
-        }
-
-        var cell = grid.SelectedCells.FirstOrDefault();
-        if (cell.Item is GrafikRowViewModel row
-            && row.FunkcjonariuszId.HasValue
-            && cell.Column?.Header is DayHeaderViewModel dayHeader)
-        {
-            _selectedCell = (row, (int)grid.Tag, dayHeader.Day);
-            UpdateRowSelectionHighlight(grid, row);
         }
         else
         {
@@ -682,17 +642,8 @@ public partial class BoberGrafikView : UserControl
 
         if (!alreadyInSelection)
         {
-            if (_controller?.GrafikMultiSelect == true)
-            {
-                RestrictSelection(grid, [cellInfo]);
-                grid.CurrentCell = cellInfo;
-            }
-            else
-            {
-                grid.UnselectAllCells();
-                grid.CurrentCell = cellInfo;
-                grid.SelectedCells.Add(cellInfo);
-            }
+            RestrictSelection(grid, [cellInfo]);
+            grid.CurrentCell = cellInfo;
         }
 
         _selectedCell = (vm, month, dayHeader.Day);

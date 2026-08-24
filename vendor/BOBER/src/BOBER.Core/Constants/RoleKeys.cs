@@ -42,6 +42,12 @@ public static class RoleKeys
         Zwykly
     ];
 
+    public static IReadOnlyList<string> KoloryEksportu =>
+    [
+        EksportNaglowekStopkaTlo,
+        EksportNaglowekStopkaCzcionka
+    ];
+
     public static IReadOnlyList<string> KalendarzKolory =>
     [
         KalendarzZmiana1,
@@ -58,14 +64,18 @@ public static class RoleKeys
 
     public static IReadOnlyList<string> WszystkieKolory =>
         [
-            .. WszystkieRole,
+            DowodcaZmiany,
+            DowodcaSekcji,
+            DowodcaZastepu,
+            Kierowca,
+            Zwykly,
             WolnaSluzba,
+            Nurek,
+            NurekCzcionka,
             Delegacja,
             Szkolenie,
             .. KalendarzKolory,
-            NurekCzcionka,
-            EksportNaglowekStopkaTlo,
-            EksportNaglowekStopkaCzcionka
+            .. KoloryEksportu
         ];
 
     public static IReadOnlyDictionary<string, string> DomyslneEtykiety =>

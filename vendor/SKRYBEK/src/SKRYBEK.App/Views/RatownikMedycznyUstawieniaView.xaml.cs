@@ -10,12 +10,18 @@ public partial class RatownikMedycznyUstawieniaView : UserControl
 
     public event EventHandler? SettingsSaved;
 
-    public RatownikMedycznyUstawieniaView(int zmianaId)
+    public RatownikMedycznyUstawieniaView(int zmianaId, bool showTitle = true)
     {
         InitializeComponent();
         _viewModel = new RatownikMedycznyUstawieniaViewModel(zmianaId);
         _viewModel.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
         DataContext = _viewModel;
+        if (!showTitle)
+        {
+            TytulTextBlock.Visibility = Visibility.Collapsed;
+            RootBorder.Background = System.Windows.Media.Brushes.Transparent;
+            RootBorder.Padding = new Thickness(0);
+        }
         Loaded += OnLoaded;
     }
 

@@ -17,8 +17,11 @@ namespace BOBER.App.Views;
 public partial class BoberSettingsView : UserControl
 {
     private readonly SettingsController _controller;
+    private readonly BoberSettingsSection _section;
     private readonly ObservableCollection<FunkcjonariuszListItem> _kolejnoscLista = new();
     private readonly ObservableCollection<KolorRoliViewModel> _kolory = new();
+    private readonly ObservableCollection<KolorRoliViewModel> _koloryZmian = new();
+    private readonly ObservableCollection<KolorRoliViewModel> _koloryEksportu = new();
     private int _loadGeneration;
 
     public event EventHandler? SettingsSaved;
@@ -30,15 +33,73 @@ public partial class BoberSettingsView : UserControl
         set => CancelButton.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public BoberSettingsView(SettingsController controller)
+    public void CollapseExpanders()
+    {
+        EksportGrafikuExpander.IsExpanded = false;
+        KolorowanieGrafikowExpander.IsExpanded = false;
+        KoloryZmianExpander.IsExpanded = false;
+    }
+
+    private bool IncludesParametry =>
+        _section is BoberSettingsSection.All or BoberSettingsSection.ParametryZmiany;
+
+    private bool IncludesKolejnosc =>
+        _section is BoberSettingsSection.All or BoberSettingsSection.Kolejnosc;
+
+    private bool IncludesKolory =>
+        _section is BoberSettingsSection.All or BoberSettingsSection.Grafik;
+
+    public BoberSettingsView(
+        SettingsController controller,
+        BoberSettingsSection section = BoberSettingsSection.All)
     {
         InitializeComponent();
         _controller = controller;
+        _section = section;
 
         FunkcjonariuszeListBox.ItemsSource = _kolejnoscLista;
         KoloryItemsControl.ItemsSource = _kolory;
+        KoloryZmianItemsControl.ItemsSource = _koloryZmian;
+        KoloryEksportuItemsControl.ItemsSource = _koloryEksportu;
 
+        ApplySectionLayout();
         Loaded += OnLoaded;
+    }
+
+    private static string EtykietaKoloruZmiany(string klucz, string etykieta) => klucz switch
+    {
+        RoleKeys.KalendarzZmiana1 => "Zmiana 1",
+        RoleKeys.KalendarzZmiana2 => "Zmiana 2",
+        RoleKeys.KalendarzZmiana3 => "Zmiana 3",
+        _ => etykieta
+    };
+
+    private ObservableCollection<KolorRoliViewModel> ListaKoloru(string klucz)
+    {
+        if (RoleKeys.KalendarzKolory.Contains(klucz))
+            return _koloryZmian;
+        if (RoleKeys.KoloryEksportu.Contains(klucz))
+            return _koloryEksportu;
+        return _kolory;
+    }
+
+    private void ApplySectionLayout()
+    {
+        if (_section == BoberSettingsSection.All)
+            return;
+
+        ParametryZmianySection.Visibility = IncludesParametry ? Visibility.Visible : Visibility.Collapsed;
+        KolejnoscSection.Visibility = IncludesKolejnosc ? Visibility.Visible : Visibility.Collapsed;
+        KolorySection.Visibility = IncludesKolory ? Visibility.Visible : Visibility.Collapsed;
+        if (!IncludesKolory)
+            GrafikManagementSection.Visibility = Visibility.Collapsed;
+
+        if (_section is BoberSettingsSection.ParametryZmiany or BoberSettingsSection.Kolejnosc)
+        {
+            ParametryZmianyHeader.Visibility = Visibility.Collapsed;
+            KolejnoscHeader.Visibility = Visibility.Collapsed;
+            SectionsPanel.Margin = new Thickness(0, 4, 0, 4);
+        }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -46,84 +107,88 @@ public partial class BoberSettingsView : UserControl
         var generation = ++_loadGeneration;
         _kolejnoscLista.Clear();
         _kolory.Clear();
+        _koloryZmian.Clear();
+        _koloryEksportu.Clear();
 
         try
         {
-            var kolejnosc = await _controller.GetFunkcjonariuszeAsync();
-            if (generation != _loadGeneration)
+            if (IncludesKolejnosc)
             {
-                return;
-            }
+                var kolejnosc = await _controller.GetFunkcjonariuszeAsync();
+                if (generation != _loadGeneration)
+                    return;
 
-            foreach (var f in kolejnosc)
-            {
-                _kolejnoscLista.Add(new FunkcjonariuszListItem
+                foreach (var f in kolejnosc)
                 {
-                    Id = f.Id,
-                    ImieNazwisko = f.PelneImieNazwisko,
-                    Stanowisko = f.Stanowisko
-                });
-            }
-            UpdateNumbers();
-
-            var kolory = await _controller.GetKoloryAsync();
-            if (generation != _loadGeneration)
-            {
-                return;
+                    _kolejnoscLista.Add(new FunkcjonariuszListItem
+                    {
+                        Id = f.Id,
+                        ImieNazwisko = f.PelneImieNazwisko,
+                        Stanowisko = f.Stanowisko
+                    });
+                }
+                UpdateNumbers();
             }
 
-            var koloryDict = kolory
-                .GroupBy(k => k.KluczRoli)
-                .ToDictionary(g => g.Key, g => g.First().KolorHex);
-            foreach (var (klucz, etykieta) in _controller.GetKolorKeys())
+            if (IncludesKolory)
             {
-                if (_kolory.Any(k => k.KluczRoli == klucz))
+                var kolory = await _controller.GetKoloryAsync();
+                if (generation != _loadGeneration)
+                    return;
+
+                var koloryDict = kolory
+                    .GroupBy(k => k.KluczRoli)
+                    .ToDictionary(g => g.Key, g => g.First().KolorHex);
+                foreach (var (klucz, etykieta) in _controller.GetKolorKeys())
                 {
-                    continue;
+                    var lista = ListaKoloru(klucz);
+                    if (lista.Any(k => k.KluczRoli == klucz))
+                        continue;
+
+                    var domyslny = RoleKeys.GetDefaultKolorHex(klucz);
+                    var zapisanyHex = koloryDict.TryGetValue(klucz, out var zapisany) ? zapisany : domyslny;
+                    var allowEmpty = RoleKeys.KoloryOpcjonalneWypelnienia.Contains(klucz);
+
+                    lista.Add(new KolorRoliViewModel
+                    {
+                        KluczRoli = klucz,
+                        Etykieta = EtykietaKoloruZmiany(klucz, etykieta),
+                        AllowEmpty = allowEmpty,
+                        KolorHex = allowEmpty
+                            ? RoleKeys.NormalizeKolorHex(zapisanyHex, klucz)
+                            : (RoleKeys.IsBrakWypelnienia(zapisanyHex) ? domyslny : zapisanyHex)
+                    });
                 }
 
-                var domyslny = RoleKeys.GetDefaultKolorHex(klucz);
-                var zapisanyHex = koloryDict.TryGetValue(klucz, out var zapisany) ? zapisany : domyslny;
-                var allowEmpty = RoleKeys.KoloryOpcjonalneWypelnienia.Contains(klucz);
+                LessColorCheckBox.IsChecked = await _controller.GetLessColorAsync();
 
-                _kolory.Add(new KolorRoliViewModel
-                {
-                    KluczRoli = klucz,
-                    Etykieta = etykieta,
-                    AllowEmpty = allowEmpty,
-                    KolorHex = allowEmpty
-                        ? RoleKeys.NormalizeKolorHex(zapisanyHex, klucz)
-                        : (RoleKeys.IsBrakWypelnienia(zapisanyHex) ? domyslny : zapisanyHex)
-                });
+                var rowColors = await _controller.GetGrafikRowColorSettingsAsync();
+                if (generation != _loadGeneration)
+                    return;
+
+                AlternatingColorsCheckBox.IsChecked = rowColors.Mode == GrafikRowColorMode.Alternating;
+                AltColorATextBox.Text = rowColors.ColorA;
+                AltColorBTextBox.Text = rowColors.ColorB;
+                UpdateAlternatingColorsPanel();
+                RefreshAltColorPreview(AltColorAPreview, AltColorATextBox.Text);
+                RefreshAltColorPreview(AltColorBPreview, AltColorBTextBox.Text);
+
+                var showGrafikMgmt = await _controller.CanShowGrafikManagementAsync();
+                if (generation != _loadGeneration)
+                    return;
+                GrafikManagementSection.Visibility = showGrafikMgmt
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
             }
 
-            NazwaZmianyHeader.Text = _controller.NazwaZmiany;
-            StanZmianyTextBox.Text = (await _controller.GetStanZmianyAsync(_controller.ZmianaId)).ToString();
-            StanMinimalnyTextBox.Text = (await _controller.GetStanMinimalnyAsync(_controller.ZmianaId)).ToString();
-            MaxUrlopowNaSluzbieTextBox.Text =
-                (await _controller.GetMaxUrlopowNaSluzbieAsync(_controller.ZmianaId)).ToString();
-            LessColorCheckBox.IsChecked = await _controller.GetLessColorAsync();
-            MultiSelectCheckBox.IsChecked = await _controller.GetGrafikMultiSelectAsync();
-
-            var rowColors = await _controller.GetGrafikRowColorSettingsAsync();
-            if (generation != _loadGeneration)
+            if (IncludesParametry)
             {
-                return;
+                NazwaZmianyHeader.Text = _controller.NazwaZmiany;
+                StanZmianyTextBox.Text = (await _controller.GetStanZmianyAsync(_controller.ZmianaId)).ToString();
+                StanMinimalnyTextBox.Text = (await _controller.GetStanMinimalnyAsync(_controller.ZmianaId)).ToString();
+                MaxUrlopowNaSluzbieTextBox.Text =
+                    (await _controller.GetMaxUrlopowNaSluzbieAsync(_controller.ZmianaId)).ToString();
             }
-
-            AlternatingColorsCheckBox.IsChecked = rowColors.Mode == GrafikRowColorMode.Alternating;
-            AltColorATextBox.Text = rowColors.ColorA;
-            AltColorBTextBox.Text = rowColors.ColorB;
-            UpdateAlternatingColorsPanel();
-            RefreshAltColorPreview(AltColorAPreview, AltColorATextBox.Text);
-            RefreshAltColorPreview(AltColorBPreview, AltColorBTextBox.Text);
-
-            var showGrafikMgmt = await _controller.CanShowGrafikManagementAsync();
-            if (generation != _loadGeneration)
-                return;
-            GrafikManagementSection.Visibility = showGrafikMgmt
-                ? Visibility.Visible
-                : Visibility.Collapsed;
         }
         catch (Exception ex)
         {
@@ -270,49 +335,49 @@ public partial class BoberSettingsView : UserControl
     {
         try
         {
-            if (int.TryParse(StanZmianyTextBox.Text, out var stanZmiany))
+            if (IncludesParametry)
             {
-                await _controller.SetStanZmianyAsync(_controller.ZmianaId, stanZmiany);
+                if (int.TryParse(StanZmianyTextBox.Text, out var stanZmiany))
+                    await _controller.SetStanZmianyAsync(_controller.ZmianaId, stanZmiany);
+
+                if (int.TryParse(StanMinimalnyTextBox.Text, out var stanMin))
+                    await _controller.SetStanMinimalnyAsync(_controller.ZmianaId, stanMin);
+
+                if (int.TryParse(MaxUrlopowNaSluzbieTextBox.Text, out var maxUrlopow))
+                    await _controller.SetMaxUrlopowNaSluzbieAsync(_controller.ZmianaId, maxUrlopow);
             }
 
-            if (int.TryParse(StanMinimalnyTextBox.Text, out var stanMin))
+            if (IncludesKolejnosc)
             {
-                await _controller.SetStanMinimalnyAsync(_controller.ZmianaId, stanMin);
+                var kolejnosc = _kolejnoscLista.Select(f => f.Id).ToList();
+                await _controller.SaveKolejnoscAsync(kolejnosc);
+
+                var chomikWarning = await _controller.TrySyncNrToChomikAsync(kolejnosc);
+                if (chomikWarning is not null)
+                    BoberMessageBox.Show(GetOwnerWindow(), chomikWarning, "BOBER — ostrzeżenie");
             }
 
-            if (int.TryParse(MaxUrlopowNaSluzbieTextBox.Text, out var maxUrlopow))
+            if (IncludesKolory)
             {
-                await _controller.SetMaxUrlopowNaSluzbieAsync(_controller.ZmianaId, maxUrlopow);
-            }
-
-            var kolejnosc = _kolejnoscLista.Select(f => f.Id).ToList();
-            await _controller.SaveKolejnoscAsync(kolejnosc);
-
-            var kolory = _kolory.Select(k => new KolorStanowiska
-            {
-                KluczRoli = k.KluczRoli,
-                KolorHex = RoleKeys.NormalizeKolorHex(k.KolorHex, k.KluczRoli)
-            }).ToList();
-            await _controller.SaveKoloryAsync(kolory);
-            await _controller.SetLessColorAsync(LessColorCheckBox.IsChecked == true);
-            await _controller.SetGrafikMultiSelectAsync(MultiSelectCheckBox.IsChecked == true);
-            await _controller.SetGrafikRowColorSettingsAsync(new GrafikRowColorSettings
-            {
-                Mode = AlternatingColorsCheckBox.IsChecked == true
-                    ? GrafikRowColorMode.Alternating
-                    : GrafikRowColorMode.Role,
-                ColorA = string.IsNullOrWhiteSpace(AltColorATextBox.Text)
-                    ? GrafikRowColorSettings.DefaultColorA
-                    : AltColorATextBox.Text.Trim(),
-                ColorB = string.IsNullOrWhiteSpace(AltColorBTextBox.Text)
-                    ? GrafikRowColorSettings.DefaultColorB
-                    : AltColorBTextBox.Text.Trim()
-            });
-
-            var chomikWarning = await _controller.TrySyncNrToChomikAsync(kolejnosc);
-            if (chomikWarning is not null)
-            {
-                BoberMessageBox.Show(GetOwnerWindow(), chomikWarning, "BOBER — ostrzeżenie");
+                var kolory = _kolory.Concat(_koloryZmian).Concat(_koloryEksportu).Select(k => new KolorStanowiska
+                {
+                    KluczRoli = k.KluczRoli,
+                    KolorHex = RoleKeys.NormalizeKolorHex(k.KolorHex, k.KluczRoli)
+                }).ToList();
+                await _controller.SaveKoloryAsync(kolory);
+                await _controller.SetLessColorAsync(LessColorCheckBox.IsChecked == true);
+                await _controller.SetGrafikRowColorSettingsAsync(new GrafikRowColorSettings
+                {
+                    Mode = AlternatingColorsCheckBox.IsChecked == true
+                        ? GrafikRowColorMode.Alternating
+                        : GrafikRowColorMode.Role,
+                    ColorA = string.IsNullOrWhiteSpace(AltColorATextBox.Text)
+                        ? GrafikRowColorSettings.DefaultColorA
+                        : AltColorATextBox.Text.Trim(),
+                    ColorB = string.IsNullOrWhiteSpace(AltColorBTextBox.Text)
+                        ? GrafikRowColorSettings.DefaultColorB
+                        : AltColorBTextBox.Text.Trim()
+                });
             }
 
             if (!ShowCancelButton)

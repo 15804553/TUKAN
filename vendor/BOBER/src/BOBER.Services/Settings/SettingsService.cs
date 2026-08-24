@@ -80,12 +80,6 @@ public sealed class SettingsService(IUstawieniaRepository ustawieniaRepository) 
     public Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default) =>
         ustawieniaRepository.SetAsync("LessColor", enabled ? "True" : "False", cancellationToken);
 
-    public Task<bool> GetGrafikMultiSelectAsync(CancellationToken cancellationToken = default) =>
-        GetBoolSettingAsync("GrafikMultiSelect", defaultValue: true, cancellationToken);
-
-    public Task SetGrafikMultiSelectAsync(bool enabled, CancellationToken cancellationToken = default) =>
-        ustawieniaRepository.SetAsync("GrafikMultiSelect", enabled ? "True" : "False", cancellationToken);
-
     public async Task<GrafikRowColorSettings> GetGrafikRowColorSettingsAsync(
         CancellationToken cancellationToken = default)
     {

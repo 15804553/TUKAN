@@ -11,7 +11,8 @@
                     Margin="0,0,0,16"
                     Visibility="Collapsed">
                 <StackPanel>
-                    <TextBlock Text="Kolumny widoku ogólnego"
+                    <TextBlock x:Name="GeneralViewColumnsTitle"
+                               Text="Kolumny widoku ogólnego"
                                FontWeight="SemiBold"
                                FontSize="16"
                                Margin="0,0,0,12" />

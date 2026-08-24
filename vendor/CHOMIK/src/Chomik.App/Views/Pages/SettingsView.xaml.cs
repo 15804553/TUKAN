@@ -11,6 +11,7 @@ namespace Chomik.App.Views.Pages;
 public partial class SettingsView : UserControl
 {
     private readonly SettingsController _controller;
+    private readonly ChomikSettingsSection _section;
     private TypUprawnienia? _selectedTypUprawnienia;
     private List<GeneralViewColumnOptionViewModel> _columnOptions = [];
     private int? _selectedStopienId;
@@ -19,18 +20,29 @@ public partial class SettingsView : UserControl
 
     public event EventHandler? SettingsSaved;
 
-    public SettingsView(SettingsController controller)
+    public SettingsView(
+        SettingsController controller,
+        ChomikSettingsSection section = ChomikSettingsSection.All)
     {
         InitializeComponent();
         _controller = controller;
-        GeneralViewColumnsPanel.Visibility = _controller.CanCustomizeGeneralViewColumns
+        _section = section;
+        GeneralViewColumnsPanel.Visibility = ShowsKolumny && _controller.CanCustomizeGeneralViewColumns
             ? Visibility.Visible
             : Visibility.Collapsed;
-        var canManageSlowniki = _controller.CanManageSettings;
+        var canManageSlowniki = ShowsSlowniki && _controller.CanManageSettings;
         PersonelSlownikiPanel.Visibility = canManageSlowniki ? Visibility.Visible : Visibility.Collapsed;
-        UprawnieniaPanel.Visibility = _controller.CanManagePermissionTypes || canManageSlowniki
+        UprawnieniaPanel.Visibility = ShowsSlowniki && (_controller.CanManagePermissionTypes || canManageSlowniki)
             ? Visibility.Visible
             : Visibility.Collapsed;
+
+        if (_section == ChomikSettingsSection.Kolumny)
+        {
+            GeneralViewColumnsTitle.Visibility = Visibility.Collapsed;
+            GeneralViewColumnsPanel.Background = System.Windows.Media.Brushes.Transparent;
+            GeneralViewColumnsPanel.Padding = new Thickness(0);
+            GeneralViewColumnsPanel.Margin = new Thickness(0);
+        }
 
         if (canManageSlowniki)
         {
@@ -39,6 +51,12 @@ public partial class SettingsView : UserControl
 
         Loaded += OnLoaded;
     }
+
+    private bool ShowsKolumny =>
+        _section is ChomikSettingsSection.All or ChomikSettingsSection.Kolumny;
+
+    private bool ShowsSlowniki =>
+        _section is ChomikSettingsSection.All or ChomikSettingsSection.Slowniki;
 
     private Window? OwnerWindow => Window.GetWindow(this);
 
@@ -106,19 +124,19 @@ public partial class SettingsView : UserControl
     {
         try
         {
-            if (_controller.CanManageSettings)
+            if (ShowsSlowniki && _controller.CanManageSettings)
             {
                 await ReloadStopnieAsync();
                 await ReloadStanowiskaAsync();
                 await ReloadOdznaczeniaAsync();
             }
 
-            if (_controller.CanManagePermissionTypes || _controller.CanManageSettings)
+            if (ShowsSlowniki && (_controller.CanManagePermissionTypes || _controller.CanManageSettings))
             {
                 await LoadTypyUprawnienAsync();
             }
 
-            if (_controller.CanCustomizeGeneralViewColumns)
+            if (ShowsKolumny && _controller.CanCustomizeGeneralViewColumns)
             {
                 await LoadColumnOptionsAsync();
             }

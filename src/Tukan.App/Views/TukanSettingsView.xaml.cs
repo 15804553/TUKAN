@@ -48,6 +48,9 @@ public partial class TukanSettingsView : UserControl
                 InitializePojazdyTab();
             InitializeGuestAuditSettings();
         }
+
+        RefreshUzytkoweTabVisibility();
+        SelectDefaultTab();
     }
 
     private bool IsDcaJrgAccount => _tukanServices.SkrybekSession?.CanEditAll == true;
@@ -60,6 +63,7 @@ public partial class TukanSettingsView : UserControl
     private void ConfigureAdministratorTabs()
     {
         ChomikTab.Visibility = Visibility.Collapsed;
+        UzytkoweTab.Visibility = Visibility.Collapsed;
         GrafikTab.Visibility = Visibility.Collapsed;
         RozkazyTab.Visibility = Visibility.Collapsed;
         PojazdyTab.Visibility = Visibility.Collapsed;
@@ -70,7 +74,7 @@ public partial class TukanSettingsView : UserControl
         var pathsControl = new ExportPathsSettingsControl(_tukanServices.Bober.Settings);
         pathsControl.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
         ExportPathsHost.Content = pathsControl;
-        SettingsTabControl.SelectedItem = ExportPathsTab;
+        SelectDefaultTab();
     }
 
     private void ConfigureDcaJrgTabs()
@@ -93,8 +97,6 @@ public partial class TukanSettingsView : UserControl
         var kalendarzSettings = new KalendarzSettingsView(kalendarzController);
         kalendarzSettings.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
         KalendarzSettingsHost.Content = kalendarzSettings;
-
-        SelectDefaultTab();
     }
 
     private void InitializeShiftCalendarSettings()
@@ -180,23 +182,30 @@ public partial class TukanSettingsView : UserControl
 
     public void SelectDefaultTab()
     {
-        if (IsAdministratorAccount)
-        {
-            SettingsTabControl.SelectedItem = ExportPathsTab;
-            return;
-        }
+        CollapseSettingsExpanders();
 
-        if (IsDcaJrgAccount)
-        {
-            SettingsTabControl.SelectedItem = ChomikTab;
-        }
+        var firstVisible = SettingsTabControl.Items
+            .OfType<TabItem>()
+            .FirstOrDefault(t => t.Visibility == Visibility.Visible);
+        if (firstVisible is not null)
+            SettingsTabControl.SelectedItem = firstVisible;
+    }
+
+    private void CollapseSettingsExpanders()
+    {
+        KolumnyExpander.IsExpanded = false;
+        RatownicyExpander.IsExpanded = false;
+        ParametryZmianExpander.IsExpanded = false;
+        KolejnoscExpander.IsExpanded = false;
+        if (BoberSettingsHost.Content is BoberSettingsView bober)
+            bober.CollapseExpanders();
     }
 
     private void InitializeChomikSettings(DashboardController dashboardController)
     {
-        if (dashboardController.CanManageSettings || dashboardController.CanCustomizeGeneralViewColumns)
+        if (dashboardController.CanManageSettings)
         {
-            _chomikSettingsView = new SettingsView(_chomikSettingsController);
+            _chomikSettingsView = new SettingsView(_chomikSettingsController, ChomikSettingsSection.Slowniki);
             _chomikSettingsView.SettingsSaved += async (_, _) =>
             {
                 await TryAuditSettingsAsync("Ustawienia personelu");
@@ -204,23 +213,31 @@ public partial class TukanSettingsView : UserControl
             };
             ChomikSettingsHost.Content = _chomikSettingsView;
         }
-        else if (_tukanServices.Chomik.Auth.CurrentUser?.IsGuest == true)
-        {
-            ChomikSettingsHost.Content = new TextBlock
-            {
-                Text = "Ustawienia personelu (kolumny widoku ogólnego) są niedostępne dla konta Gość.",
-                Margin = new Thickness(16),
-                TextWrapping = TextWrapping.Wrap
-            };
-        }
         else
         {
-            ChomikSettingsHost.Content = new TextBlock
+            ChomikTab.Visibility = Visibility.Collapsed;
+        }
+
+        if (dashboardController.CanCustomizeGeneralViewColumns)
+        {
+            var columnsView = new SettingsView(_chomikSettingsController, ChomikSettingsSection.Kolumny);
+            columnsView.SettingsSaved += async (_, _) =>
             {
-                Text = "Brak uprawnień do ustawień modułu personelu.",
-                Margin = new Thickness(16),
+                await TryAuditSettingsAsync("Kolumny widoku ogólnego");
+                SettingsSaved?.Invoke(this, EventArgs.Empty);
+            };
+            KolumnyHost.Content = columnsView;
+            KolumnyExpander.Visibility = Visibility.Visible;
+        }
+        else if (_tukanServices.Chomik.Auth.CurrentUser?.IsGuest == true)
+        {
+            KolumnyHost.Content = new TextBlock
+            {
+                Text = "Ustawienia personelu (kolumny widoku ogólnego) są niedostępne dla konta Gość.",
+                Margin = new Thickness(0, 4, 0, 0),
                 TextWrapping = TextWrapping.Wrap
             };
+            KolumnyExpander.Visibility = Visibility.Visible;
         }
     }
 
@@ -229,31 +246,59 @@ public partial class TukanSettingsView : UserControl
         var user = _tukanServices.Chomik.Auth.CurrentUser;
         if (user?.IsShiftScoped != true || user.ShiftNumber is not int zmianaId)
         {
-            RatownikMedycznySettingsHost.Visibility = Visibility.Collapsed;
+            RatownicyExpander.Visibility = Visibility.Collapsed;
             return;
         }
 
-        _ratownikMedycznySettingsView = new RatownikMedycznyUstawieniaView(zmianaId);
+        _ratownikMedycznySettingsView = new RatownikMedycznyUstawieniaView(zmianaId, showTitle: false);
         _ratownikMedycznySettingsView.SettingsSaved += async (_, _) =>
         {
             await TryAuditSettingsAsync("Ustawienia ratowników medycznych");
             SettingsSaved?.Invoke(this, EventArgs.Empty);
         };
         RatownikMedycznySettingsHost.Content = _ratownikMedycznySettingsView;
+        RatownicyExpander.Visibility = Visibility.Visible;
     }
 
     private void InitializeBoberSettings()
     {
         var controller = new MainController(_tukanServices.Bober).CreateSettingsController();
-        var view = new BoberSettingsView(controller)
+        BoberSettingsHost.Content = CreateBoberSection(
+            controller, BoberSettingsSection.Grafik, "Ustawienia grafiku");
+
+        ParametryZmianHost.Content = CreateBoberSection(
+            controller, BoberSettingsSection.ParametryZmiany, "Parametry zmian");
+        ParametryZmianExpander.Visibility = Visibility.Visible;
+
+        KolejnoscHost.Content = CreateBoberSection(
+            controller, BoberSettingsSection.Kolejnosc, "Kolejność funkcjonariuszy");
+        KolejnoscExpander.Visibility = Visibility.Visible;
+    }
+
+    private BoberSettingsView CreateBoberSection(
+        BOBER.App.Controllers.SettingsController controller,
+        BoberSettingsSection section,
+        string auditMessage)
+    {
+        var view = new BoberSettingsView(controller, section)
         {
             ShowCancelButton = false
         };
         view.SettingsSaved += async (_, _) =>
         {
-            await TryAuditSettingsAsync("Ustawienia grafiku");
+            await TryAuditSettingsAsync(auditMessage);
             SettingsSaved?.Invoke(this, EventArgs.Empty);
         };
-        BoberSettingsHost.Content = view;
+        return view;
+    }
+
+    private void RefreshUzytkoweTabVisibility()
+    {
+        var anyVisible =
+            KolumnyExpander.Visibility == Visibility.Visible
+            || RatownicyExpander.Visibility == Visibility.Visible
+            || ParametryZmianExpander.Visibility == Visibility.Visible
+            || KolejnoscExpander.Visibility == Visibility.Visible;
+        UzytkoweTab.Visibility = anyVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 }
