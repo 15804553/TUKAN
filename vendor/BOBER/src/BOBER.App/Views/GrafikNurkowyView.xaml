@@ -74,14 +74,19 @@
         <DataGrid x:Name="PreviewGrid"
                   Grid.Row="2"
                   Margin="8"
-                  Style="{StaticResource BoberDataGrid}"
+                  Style="{StaticResource UrlopPlanDataGrid}"
                   IsReadOnly="True"
+                  Focusable="False"
+                  IsTabStop="False"
+                  AlternationCount="2"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"
                   AutoGenerateColumns="False"
                   HeadersVisibility="Column"
                   SelectionMode="Single"
-                  SelectionUnit="FullRow" />
+                  SelectionUnit="Cell"
+                  PreviewMouseLeftButtonDown="OnPreviewGridMouseDown"
+                  SelectionChanged="OnPreviewGridSelectionChanged" />
 
         <Border Grid.Row="3"
                 Background="{StaticResource SurfaceBrush}"

@@ -2,8 +2,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 using BOBER.App.Controllers;
+using BOBER.App.Helpers;
 using BOBER.App.Views.Chrome;
 using BOBER.Core.Constants;
 using BOBER.Core.Models;
@@ -23,7 +25,10 @@ public partial class GrafikNurkowyView : UserControl
 
     public GrafikNurkowyView()
     {
+        Resources = UrlopPlanPalette.CreateResources();
         InitializeComponent();
+        PreviewGrid.CellStyle = CreatePreviewCellStyle();
+        PreviewGrid.RowStyle = CreatePreviewRowStyle();
         Loaded += OnLoaded;
     }
 
@@ -202,8 +207,7 @@ public partial class GrafikNurkowyView : UserControl
         });
 
         var days = DateTime.DaysInMonth(_year, _month);
-        var whiteDayCellStyle = CreateWhiteDayCellStyle();
-        var baseHeaderStyle = TryFindResource("BoberColumnHeader") as Style
+        var baseHeaderStyle = TryFindResource("UrlopPlanColumnHeader") as Style
             ?? PreviewGrid.ColumnHeaderStyle;
         for (var day = 1; day <= days; day++)
         {
@@ -215,8 +219,7 @@ public partial class GrafikNurkowyView : UserControl
                 HeaderStyle = CreateDayHeaderStyle(baseHeaderStyle, BrushFromHex(GrafikNurkowyConstants.ColorForDayHeader(zmianaId))),
                 Binding = new Binding($"Day{d}"),
                 Width = new DataGridLength(32),
-                ElementStyle = CreateCenteredStyle(),
-                CellStyle = whiteDayCellStyle
+                ElementStyle = CreateCenteredStyle()
             });
         }
     }
@@ -227,7 +230,7 @@ public partial class GrafikNurkowyView : UserControl
             ? new Style(typeof(DataGridColumnHeader))
             : new Style(typeof(DataGridColumnHeader), basedOn);
         style.Setters.Add(new Setter(Control.BackgroundProperty, background));
-        style.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.Black));
+        style.Setters.Add(new Setter(Control.ForegroundProperty, UrlopPlanPalette.ForegroundBrush));
         style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Bold));
         style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
         style.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
@@ -263,12 +266,93 @@ public partial class GrafikNurkowyView : UserControl
         return template;
     }
 
-    private static Style CreateWhiteDayCellStyle()
+    private static Style CreatePreviewCellStyle()
     {
         var style = new Style(typeof(DataGridCell));
-        style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.White));
-        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
+        style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0, 0, 1, 0)));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, UrlopPlanPalette.BorderBrush));
+        style.Setters.Add(new Setter(Control.ForegroundProperty, UrlopPlanPalette.ForegroundBrush));
+        style.Setters.Add(new Setter(Control.FocusVisualStyleProperty, null));
+        style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+        style.Setters.Add(new Setter(Control.TemplateProperty, CreatePreviewCellTemplate()));
+
+        var selected = new Trigger { Property = DataGridCell.IsSelectedProperty, Value = true };
+        selected.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+        selected.Setters.Add(new Setter(Control.ForegroundProperty, UrlopPlanPalette.ForegroundBrush));
+        style.Triggers.Add(selected);
         return style;
+    }
+
+    private static ControlTemplate CreatePreviewCellTemplate()
+    {
+        var template = new ControlTemplate(typeof(DataGridCell));
+        var borderFactory = new FrameworkElementFactory(typeof(Border));
+        borderFactory.SetBinding(
+            Border.BackgroundProperty,
+            new Binding(nameof(Control.Background)) { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+        borderFactory.SetBinding(
+            Border.BorderBrushProperty,
+            new Binding(nameof(Control.BorderBrush)) { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+        borderFactory.SetBinding(
+            Border.BorderThicknessProperty,
+            new Binding(nameof(Control.BorderThickness)) { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+        borderFactory.SetValue(FrameworkElement.SnapsToDevicePixelsProperty, true);
+
+        var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+        presenter.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Stretch);
+        presenter.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        borderFactory.AppendChild(presenter);
+        template.VisualTree = borderFactory;
+        return template;
+    }
+
+    private static Style CreatePreviewRowStyle()
+    {
+        var style = new Style(typeof(DataGridRow));
+        style.Setters.Add(new Setter(Control.BackgroundProperty, UrlopPlanPalette.CardBrush));
+        style.Setters.Add(new Setter(Control.ForegroundProperty, UrlopPlanPalette.ForegroundBrush));
+
+        var odd = new Trigger { Property = ItemsControl.AlternationIndexProperty, Value = 1 };
+        odd.Setters.Add(new Setter(Control.BackgroundProperty, UrlopPlanPalette.SurfaceVariantBrush));
+        style.Triggers.Add(odd);
+
+        AddSelectedRowTrigger(style, alternationIndex: 0, UrlopPlanPalette.CardBrush);
+        AddSelectedRowTrigger(style, alternationIndex: 1, UrlopPlanPalette.SurfaceVariantBrush);
+        return style;
+    }
+
+    private static void AddSelectedRowTrigger(Style style, int alternationIndex, Brush background)
+    {
+        var selected = new MultiTrigger();
+        selected.Conditions.Add(new Condition(DataGridRow.IsSelectedProperty, true));
+        selected.Conditions.Add(new Condition(ItemsControl.AlternationIndexProperty, alternationIndex));
+        selected.Setters.Add(new Setter(Control.BackgroundProperty, background));
+        style.Triggers.Add(selected);
+    }
+
+    private void OnPreviewGridMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (FindVisualParent<DataGridCell>(e.OriginalSource as DependencyObject) is not null)
+            e.Handled = true;
+    }
+
+    private void OnPreviewGridSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        PreviewGrid.UnselectAll();
+        PreviewGrid.UnselectAllCells();
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject? start) where T : DependencyObject
+    {
+        while (start is not null)
+        {
+            if (start is T match)
+                return match;
+            start = VisualTreeHelper.GetParent(start);
+        }
+
+        return null;
     }
 
     private static Style CreateZmianaCellStyle()
@@ -277,8 +361,8 @@ public partial class GrafikNurkowyView : UserControl
         style.Setters.Add(new Setter(
             Control.BackgroundProperty,
             new Binding(nameof(PreviewRow.ZmianaBackground))));
-        style.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.Black));
-        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        style.Setters.Add(new Setter(Control.ForegroundProperty, UrlopPlanPalette.ForegroundBrush));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, UrlopPlanPalette.BorderBrush));
         return style;
     }
 
@@ -291,7 +375,7 @@ public partial class GrafikNurkowyView : UserControl
         style.Setters.Add(new Setter(
             Control.ForegroundProperty,
             new Binding(nameof(PreviewRow.FunkcjaForeground))));
-        style.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.Transparent));
+        style.Setters.Add(new Setter(Control.BorderBrushProperty, UrlopPlanPalette.BorderBrush));
         return style;
     }
 
@@ -335,8 +419,8 @@ public partial class GrafikNurkowyView : UserControl
             ZmianaBackground = BrushForZmiana(source.ZmianaId);
             FunkcjaForeground = source.Funkcja.Equals(
                     GrafikNurkowyConstants.FunkcjaKpp, StringComparison.OrdinalIgnoreCase)
-                ? Brushes.Red
-                : Brushes.Black;
+                ? UrlopPlanPalette.ButtonCloseBrush
+                : UrlopPlanPalette.ForegroundBrush;
             for (var d = 1; d <= 31; d++)
             {
                 if (source.Dni.TryGetValue(d, out var v))
