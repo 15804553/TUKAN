@@ -491,6 +491,7 @@ public partial class UrlopPlanView : UserControl
             if (grid.SelectedCells.Count > 0)
                 RestrictSelection(grid, Array.Empty<DataGridCellInfo>());
             _selectedCell = null;
+            UpdateRowSelectionHighlight(grid, null);
             return;
         }
 
@@ -509,13 +510,24 @@ public partial class UrlopPlanView : UserControl
             && primary.Column?.Header is DayHeaderViewModel dayHeader)
         {
             _selectedCell = (row, (int)grid.Tag, dayHeader.Day);
+            UpdateRowSelectionHighlight(grid, row);
             grid.Focus();
             Keyboard.Focus(grid);
         }
         else
         {
             _selectedCell = null;
+            UpdateRowSelectionHighlight(grid, null);
         }
+    }
+
+    private static void UpdateRowSelectionHighlight(DataGrid grid, UrlopPlanRowViewModel? activeRow)
+    {
+        if (grid.ItemsSource is not IEnumerable<UrlopPlanRowViewModel> rows)
+            return;
+
+        foreach (var row in rows)
+            row.IsSelectionHighlight = ReferenceEquals(row, activeRow);
     }
 
     private static UrlopPlanRowViewModel? ResolveAnchorRow(
@@ -664,6 +676,7 @@ public partial class UrlopPlanView : UserControl
         }
 
         _selectedCell = (vm, month, dayHeader.Day);
+        UpdateRowSelectionHighlight(grid, vm);
         grid.Focus();
         Keyboard.Focus(grid);
 

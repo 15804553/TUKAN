@@ -17,6 +17,21 @@ public sealed class UrlopPlanRowViewModel : INotifyPropertyChanged
     public int? Numer { get; init; }
     public string ImieNazwisko { get; init; } = string.Empty;
 
+    private bool _isSelectionHighlight;
+
+    /// <summary>Wiersz aktywny przy zaznaczeniu komórki dnia — podświetla nazwisko.</summary>
+    public bool IsSelectionHighlight
+    {
+        get => _isSelectionHighlight;
+        set
+        {
+            if (_isSelectionHighlight == value)
+                return;
+            _isSelectionHighlight = value;
+            OnPropertyChanged();
+        }
+    }
+
     public int WypoczynkowyCount
     {
         get => _wypoczynkowyCount;

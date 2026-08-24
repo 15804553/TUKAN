@@ -18,6 +18,12 @@ public static class UrlopPlanGridBuilder
     private static readonly SolidColorBrush FullLimitBg = new(Color.FromRgb(0x4A, 0x8C, 0x2A));
     private static readonly SolidColorBrush WarningBg = new(Color.FromRgb(0xE8, 0x94, 0x3A));
     private static readonly SolidColorBrush StatusFg = Brushes.White;
+    private static readonly SolidColorBrush SelectionBorderBrush = new(Color.FromRgb(0x1A, 0x16, 0x0A));
+
+    private static Brush GetThemeBrush(string key) =>
+        Application.Current?.TryFindResource(key) as Brush ?? Brushes.Black;
+
+    private static Brush SelectionHighlightBg => GetThemeBrush("AccentBrush");
 
     public static void BuildColumns(
         DataGrid grid,
@@ -35,16 +41,15 @@ public static class UrlopPlanGridBuilder
             Binding = new Binding(nameof(UrlopPlanRowViewModel.Numer)),
             Width = new DataGridLength(46),
             IsReadOnly = true,
-            ElementStyle = CreateCellStyle(NormalFg, null)
+            ElementStyle = CreateNumerCellStyle()
         });
 
-        grid.Columns.Add(new DataGridTextColumn
+        grid.Columns.Add(new DataGridTemplateColumn
         {
             Header = "Nazwisko i imię",
-            Binding = new Binding(nameof(UrlopPlanRowViewModel.ImieNazwisko)),
             Width = new DataGridLength(180),
             IsReadOnly = true,
-            ElementStyle = CreateCellStyle(NormalFg, null)
+            CellTemplate = CreateNameCellTemplate()
         });
 
         grid.Columns.Add(new DataGridTextColumn
@@ -192,14 +197,56 @@ public static class UrlopPlanGridBuilder
         return binding;
     }
 
-    private static Style CreateCellStyle(Brush foreground, Brush? background)
+    private static DataTemplate CreateNameCellTemplate()
+    {
+        var template = new DataTemplate();
+        var borderFactory = new FrameworkElementFactory(typeof(Border));
+        borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(2));
+        borderFactory.SetValue(Border.PaddingProperty, new Thickness(4, 2, 4, 2));
+        borderFactory.SetValue(Border.MarginProperty, new Thickness(1));
+        borderFactory.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+
+        var borderStyle = new Style(typeof(Border));
+        borderStyle.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(0)));
+        var selectionHighlight = new DataTrigger
+        {
+            Binding = new Binding(nameof(UrlopPlanRowViewModel.IsSelectionHighlight)),
+            Value = true
+        };
+        selectionHighlight.Setters.Add(new Setter(Border.BackgroundProperty, SelectionHighlightBg));
+        selectionHighlight.Setters.Add(new Setter(Border.BorderBrushProperty, SelectionBorderBrush));
+        selectionHighlight.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(2.5)));
+        borderStyle.Triggers.Add(selectionHighlight);
+        borderFactory.SetValue(FrameworkElement.StyleProperty, borderStyle);
+
+        var textFactory = new FrameworkElementFactory(typeof(TextBlock));
+        textFactory.SetBinding(TextBlock.TextProperty,
+            new Binding(nameof(UrlopPlanRowViewModel.ImieNazwisko)));
+        textFactory.SetValue(TextBlock.ForegroundProperty, NormalFg);
+        textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+
+        var textStyle = new Style(typeof(TextBlock));
+        var selectionFg = new DataTrigger
+        {
+            Binding = new Binding(nameof(UrlopPlanRowViewModel.IsSelectionHighlight)),
+            Value = true
+        };
+        selectionFg.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.Bold));
+        textStyle.Triggers.Add(selectionFg);
+        textFactory.SetValue(FrameworkElement.StyleProperty, textStyle);
+
+        borderFactory.AppendChild(textFactory);
+        template.VisualTree = borderFactory;
+        return template;
+    }
+
+    private static Style CreateNumerCellStyle()
     {
         var style = new Style(typeof(TextBlock));
-        style.Setters.Add(new Setter(TextBlock.ForegroundProperty, foreground));
+        style.Setters.Add(new Setter(TextBlock.ForegroundProperty, NormalFg));
         style.Setters.Add(new Setter(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center));
         style.Setters.Add(new Setter(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center));
-        if (background is not null)
-            style.Setters.Add(new Setter(TextBlock.BackgroundProperty, background));
         return style;
     }
 
