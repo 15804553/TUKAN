@@ -3,6 +3,25 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
         <StackPanel MaxWidth="720">
+            <TextBlock Text="Nazwa instalacji"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource TextBrush}"
+                       Margin="0,0,0,8" />
+            <TextBlock Text="Umowna, niepowtarzalna nazwa tego komputera (np. JRG4_PA). Zapis lokalny — niezależny od wspólnej bazy."
+                       Foreground="{StaticResource MutedTextBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,12" />
+            <TextBox x:Name="InstallationNameTextBox"
+                     MaxLength="40"
+                     Margin="0,0,0,8" />
+            <Button Content="Zapisz nazwę"
+                    HorizontalAlignment="Left"
+                    Padding="16,8"
+                    Style="{StaticResource PrimaryButton}"
+                    Margin="0,0,0,28"
+                    Click="OnSaveInstallationNameClick" />
+
             <TextBlock Text="Ścieżki eksportu"
                        FontSize="18"
                        FontWeight="SemiBold"

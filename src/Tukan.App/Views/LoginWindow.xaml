@@ -25,7 +25,8 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <chrome:TukanTitleBar Grid.Row="0"
+        <chrome:TukanTitleBar x:Name="TitleBar"
+                              Grid.Row="0"
                               Title="Logowanie"
                               ShowMinimizeButton="False"
                               ShowMaximizeButton="False" />

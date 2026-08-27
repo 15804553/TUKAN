@@ -16,13 +16,17 @@ public sealed class GrafikNurkowyMappingTests
     [InlineData("u", "U")]
     [InlineData("D", null)]
     [InlineData("WS", null)]
-    [InlineData("Del", null)]
+    [InlineData("Del", "Del")]
+    [InlineData("del", "Del")]
+    [InlineData("Del*", "Del")]
+    [InlineData("DEL", "Del")]
     [InlineData("S", null)]
-    [InlineData("C", null)]
+    [InlineData("C", "C")]
+    [InlineData("c", "C")]
     [InlineData("U/", "1")]
     [InlineData("D/", "1")]
     [InlineData("WS/", "1")]
-    public void MapFromGrafikWpis_MapsOnlyWorkAndVacation(string? typ, string? expected)
+    public void MapFromGrafikWpis_MapsWorkVacationDelegationAndSick(string? typ, string? expected)
     {
         Assert.Equal(expected, GrafikNurkowyConstants.MapFromGrafikWpis(typ));
     }

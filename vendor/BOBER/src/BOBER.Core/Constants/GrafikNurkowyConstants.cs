@@ -12,6 +12,8 @@ public static class GrafikNurkowyConstants
 
     public const string WartoscWPracy = "1";
     public const string WartoscUrlop = "U";
+    public const string WartoscDelegacja = "Del";
+    public const string WartoscChory = "C";
 
     public const string FunkcjaKpp = "KPP";
     public const string FunkcjaNurek = "nurek";
@@ -82,7 +84,7 @@ public static class GrafikNurkowyConstants
     /// <summary>
     /// Mapuje wpis z grafiku służb na wartość w grafiku nurkowym.
     /// Pusta komórka / „?” / Oddaje → „1”; urlop (także U.) → „U”;
-    /// pozostałe statusy → brak wartości.
+    /// Del / Del* → „Del”; C → „C”; pozostałe statusy → brak wartości.
     /// </summary>
     public static string? MapFromGrafikWpis(string? typWpisu)
     {
@@ -97,6 +99,14 @@ public static class GrafikNurkowyConstants
 
         if (GrafikWpisTypy.JestUrlopem(typWpisu))
             return WartoscUrlop;
+
+        var bazowy = GrafikWpisTypy.BazowyKod(typWpisu);
+        if (bazowy.Equals(GrafikWpisTypy.Delegacja, StringComparison.OrdinalIgnoreCase)
+            || bazowy.Equals("DEL", StringComparison.OrdinalIgnoreCase))
+            return WartoscDelegacja;
+
+        if (bazowy.Equals(GrafikWpisTypy.Chory, StringComparison.OrdinalIgnoreCase))
+            return WartoscChory;
 
         return null;
     }

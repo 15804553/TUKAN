@@ -16,6 +16,7 @@ public partial class LoginWindow : Window
         InitializeComponent();
         _tukanServices = tukanServices;
         _loginController = new LoginController(tukanServices.Chomik);
+        ApplyInstallationTitle();
         Closing += (_, _) =>
         {
             if (DialogResult is null)
@@ -24,6 +25,16 @@ public partial class LoginWindow : Window
             }
         };
         Loaded += OnLoaded;
+    }
+
+    private void ApplyInstallationTitle()
+    {
+        var installation = InstallationNameStore.Read();
+        if (string.IsNullOrEmpty(installation))
+            return;
+
+        Title = $"TUKAN — {installation}";
+        TitleBar.Title = $"{installation} · Logowanie";
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)

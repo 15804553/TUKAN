@@ -19,6 +19,7 @@ public partial class TukanSettingsView : UserControl
     private RatownikMedycznyUstawieniaView? _ratownikMedycznySettingsView;
 
     public event EventHandler? SettingsSaved;
+    public event EventHandler? InstallationNameChanged;
 
     public TukanSettingsView(TukanAppServices tukanServices, DashboardController dashboardController)
     {
@@ -73,6 +74,7 @@ public partial class TukanSettingsView : UserControl
 
         var pathsControl = new ExportPathsSettingsControl(_tukanServices.Bober.Settings);
         pathsControl.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+        pathsControl.InstallationNameChanged += (_, _) => InstallationNameChanged?.Invoke(this, EventArgs.Empty);
         ExportPathsHost.Content = pathsControl;
         SelectDefaultTab();
     }

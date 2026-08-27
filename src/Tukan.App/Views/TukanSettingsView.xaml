@@ -55,7 +55,7 @@
         <TabItem x:Name="KalendarzTab" Header="Kalendarz" Visibility="Collapsed">
             <ContentControl x:Name="KalendarzSettingsHost" />
         </TabItem>
-        <TabItem x:Name="ExportPathsTab" Header="Ścieżki eksportu" Visibility="Collapsed">
+        <TabItem x:Name="ExportPathsTab" Header="Instalacja" Visibility="Collapsed">
             <ContentControl x:Name="ExportPathsHost" />
         </TabItem>
         <TabItem x:Name="GuestAuditTab" Header="Konto Gość" Visibility="Collapsed">

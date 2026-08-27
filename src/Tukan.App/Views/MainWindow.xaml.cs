@@ -484,6 +484,8 @@ public partial class MainWindow : Window
             _unifiedSettingsView ??= new TukanSettingsView(_tukanServices, _dashboardController);
             _unifiedSettingsView.SettingsSaved -= OnChomikSettingsSaved;
             _unifiedSettingsView.SettingsSaved += OnChomikSettingsSaved;
+            _unifiedSettingsView.InstallationNameChanged -= OnInstallationNameChanged;
+            _unifiedSettingsView.InstallationNameChanged += OnInstallationNameChanged;
             _unifiedSettingsView.SelectDefaultTab();
             NavigateTo(_unifiedSettingsView, "Ustawienia", SettingsButton);
         }
@@ -675,11 +677,30 @@ public partial class MainWindow : Window
     private void UpdateTitleBarAccount()
     {
         TitleBar.Title = GetLoggedInAccountTitle();
+        Title = FormatWindowTitle(GetLoggedInAccountTitle());
     }
+
+    private void OnInstallationNameChanged(object? sender, EventArgs e) =>
+        UpdateTitleBarAccount();
 
     private string GetLoggedInAccountTitle()
     {
-        return _tukanServices.Chomik.Auth.CurrentUser?.Login ?? string.Empty;
+        var login = _tukanServices.Chomik.Auth.CurrentUser?.Login ?? string.Empty;
+        var installation = InstallationNameStore.Read();
+        if (string.IsNullOrEmpty(installation))
+            return login;
+
+        return string.IsNullOrEmpty(login)
+            ? installation
+            : $"{installation} · {login}";
+    }
+
+    private static string FormatWindowTitle(string accountTitle)
+    {
+        const string baseTitle = "TUKAN — Personel · Grafik · Rozkazy";
+        return string.IsNullOrEmpty(accountTitle)
+            ? baseTitle
+            : $"TUKAN — {accountTitle}";
     }
 
     private void HighlightSidebarButton(Button? activeButton)
