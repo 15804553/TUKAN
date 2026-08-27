@@ -167,8 +167,8 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
             if (_editor.CzyKonfliktPodstawowy(value.Id, _samochod.Samochod.Id, Pozycja))
             {
                 SkrybekMessageBox.ShowWarning(
-                    $"{value.StopienINazwisko} jest już przypisany/a do innego pojazdu podstawowego.\n" +
-                    "Ta sama osoba nie może siedzieć na dwóch pojazdach podstawowych.",
+                    $"{value.StopienINazwisko} jest już przypisany/a na innym miejscu pojazdu podstawowego.\n" +
+                    PodzialBojowyRules.KomunikatKonfliktMiejsc,
                     "Konflikt pojazdów podstawowych");
                 OnPropertyChanged(nameof(WybranaOsoba));
                 OnPropertyChanged(nameof(WybranyItem));
@@ -218,6 +218,8 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
 
     private void OdswiezPozycjePoZmianieObsady()
     {
+        // Najpierw inne miejsca tego samego pojazdu (ta sama osoba nie może się powtórzyć),
+        // potem pozostałe pojazdy podstawowe.
         _samochod.OdswiezWszystkiePozycje();
 
         if (_samochod.CzyPodstawowy)
@@ -239,8 +241,8 @@ public sealed class PozycjaSamochoduViewModel : ObservableObject
 
     /// <summary>
     /// Odświeża listę dostępnych osób — tylko osoby spełniające wymagania pozycji (1.D / 2.K).
-    /// Na pojazdach podstawowych ukrywa osoby już przypisane do innego pojazdu podstawowego
-    /// oraz osobę wpisaną na stanowisko PA.
+    /// Na pojazdach podstawowych ukrywa osoby już zajęte na innym miejscu pojazdu podstawowego
+    /// (ten sam pojazd lub inny) oraz osobę wpisaną na stanowisko PA.
     /// </summary>
     public void OdswiezDostepneOsoby()
     {

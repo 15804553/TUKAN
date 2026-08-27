@@ -257,9 +257,8 @@
                                         ToolTip="Data wystawienia rozkazu — ustawia „Na dzień” o 3 dni do przodu (cykl zmian) i numer rozkazu." />
                         </StackPanel>
 
-                        <!-- Przyciski akcji -->
+                        <!-- Przyciski akcji (lewa grupa: status / odblokuj pojedynczy / zapisz) -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
-                            <!-- Akceptacja rozkazu (wymaganie 3) -->
                             <Border Background="#2E7D32" CornerRadius="4" Padding="10,5"
                                     Margin="0,0,8,0"
                                     Visibility="{Binding CzyZatwierdzony, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -267,13 +266,6 @@
                                            FontWeight="Bold" FontSize="12"
                                            Foreground="White" />
                             </Border>
-                            <Button x:Name="BtnZatwierdzRozkaz"
-                                    Content="✔  Zatwierdź rozkaz"
-                                    Style="{StaticResource PrimaryButton}"
-                                    Background="#2E7D32"
-                                    Command="{Binding AkceptujRozkazCommand}"
-                                    Visibility="Collapsed"
-                                    Margin="0,0,8,0" />
                             <Button x:Name="BtnOdblokujRozkaz"
                                     Content="🔓  Odblokuj"
                                     Style="{StaticResource SecondaryButton}"
@@ -286,10 +278,47 @@
                                     Command="{Binding ZapiszCommand}"
                                     IsEnabled="{Binding IsReadOnly, Converter={StaticResource InverseBoolConverter}}" />
                         </StackPanel>
-                        <Button Grid.Column="3"
-                                Content="📄  Eksport Word"
-                                Style="{StaticResource SecondaryButton}"
-                                Command="{Binding EksportujDoWordCommand}" />
+                        <!-- Prawa grupa: combo Zatwierdź (DCA) + Eksport Word (zmiany) -->
+                        <StackPanel Grid.Column="3"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Right">
+                            <Grid x:Name="BtnZatwierdzCombo" Visibility="Collapsed" Margin="0,0,8,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0"
+                                        Content="✔  Zatwierdź"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Background="#2E7D32"
+                                        Command="{Binding AkceptujRozkazCommand}"
+                                        IsEnabled="{Binding MozeAkceptowac}"
+                                        Padding="16,10,10,10"
+                                        ToolTip="Zatwierdź bieżący rozkaz" />
+                                <Button x:Name="BtnZatwierdzDropdown"
+                                        Grid.Column="1"
+                                        Content="▼"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Background="#1B5E20"
+                                        Padding="10,10"
+                                        Click="ZatwierdzDropdown_Click"
+                                        ToolTip="Więcej opcji zatwierdzania">
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="✔  Zatwierdź"
+                                                      Click="ZatwierdzMenuItem_Click" />
+                                            <MenuItem Header="✔  Zatwierdź wszystkie"
+                                                      Click="ZatwierdzWszystkieMenuItem_Click" />
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                </Button>
+                            </Grid>
+                            <Button x:Name="BtnEksportWord"
+                                    Content="📄  Eksport Word"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Command="{Binding EksportujDoWordCommand}" />
+                        </StackPanel>
                     </Grid>
                 </Border>
 

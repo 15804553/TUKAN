@@ -174,6 +174,34 @@ public sealed class RozkazService
         SkrybekLog.Info($"Status rozkazu Id={id} zmieniony na {status}");
     }
 
+    /// <summary>
+    /// Zatwierdza wszystkie robocze rozkazy w roku; gdy brak roboczych — odblokowuje wszystkie zatwierdzone.
+    /// </summary>
+    /// <returns>Liczba zmienionych rozkazów oraz czy wykonano zatwierdzenie (true) czy odblokowanie (false).</returns>
+    public async Task<(int zmienionych, bool zatwierdzono)> ZatwierdzLubOdblokujWszystkieAsync(int rok)
+    {
+        var lista = await _repo.GetByRokAsync(rok);
+        if (lista.Count == 0)
+            return (0, true);
+
+        if (RozkazZatwierdzanieRules.CzyZatwierdzicWszystkie(lista))
+        {
+            var doZatwierdzenia = RozkazZatwierdzanieRules.FiltrujDoZatwierdzenia(lista);
+            foreach (var r in doZatwierdzenia)
+                await UpdateStatusAsync(r.Id, StatusRozkazu.Zatwierdzony);
+
+            SkrybekLog.Info($"Zatwierdzono zbiorczo {doZatwierdzenia.Count} rozkazów za rok {rok}");
+            return (doZatwierdzenia.Count, true);
+        }
+
+        var doOdblokowania = RozkazZatwierdzanieRules.FiltrujDoOdblokowania(lista);
+        foreach (var r in doOdblokowania)
+            await UpdateStatusAsync(r.Id, StatusRozkazu.Roboczy);
+
+        SkrybekLog.Info($"Odblokowano zbiorczo {doOdblokowania.Count} rozkazów za rok {rok}");
+        return (doOdblokowania.Count, false);
+    }
+
     public async Task UpdateSamochodySnapshotAsync(int id, string snapshotJson)
         => await _repo.UpdateSamochodySnapshotAsync(id, snapshotJson);
 
@@ -191,24 +219,21 @@ public sealed class RozkazService
     }
 
     /// <summary>
-    /// Sprawdza konflikt: czy dana osoba jest już przypisana do innego pojazdu podstawowego.
-    /// Zwraca true jeśli przypisanie jest dozwolone.
+    /// Sprawdza konflikt: czy dana osoba jest już na innym miejscu pojazdu podstawowego
+    /// (ten sam pojazd albo inny podstawowy). Zwraca true, jeśli przypisanie jest dozwolone.
     /// </summary>
     public static bool MoznaAssignowacDoPodstawowego(
         RozkazDzienny rozkaz,
         int funkcjonariuszId,
         int docelowySamochodId,
+        int docelowaPozycja,
         IEnumerable<Samochod> wszystkieSamochody)
-    {
-        var podstawoweIds = wszystkieSamochody
-            .Where(s => s.CzyPodstawowy && s.Id != docelowySamochodId)
-            .Select(s => s.Id)
-            .ToHashSet();
-
-        return !rozkaz.PodzialBojowy.Any(p =>
-            p.FunkcjonariuszId == funkcjonariuszId &&
-            podstawoweIds.Contains(p.SamochodId));
-    }
+        => !PodzialBojowyRules.CzyKonfliktPodstawowy(
+            rozkaz.PodzialBojowy,
+            wszystkieSamochody,
+            funkcjonariuszId,
+            docelowySamochodId,
+            docelowaPozycja);
 
     public static void ValidateSluzba(RozkazDzienny rozkaz)
     {
@@ -244,21 +269,12 @@ public sealed class RozkazService
             }
         }
 
+        var komunikatDuplikatu = PodzialBojowyRules.ZnajdzKomunikatDuplikatuNaPodstawowych(
+            rozkaz.PodzialBojowy, samochody);
+        if (komunikatDuplikatu is not null)
+            throw new InvalidOperationException(komunikatDuplikatu);
+
         var podstawoweIds = samochody.Where(s => s.CzyPodstawowy).Select(s => s.Id).ToHashSet();
-        var duplikaty = rozkaz.PodzialBojowy
-            .Where(p => p.FunkcjonariuszId.HasValue && podstawoweIds.Contains(p.SamochodId))
-            .GroupBy(p => p.FunkcjonariuszId!.Value)
-            .Where(g => g.Count() > 1)
-            .ToList();
-
-        if (duplikaty.Count > 0)
-        {
-            var nazwisko = duplikaty[0].First().Nazwisko;
-            throw new InvalidOperationException(
-                $"Osoba {nazwisko} jest przypisana do więcej niż jednego pojazdu podstawowego. " +
-                "Ta sama osoba nie może siedzieć na dwóch pojazdach podstawowych.");
-        }
-
         var paIds = rozkaz.Sluzba
             .Where(s => s.Stanowisko == StanowiskoSluzby.DyzurnyPAJRG && s.FunkcjonariuszId.HasValue)
             .Select(s => s.FunkcjonariuszId!.Value)

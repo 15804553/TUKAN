@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using SKRYBEK.App.Helpers;
 using SKRYBEK.App.ViewModels;
@@ -37,6 +38,34 @@ public partial class RozkazEditorView : UserControl
 
         var group = FindDataContext<NieobecniGroupViewModel>(sender as DependencyObject);
         group?.UsunNieobecnegoCommand.Execute(nieobecny);
+    }
+
+    private void ZatwierdzDropdown_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { ContextMenu: { } menu } btn)
+        {
+            return;
+        }
+
+        menu.PlacementTarget = btn;
+        menu.Placement = PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
+    private void ZatwierdzMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is RozkazEditorViewModel { MozeAkceptowac: true } vm)
+        {
+            _ = vm.AkceptujRozkazCommand.ExecuteAsync(null);
+        }
+    }
+
+    private void ZatwierdzWszystkieMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is RozkazEditorViewModel vm)
+        {
+            _ = vm.AkceptujWszystkieCommand.ExecuteAsync(null);
+        }
     }
 
     private static T? FindDataContext<T>(DependencyObject? start) where T : class
@@ -85,20 +114,22 @@ public partial class RozkazEditorView : UserControl
         }
 
         var showPersonnel = SkrybekLoginAccess.ShowPersonnelPanel(_loggedInLogin);
-        var showSave = SkrybekLoginAccess.ShowSaveButton(_loggedInLogin);
-        var showApprove = SkrybekLoginAccess.ShowApproveButton(
-            _loggedInLogin, _canEditAll, editorVm?.MozeAkceptowac ?? false);
+        var showSave = SkrybekLoginAccess.ShowSaveButton(_loggedInLogin, _canEditAll);
+        var showApproveCombo = SkrybekLoginAccess.ShowApproveCombo(_loggedInLogin, _canEditAll);
         var showUnlock = SkrybekLoginAccess.ShowUnlockButton(
             _loggedInLogin, _canEditAll, editorVm?.MozeOdblokować ?? false);
+        var showExport = SkrybekLoginAccess.ShowExportWordButton(_canEditAll);
 
         PersonelPanelHost.Visibility = showPersonnel ? Visibility.Visible : Visibility.Collapsed;
         PersonelColumn.Width = showPersonnel ? GridLength.Auto : new GridLength(0);
         BtnZapiszRozkaz.Visibility = showSave ? Visibility.Visible : Visibility.Collapsed;
-        BtnZatwierdzRozkaz.Visibility = showApprove ? Visibility.Visible : Visibility.Collapsed;
+        BtnZatwierdzCombo.Visibility = showApproveCombo ? Visibility.Visible : Visibility.Collapsed;
         BtnOdblokujRozkaz.Visibility = showUnlock ? Visibility.Visible : Visibility.Collapsed;
+        BtnEksportWord.Visibility = showExport ? Visibility.Visible : Visibility.Collapsed;
 
         SkrybekLog.Info(
             $"RozkazEditorView.ApplyLoggedInUserAccess: login='{_loggedInLogin}', " +
-            $"personel={showPersonnel}, zapisz={showSave}, zatwierdz={showApprove}, odblokuj={showUnlock}");
+            $"personel={showPersonnel}, zapisz={showSave}, zatwierdzCombo={showApproveCombo}, " +
+            $"odblokuj={showUnlock}, eksport={showExport}");
     }
 }

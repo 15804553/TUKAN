@@ -13,7 +13,8 @@ public sealed partial class NieobecnyViewModel : ObservableObject
     [ObservableProperty] private TypNieobecnosci _typNieobecnosci;
     [ObservableProperty] private Funkcjonariusz? _wybranaOsoba;
 
-    private readonly int? _funkcjonariuszId;
+    private int? _funkcjonariuszId;
+    private readonly IReadOnlyList<Funkcjonariusz> _personel;
 
     public TypNieobecnosci Typ => TypNieobecnosci;
 
@@ -21,21 +22,40 @@ public sealed partial class NieobecnyViewModel : ObservableObject
     {
         _typNieobecnosci = model.TypNieobecnosci;
         _funkcjonariuszId = model.FunkcjonariuszId;
+        _personel = personel as IReadOnlyList<Funkcjonariusz> ?? personel?.ToList() ?? [];
 
-        if (personel is not null)
+        if (_personel.Count > 0)
         {
             _wybranaOsoba = model.FunkcjonariuszId.HasValue
-                ? personel.FirstOrDefault(f => f.Id == model.FunkcjonariuszId)
-                : PersonelSuggestFilter.ZnajdzDokladnie(personel, model.Nazwisko);
+                ? _personel.FirstOrDefault(f => f.Id == model.FunkcjonariuszId)
+                : PersonelSuggestFilter.ZnajdzDokladnie(_personel, model.Nazwisko);
 
             if (_wybranaOsoba is not null)
             {
+                _funkcjonariuszId = _wybranaOsoba.Id;
                 _nazwisko = _wybranaOsoba.StopienINazwisko;
                 return;
             }
         }
 
         _nazwisko = model.Nazwisko;
+    }
+
+    partial void OnNazwiskoChanged(string value)
+    {
+        if (_personel.Count == 0) return;
+        WybranaOsoba = string.IsNullOrWhiteSpace(value)
+            ? null
+            : PersonelSuggestFilter.ZnajdzDokladnie(_personel, value);
+        _funkcjonariuszId = WybranaOsoba?.Id;
+    }
+
+    /// <summary>Aktualizuje kopię na liście wolnej służby bez tworzenia nowego wiersza.</summary>
+    public void ZastosujDane(string nazwisko, Funkcjonariusz? osoba, int? funkcjonariuszId)
+    {
+        _funkcjonariuszId = osoba?.Id ?? funkcjonariuszId;
+        WybranaOsoba = osoba;
+        Nazwisko = nazwisko;
     }
 
     public NieobecnyWSluzbie ToModel()
@@ -54,9 +74,12 @@ public sealed partial class NieobecniGroupViewModel : ObservableObject
     public string Tytul { get; }
     public ObservableCollection<NieobecnyViewModel> Items { get; } = [];
 
+    private IEnumerable<Funkcjonariusz>? _personel;
+
     public NieobecniGroupViewModel(TypNieobecnosci typ, IEnumerable<NieobecnyWSluzbie> initial, IEnumerable<Funkcjonariusz>? personel = null)
     {
         Typ   = typ;
+        _personel = personel;
         Tytul = typ switch
         {
             TypNieobecnosci.Urlop       => "URLOP",
@@ -76,14 +99,17 @@ public sealed partial class NieobecniGroupViewModel : ObservableObject
     /// </summary>
     public void ZaladujZBobera(IEnumerable<NieobecnyWSluzbie> nieobecni, IEnumerable<Funkcjonariusz>? personel = null)
     {
+        if (personel is not null)
+            _personel = personel;
+
         Items.Clear();
         foreach (var n in nieobecni)
-            Items.Add(new NieobecnyViewModel(n, personel));
+            Items.Add(new NieobecnyViewModel(n, _personel));
     }
 
     [RelayCommand]
     private void DodajNieobecnego()
-        => Items.Add(new NieobecnyViewModel(new NieobecnyWSluzbie { TypNieobecnosci = Typ }));
+        => Items.Add(new NieobecnyViewModel(new NieobecnyWSluzbie { TypNieobecnosci = Typ }, _personel));
 
     [RelayCommand]
     private void UsunNieobecnego(NieobecnyViewModel? vm)

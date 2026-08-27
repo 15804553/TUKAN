@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -80,6 +82,51 @@ public partial class GrafikNurkowyView : UserControl
     }
 
     private async void OnRefreshClick(object sender, RoutedEventArgs e) => await ReloadAsync();
+
+    private async void OnOpenExportFolderClick(object sender, RoutedEventArgs e)
+    {
+        if (_controller is null)
+            return;
+
+        try
+        {
+            var exportPath = await _controller.GetExportPathAsync();
+            if (string.IsNullOrWhiteSpace(exportPath))
+            {
+                BoberMessageBox.Show(
+                    OwnerWindow,
+                    "Nie ustawiono katalogu eksportu grafiku nurkowego.\n\n"
+                    + "Ustaw ścieżkę w: Ustawienia → Ścieżki eksportu.",
+                    "Katalog eksportu");
+                return;
+            }
+
+            var dir = exportPath.Trim();
+            if (!Directory.Exists(dir))
+            {
+                var create = BoberMessageBox.Show(
+                    OwnerWindow,
+                    $"Katalog nie istnieje:\n{dir}\n\nUtworzyć i otworzyć?",
+                    "Katalog eksportu",
+                    BoberMessageButtons.YesNo);
+                if (create != MessageBoxResult.Yes)
+                    return;
+
+                Directory.CreateDirectory(dir);
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{dir}\"",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            BoberMessageBox.Show(OwnerWindow, ex.Message, "Błąd");
+        }
+    }
 
     private async void OnApproveClick(object sender, RoutedEventArgs e)
     {

@@ -130,7 +130,8 @@ public sealed partial class PozycjaSluzbyViewModel : ObservableObject
                 if (!dozwolona && _wybranaOsoba?.Id != osoba.Id)
                     continue;
 
-                // DZ i PA nie mogą pojawić się na żadnym innym stanowisku służby (w tym wzajemnie).
+                // DZ i PA nie mogą pojawić się na innym stanowisku służby
+                // (wyjątek: PA + Dowódca działań SGRW-N).
                 if (_editor.CzyOsobaZajetaNaStanowiskuWylaczonym(osoba.Id, Stanowisko)
                     && _wybranaOsoba?.Id != osoba.Id)
                     continue;

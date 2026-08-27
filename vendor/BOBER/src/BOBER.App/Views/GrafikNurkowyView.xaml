@@ -37,6 +37,13 @@
                     <ComboBox x:Name="MonthComboBox"
                               Width="130"
                               SelectionChanged="OnYearOrMonthChanged" />
+                    <Button x:Name="OpenExportFolderButton"
+                            Content="📁  Katalog"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="12,6"
+                            Margin="12,0,0,0"
+                            ToolTip="Otwórz katalog z wyeksportowanymi plikami grafiku nurkowego"
+                            Click="OnOpenExportFolderClick" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button x:Name="RefreshButton"

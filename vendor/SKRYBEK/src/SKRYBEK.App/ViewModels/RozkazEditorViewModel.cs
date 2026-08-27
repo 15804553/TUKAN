@@ -22,6 +22,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     private readonly Dictionary<int, string> _nazwyTypowUprawnien;
     private readonly List<RatownikMedycznyPozycjaUstawienie> _ustawieniaRatownikow;
     private bool _synchronizacjaDat;
+    private readonly DyzurWolnaSluzbaSynchronizer _dyzurSynchronizer = new();
 
     /// <summary>Odstęp cyklu zmian PSP: służba co 3 dni (1 praca, 2 wolne).</summary>
     private const int PrzesuniecieDniHarmonogramu = 3;
@@ -102,7 +103,8 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 
     public bool PokazPrzyciskOdblokuj => MozeOdblokować && !CzyKontoPa;
 
-    public bool PokazPrzyciskZapisz => !CzyKontoPa;
+    /// <summary>Zapisz — nie dla DCA JRG (CanEditAll) ani PA.</summary>
+    public bool PokazPrzyciskZapisz => !CzyKontoPa && !_session.CanEditAll;
 
     public string? NazwaTypuUprawnienia(int id) =>
         _nazwyTypowUprawnien.TryGetValue(id, out var nazwa) ? nazwa : null;
@@ -515,6 +517,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
                 grp.ZaladujZBobera(dlaTypu, _wszyscyZmiany);
             }
 
+            _dyzurSynchronizer.Reset();
             SynchronizujDyzurZWolnaSluzba();
         }
         catch (Exception ex)
@@ -549,6 +552,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(PokazPrzyciskZatwierdz));
         OnPropertyChanged(nameof(PokazPrzyciskOdblokuj));
         StatusMessage = "Rozkaz zatwierdzony — edycja zablokowana.";
+        Saved?.Invoke(this, _rozkaz.Id);
     }
 
     [RelayCommand]
@@ -566,6 +570,101 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(PokazPrzyciskZatwierdz));
         OnPropertyChanged(nameof(PokazPrzyciskOdblokuj));
         StatusMessage = "Rozkaz odblokowany — można edytować.";
+        Saved?.Invoke(this, _rozkaz.Id);
+    }
+
+    [RelayCommand]
+    private async Task AkceptujWszystkieAsync()
+    {
+        if (!_session.CanEditAll) return;
+
+        var rok = _rozkaz.Rok > 0 ? _rozkaz.Rok : RokNumeru;
+        var lista = await ServiceProvider.Services.Rozkaz.GetByRokAsync(rok);
+        if (lista.Count == 0)
+        {
+            SkrybekMessageBox.ShowInfo("Brak rozkazów do zatwierdzenia w wybranym roku.", "Zatwierdź wszystkie");
+            return;
+        }
+
+        var zatwierdzic = RozkazZatwierdzanieRules.CzyZatwierdzicWszystkie(lista);
+        if (zatwierdzic)
+        {
+            var ile = RozkazZatwierdzanieRules.FiltrujDoZatwierdzenia(lista).Count;
+            if (!SkrybekMessageBox.Confirm(
+                    $"Zatwierdzić wszystkie niezatwierdzone rozkazy za rok {rok}?\n\nLiczba rozkazów: {ile}",
+                    "Zatwierdź wszystkie",
+                    SkrybekMessageKind.Question))
+                return;
+
+            // Przed zbiorczym zatwierdzeniem zapisz bieżący roboczy rozkaz (treść + snapshot).
+            if (_rozkaz.Id > 0 && _rozkaz.Status == StatusRozkazu.Roboczy)
+            {
+                BuildModelFromViewModels();
+                await ServiceProvider.Services.Rozkaz.ZapiszAsync(_rozkaz, WszystkieOsoby.ToList());
+                _rozkaz.SamochodySnapshotJson = SamochodySnapshot.Serializuj(_samochody);
+                await ServiceProvider.Services.Rozkaz.UpdateSamochodySnapshotAsync(
+                    _rozkaz.Id, _rozkaz.SamochodySnapshotJson);
+            }
+        }
+        else
+        {
+            var ile = RozkazZatwierdzanieRules.FiltrujDoOdblokowania(lista).Count;
+            if (ile == 0)
+            {
+                SkrybekMessageBox.ShowInfo("Brak zatwierdzonych rozkazów do odblokowania.", "Zatwierdź wszystkie");
+                return;
+            }
+
+            if (!SkrybekMessageBox.Confirm(
+                    $"Odblokować wszystkie zatwierdzone rozkazy za rok {rok}?\n\nLiczba rozkazów: {ile}",
+                    "Odblokuj wszystkie",
+                    SkrybekMessageKind.Warning))
+                return;
+        }
+
+        try
+        {
+            var (zmienionych, zatwierdzono) =
+                await ServiceProvider.Services.Rozkaz.ZatwierdzLubOdblokujWszystkieAsync(rok);
+
+            if (zatwierdzono)
+            {
+                if (_rozkaz.Id > 0)
+                {
+                    _rozkaz.Status = StatusRozkazu.Zatwierdzony;
+                    IsReadOnly = true;
+                }
+
+                StatusMessage = zmienionych == 0
+                    ? "Brak rozkazów do zatwierdzenia."
+                    : $"Zatwierdzono {zmienionych} rozkazów — edycja zablokowana.";
+            }
+            else
+            {
+                if (_rozkaz.Id > 0)
+                {
+                    _rozkaz.Status = StatusRozkazu.Roboczy;
+                    IsReadOnly = _session.IsReadOnly;
+                }
+
+                StatusMessage = zmienionych == 0
+                    ? "Brak rozkazów do odblokowania."
+                    : $"Odblokowano {zmienionych} rozkazów — można edytować.";
+            }
+
+            OnPropertyChanged(nameof(CzyZatwierdzony));
+            OnPropertyChanged(nameof(MozeAkceptowac));
+            OnPropertyChanged(nameof(MozeOdblokować));
+            OnPropertyChanged(nameof(PokazPrzyciskZatwierdz));
+            OnPropertyChanged(nameof(PokazPrzyciskOdblokuj));
+            Saved?.Invoke(this, _rozkaz.Id);
+        }
+        catch (Exception ex)
+        {
+            SkrybekLog.Error("Błąd zbiorczego zatwierdzania/odblokowywania rozkazów", ex);
+            StatusMessage = $"Błąd: {ex.Message}";
+            SkrybekMessageBox.ShowError(ex.Message, "Błąd zatwierdzania");
+        }
     }
 
     /// <summary>Odświeża personel, pojazdy i listy po zamknięciu okna ustawień.</summary>
@@ -792,27 +891,25 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 
     /// <summary>
     /// Zwraca true, gdy osoba jest już przypisana na innym miejscu pojazdu podstawowego
-    /// (w tym na innym pojeździe podstawowym). Jedna osoba może siedzieć tylko na jednym
-    /// samochodzie oznaczonym jako podstawowy.
+    /// — zarówno na innym siedzeniu tego samego pojazdu, jak i na innym pojeździe podstawowym.
     /// </summary>
     public bool CzyKonfliktPodstawowy(int funkcjonariuszId, int docelowySamochodId, int docelowaPozycja)
     {
-        var docelowy = _samochody.FirstOrDefault(s => s.Id == docelowySamochodId);
-        if (docelowy?.CzyPodstawowy != true) return false;
-
-        foreach (var samVm in PodzialBojowy.Where(s => s.CzyPodstawowy))
-        {
-            foreach (var poz in samVm.Pozycje)
+        var obsada = PodzialBojowy
+            .SelectMany(samVm => samVm.Pozycje.Select(poz =>
             {
-                if (poz.WybranaOsoba?.Id != funkcjonariuszId) continue;
-                if (samVm.Samochod.Id == docelowySamochodId && poz.Pozycja == docelowaPozycja)
-                    continue;
+                var model = poz.ToModel();
+                return new PozycjaSamochodu
+                {
+                    SamochodId = samVm.Samochod.Id,
+                    Pozycja = poz.Pozycja,
+                    FunkcjonariuszId = poz.WybranaOsoba?.Id ?? model.FunkcjonariuszId,
+                    Nazwisko = model.Nazwisko
+                };
+            }));
 
-                return true;
-            }
-        }
-
-        return false;
+        return PodzialBojowyRules.CzyKonfliktPodstawowy(
+            obsada, _samochody, funkcjonariuszId, docelowySamochodId, docelowaPozycja);
     }
 
     /// <summary>
@@ -824,7 +921,8 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
                      && s.WybranaOsoba?.Id == funkcjonariuszId);
 
     /// <summary>
-    /// True, gdy osoba jest dowódcą zmiany albo dyżurnym PA na innym stanowisku służby.
+    /// True, gdy osoba jest dowódcą zmiany albo dyżurnym PA na innym stanowisku służby
+    /// (z wyjątkiem dozwolonej pary PA + Dowódca działań SGRW-N).
     /// </summary>
     public bool CzyOsobaZajetaNaStanowiskuWylaczonym(int funkcjonariuszId, StanowiskoSluzby pominStanowisko)
         => PobierzStanowiskoWylaczajaceOsoby(funkcjonariuszId, pominStanowisko) is not null;
@@ -834,16 +932,20 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         => Sluzba.FirstOrDefault(s =>
             s.Stanowisko != pominStanowisko
             && StanowiskoSluzbyRules.CzyStanowiskoWylaczaInneWSluzbie(s.Stanowisko)
-            && s.WybranaOsoba?.Id == funkcjonariuszId);
+            && s.WybranaOsoba?.Id == funkcjonariuszId
+            && !StanowiskoSluzbyRules.CzyDozwolonyWyjatekWylacznosci(s.Stanowisko, pominStanowisko));
 
     /// <summary>
     /// Zdejmuje osobę z pozostałych stanowisk służby (np. po wpisaniu na DZ lub PA).
+    /// Zachowuje wyjątek: PA + Dowódca działań SGRW-N mogą współistnieć.
     /// </summary>
     public void WyczyscOsobeZInnychStanowiskSluzby(int funkcjonariuszId, StanowiskoSluzby pominStanowisko)
     {
         foreach (var poz in Sluzba)
         {
             if (poz.Stanowisko == pominStanowisko)
+                continue;
+            if (StanowiskoSluzbyRules.CzyZachowacPrzyCzyszczeniuWylacznosci(pominStanowisko, poz.Stanowisko))
                 continue;
             if (poz.WybranaOsoba?.Id == funkcjonariuszId)
                 poz.WyczyscOsobe();
@@ -912,7 +1014,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             _rozkaz.RatwnicyMedyczni.Add(ratVm.ToModel());
 
         _rozkaz.Nieobecni.Clear();
-        SynchronizujDyzurZWolnaSluzba();
+        SynchronizujDyzurZWolnaSluzba(wymusNoweWpisy: true);
         foreach (var grp in NieobecniGrupy)
             _rozkaz.Nieobecni.AddRange(grp.GetModele());
 
@@ -952,49 +1054,12 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             SynchronizujDyzurZWolnaSluzba();
     }
 
-    private void SynchronizujDyzurZWolnaSluzba()
+    private void SynchronizujDyzurZWolnaSluzba(bool wymusNoweWpisy = false)
     {
         var dyzurGrp = NieobecniGrupy.FirstOrDefault(g => g.Typ == TypNieobecnosci.DyzurDomowy);
         var wolnaGrp = NieobecniGrupy.FirstOrDefault(g => g.Typ == TypNieobecnosci.CzasWolny);
         if (dyzurGrp is null || wolnaGrp is null) return;
 
-        var wolnaPoId = wolnaGrp.Items
-            .Select(i => i.ToModel())
-            .Where(m => m.FunkcjonariuszId.HasValue)
-            .Select(m => m.FunkcjonariuszId!.Value)
-            .ToHashSet();
-        var wolnaPoNazwisku = wolnaGrp.Items
-            .Select(i => i.ToModel())
-            .Where(m => !string.IsNullOrWhiteSpace(m.Nazwisko))
-            .Select(m => m.Nazwisko.Trim())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var dyzur in dyzurGrp.Items.ToList())
-        {
-            var model = dyzur.ToModel();
-            if (string.IsNullOrWhiteSpace(model.Nazwisko) && model.FunkcjonariuszId is null)
-                continue;
-
-            if (model.FunkcjonariuszId is int fid && wolnaPoId.Contains(fid))
-                continue;
-
-            var nazwisko = model.Nazwisko?.Trim() ?? string.Empty;
-            if (model.FunkcjonariuszId is null &&
-                !string.IsNullOrWhiteSpace(nazwisko) &&
-                wolnaPoNazwisku.Contains(nazwisko))
-                continue;
-
-            wolnaGrp.Items.Add(new NieobecnyViewModel(new NieobecnyWSluzbie
-            {
-                FunkcjonariuszId = model.FunkcjonariuszId,
-                Nazwisko = nazwisko,
-                TypNieobecnosci = TypNieobecnosci.CzasWolny
-            }));
-
-            if (model.FunkcjonariuszId is int noweId)
-                wolnaPoId.Add(noweId);
-            if (!string.IsNullOrWhiteSpace(nazwisko))
-                wolnaPoNazwisku.Add(nazwisko);
-        }
+        _dyzurSynchronizer.Synchronizuj(dyzurGrp.Items, wolnaGrp.Items, _wszyscyZmiany, wymusNoweWpisy);
     }
 }

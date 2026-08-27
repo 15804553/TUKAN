@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="vendor/BOBER/tests/BOBER.Services.Tests/BOBER.Services.Tests.csproj" />
+    <Project Path="vendor/SKRYBEK/tests/SKRYBEK.App.Tests/SKRYBEK.App.Tests.csproj" />
   </Folder>
   <Folder Name="/vendor/CHOMIK/">
     <Project Path="vendor/CHOMIK/src/Chomik.App/Chomik.App.csproj" />

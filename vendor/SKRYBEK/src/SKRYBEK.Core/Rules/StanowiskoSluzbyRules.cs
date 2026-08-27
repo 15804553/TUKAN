@@ -59,19 +59,44 @@ public static class StanowiskoSluzbyRules
     };
 
     /// <summary>
-    /// Dowódca zmiany i dyżurny PA JRG nie mogą pełnić innych funkcji w dziale Służba.
+    /// Dowódca zmiany i dyżurny PA JRG nie mogą pełnić innych funkcji w dziale Służba
+    /// (z wyjątkiem pary PA + Dowódca działań ratowniczych SGRW-N).
     /// Dowódca zmiany może być na pojeździe (podstawowym lub dodatkowym);
     /// dyżurny PA — tylko na dodatkowym.
     /// </summary>
     public static bool CzyStanowiskoWylaczaInneWSluzbie(StanowiskoSluzby stanowisko)
         => stanowisko is StanowiskoSluzby.DowodcaZmiany or StanowiskoSluzby.DyzurnyPAJRG;
 
+    /// <summary>
+    /// Wyjątek od wyłączności: dyżurny PA JRG może jednocześnie być
+    /// dowódcą działań ratowniczych SGRW-N.
+    /// </summary>
+    public static bool CzyDozwolonyWyjatekWylacznosci(
+        StanowiskoSluzby stanowiskoA,
+        StanowiskoSluzby stanowiskoB)
+    {
+        var para = (stanowiskoA, stanowiskoB);
+        return para is
+            (StanowiskoSluzby.DyzurnyPAJRG, StanowiskoSluzby.DowodcaDzialanRatowniczychSGRWN) or
+            (StanowiskoSluzby.DowodcaDzialanRatowniczychSGRWN, StanowiskoSluzby.DyzurnyPAJRG);
+    }
+
+    /// <summary>
+    /// True, gdy przy czyszczeniu obsady po wpisaniu na stanowisko wyłączające
+    /// nie wolno zdejmować wskazanego drugiego stanowiska (wyjątek PA + SGRW-N).
+    /// </summary>
+    public static bool CzyZachowacPrzyCzyszczeniuWylacznosci(
+        StanowiskoSluzby stanowiskoWylaczajace,
+        StanowiskoSluzby stanowiskoDoSprawdzenia)
+        => CzyDozwolonyWyjatekWylacznosci(stanowiskoWylaczajace, stanowiskoDoSprawdzenia);
+
     public static string OpisKonfliktuWylacznosciWSluzbie(string nazwisko, string nazwaStanowiskaWylaczajacego)
         => $"{nazwisko} jest na stanowisku {nazwaStanowiskaWylaczajacego}.\n" +
            "Osoba na tym stanowisku nie może pełnić innych funkcji w dziale Służba.";
 
     /// <summary>
-    /// Zwraca komunikat konfliktu, gdy osoba z DZ lub PA jest też na innym stanowisku służby.
+    /// Zwraca komunikat konfliktu, gdy osoba z DZ lub PA jest też na innym stanowisku służby
+    /// (z wyjątkiem dozwolonej pary PA + Dowódca działań SGRW-N).
     /// </summary>
     public static string? ZnajdzKonfliktWylacznosciWSluzbie(IEnumerable<PozycjaSluzby> sluzba)
     {
@@ -80,7 +105,8 @@ public static class StanowiskoSluzbyRules
         {
             var inne = obsadzone.FirstOrDefault(s =>
                 s.Stanowisko != wylaczajace.Stanowisko
-                && s.FunkcjonariuszId == wylaczajace.FunkcjonariuszId);
+                && s.FunkcjonariuszId == wylaczajace.FunkcjonariuszId
+                && !CzyDozwolonyWyjatekWylacznosci(wylaczajace.Stanowisko, s.Stanowisko));
 
             if (inne is null)
                 continue;
