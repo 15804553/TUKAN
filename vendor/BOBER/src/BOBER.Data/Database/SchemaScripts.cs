@@ -85,6 +85,16 @@ internal static class SchemaScripts
         )
         """,
         """
+        CREATE TABLE ObsadaFunkcjiUwagiMiesieczne (
+            Id AUTOINCREMENT PRIMARY KEY,
+            FunkcjonariuszId LONG NOT NULL,
+            ZmianaId SHORT NOT NULL,
+            Rok SHORT NOT NULL,
+            Miesiac SHORT NOT NULL,
+            Tresc MEMO NOT NULL
+        )
+        """,
+        """
         CREATE TABLE KalendarzWpisy (
             Id AUTOINCREMENT PRIMARY KEY,
             Data DATETIME NOT NULL,

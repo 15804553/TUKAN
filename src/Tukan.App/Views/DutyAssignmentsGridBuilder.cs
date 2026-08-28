@@ -2,6 +2,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 using BOBER.App.Helpers;
 using BOBER.App.ViewModels;
@@ -11,6 +12,9 @@ namespace Tukan.App.Views;
 
 internal static class DutyAssignmentsGridBuilder
 {
+    public const string UwagiColumnHeader = "Uwagi";
+    private const double UwagiWidth = 440;
+
     private static readonly Brush HeaderForeground = UrlopPlanPalette.TitleForegroundBrush;
     private static readonly Brush CellForeground = UrlopPlanPalette.ForegroundBrush;
 
@@ -54,6 +58,67 @@ internal static class DutyAssignmentsGridBuilder
                 CanUserResize = false
             });
         }
+
+        var uwagiColumn = CreateUwagiColumn();
+        grid.Columns.Add(uwagiColumn);
+        uwagiColumn.DisplayIndex = grid.Columns.Count - 1;
+    }
+
+    private static DataGridTemplateColumn CreateUwagiColumn()
+    {
+        return new DataGridTemplateColumn
+        {
+            Header = UwagiColumnHeader,
+            HeaderTemplate = CreateUwagiHeaderTemplate(),
+            CellTemplate = CreateUwagiCellTemplate(),
+            Width = new DataGridLength(UwagiWidth),
+            MinWidth = 160,
+            IsReadOnly = true,
+            CanUserResize = true
+        };
+    }
+
+    private static DataTemplate CreateUwagiHeaderTemplate()
+    {
+        var template = new DataTemplate();
+        var textFactory = new FrameworkElementFactory(typeof(TextBlock));
+        textFactory.SetValue(TextBlock.TextProperty, UwagiColumnHeader);
+        textFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+        textFactory.SetValue(TextBlock.FontSizeProperty, 12.0);
+        textFactory.SetValue(TextBlock.ForegroundProperty, HeaderForeground);
+        textFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+        textFactory.SetValue(TextBlock.TextWrappingProperty, TextWrapping.Wrap);
+        textFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(4, 2, 4, 2));
+        template.VisualTree = textFactory;
+        return template;
+    }
+
+    private static DataTemplate CreateUwagiCellTemplate()
+    {
+        var template = new DataTemplate();
+        var borderFactory = new FrameworkElementFactory(typeof(Border));
+        borderFactory.SetValue(Border.PaddingProperty, new Thickness(4, 2, 4, 2));
+        borderFactory.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+        borderFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        borderFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Stretch);
+        borderFactory.SetValue(FrameworkElement.CursorProperty, Cursors.IBeam);
+        borderFactory.SetBinding(FrameworkElement.ToolTipProperty,
+            new Binding(nameof(DutyAssignmentsRowViewModel.UwagaMiesieczna)));
+
+        var textFactory = new FrameworkElementFactory(typeof(TextBlock));
+        textFactory.SetBinding(TextBlock.TextProperty,
+            new Binding(nameof(DutyAssignmentsRowViewModel.UwagaMiesieczna)));
+        textFactory.SetValue(TextBlock.FontSizeProperty, 12.0);
+        textFactory.SetValue(TextBlock.ForegroundProperty, CellForeground);
+        textFactory.SetValue(TextBlock.TextWrappingProperty, TextWrapping.Wrap);
+        textFactory.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
+        textFactory.SetValue(TextBlock.MaxHeightProperty, 48.0);
+        textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+
+        borderFactory.AppendChild(textFactory);
+        template.VisualTree = borderFactory;
+        return template;
     }
 
     private static Style CreateCenteredTextStyle(FontWeight? fontWeight = null)

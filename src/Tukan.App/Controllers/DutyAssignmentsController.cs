@@ -20,6 +20,8 @@ public sealed class DutyAssignmentsController
 
     public string ShiftName { get; }
 
+    public int ShiftNumber => _shiftNumber;
+
     public int CurrentYear { get; } = DateTime.Today.Year;
 
     public async Task<HashSet<int>> GetWorkDaysForMonthAsync(int year, int month)
@@ -43,11 +45,18 @@ public sealed class DutyAssignmentsController
     {
         // Ta sama kolejność co w grafiku służb (KolejnoscFunkcjonariuszy z BOBER).
         var personnel = await _services.Bober.Funkcjonariusze.GetByZmianaAsync(_shiftNumber);
+        var uwagi = await _services.Bober.ObsadaFunkcji.GetUwagiMonthAsync(_shiftNumber, year, month);
+        var uwagiLookup = uwagi
+            .GroupBy(u => u.FunkcjonariuszId)
+            .ToDictionary(g => g.Key, g => g.Last().Tresc);
+
         var rows = personnel
             .Select((person, index) => new DutyAssignmentsRowViewModel
             {
                 Numer = index + 1,
-                ImieNazwisko = person.PelneImieNazwisko
+                FunkcjonariuszId = person.Id,
+                ImieNazwisko = person.PelneImieNazwisko,
+                UwagaMiesieczna = uwagiLookup.TryGetValue(person.Id, out var uwaga) ? uwaga : string.Empty
             })
             .ToList();
 
@@ -95,6 +104,25 @@ public sealed class DutyAssignmentsController
         }
 
         return fullOrders;
+    }
+
+    public async Task SetUwagaMiesiecznaAsync(
+        int funkcjonariuszId,
+        int year,
+        int month,
+        string tresc,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmed = tresc?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            await _services.Bober.ObsadaFunkcji.ClearUwagaMiesiecznaAsync(
+                funkcjonariuszId, _shiftNumber, year, month, cancellationToken);
+            return;
+        }
+
+        await _services.Bober.ObsadaFunkcji.SetUwagaMiesiecznaAsync(
+            funkcjonariuszId, _shiftNumber, year, month, trimmed, cancellationToken);
     }
 
     private static Dictionary<string, DutyAssignmentsRowViewModel> BuildNameLookup(

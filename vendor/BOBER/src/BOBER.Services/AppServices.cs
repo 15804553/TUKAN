@@ -7,6 +7,7 @@ using BOBER.Services.Export;
 using BOBER.Services.Grafik;
 using BOBER.Services.GrafikNurkowy;
 using BOBER.Services.Kalendarz;
+using BOBER.Services.ObsadaFunkcji;
 using BOBER.Services.Personnel;
 using BOBER.Services.Settings;
 using BOBER.Services.Urlop;
@@ -29,6 +30,7 @@ public sealed class AppServices
         var grafikRepository = new GrafikRepository(boberFactory);
         var grafikNotatkaRepository = new GrafikNotatkaRepository(boberFactory);
         var grafikUwagaMiesiecznaRepository = new GrafikUwagaMiesiecznaRepository(boberFactory);
+        var obsadaFunkcjiUwagaRepository = new ObsadaFunkcjiUwagaMiesiecznaRepository(boberFactory);
         var urlopPlanRepository = new UrlopPlanRepository(boberFactory);
         var grafikNurkowyRepository = new GrafikNurkowyRepository(boberFactory);
         var kalendarzRepository = new KalendarzRepository(boberFactory);
@@ -46,6 +48,7 @@ public sealed class AppServices
 
         var calendarEngine = new ShiftCalendarEngine(ustawieniaRepository);
         Grafik = new GrafikService(grafikRepository, grafikNotatkaRepository, grafikUwagaMiesiecznaRepository);
+        ObsadaFunkcji = new ObsadaFunkcjiService(obsadaFunkcjiUwagaRepository);
         Calendar = calendarEngine;
         Funkcjonariusze = new FunkcjonariuszService(chomikRepository, kolejnoscRepository);
         Export = new ExportService();
@@ -77,6 +80,7 @@ public sealed class AppServices
     public IKoloryRepository Kolory { get; }
     public IKolejnoscRepository Kolejnosc { get; }
     public IGrafikService Grafik { get; }
+    public IObsadaFunkcjiService ObsadaFunkcji { get; }
     public ShiftCalendarEngine Calendar { get; }
     public IFunkcjonariuszService Funkcjonariusze { get; }
     public ExportService Export { get; }

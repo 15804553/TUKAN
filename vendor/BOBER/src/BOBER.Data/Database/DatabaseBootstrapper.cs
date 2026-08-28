@@ -61,6 +61,7 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         await MigrateGrafikNurkowyZatwierdzeniaTableAsync(connection, cancellationToken);
         await MigrateGrafikNotatkiTableAsync(connection, cancellationToken);
         await MigrateGrafikUwagiMiesieczneTableAsync(connection, cancellationToken);
+        await MigrateObsadaFunkcjiUwagiMiesieczneTableAsync(connection, cancellationToken);
         await MigrateKalendarzTablesAsync(connection, cancellationToken);
         await MigrateKalendarzKoloryAsync(connection, cancellationToken);
         await MigrateKalendarzEntryTypesAsync(connection, cancellationToken);
@@ -213,6 +214,24 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         await ExecuteDdlAsync(connection,
             """
             CREATE TABLE GrafikUwagiMiesieczne (
+                Id AUTOINCREMENT PRIMARY KEY,
+                FunkcjonariuszId LONG NOT NULL,
+                ZmianaId SHORT NOT NULL,
+                Rok SHORT NOT NULL,
+                Miesiac SHORT NOT NULL,
+                Tresc MEMO NOT NULL
+            )
+            """,
+            cancellationToken);
+    }
+
+    private static async Task MigrateObsadaFunkcjiUwagiMiesieczneTableAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await ExecuteDdlAsync(connection,
+            """
+            CREATE TABLE ObsadaFunkcjiUwagiMiesieczne (
                 Id AUTOINCREMENT PRIMARY KEY,
                 FunkcjonariuszId LONG NOT NULL,
                 ZmianaId SHORT NOT NULL,

@@ -1,8 +1,12 @@
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using BOBER.App.Helpers;
+using BOBER.App.Views.Chrome;
 using Tukan.App.Controllers;
+using Tukan.App.ViewModels;
 using Tukan.App.Views.Chrome;
 
 namespace Tukan.App.Views;
@@ -139,6 +143,8 @@ public partial class DutyAssignmentsView : UserControl
             Name = $"DutyAssignmentsGrid_{month}",
             IsReadOnly = true
         };
+        dataGrid.PreviewMouseLeftButtonDown += OnDataGridPreviewMouseLeftButtonDown;
+        dataGrid.MouseDoubleClick += OnDataGridDoubleClick;
 
         return new ScrollViewer
         {
@@ -181,5 +187,116 @@ public partial class DutyAssignmentsView : UserControl
             .FirstOrDefault(item => Equals(item.Tag, month));
 
         return (tab?.Content as ScrollViewer)?.Content as DataGrid;
+    }
+
+    private void OnDataGridPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid || _controller is null)
+        {
+            return;
+        }
+
+        var hit = VisualTreeHelper.HitTest(grid, e.GetPosition(grid));
+        if (hit?.VisualHit is null)
+        {
+            return;
+        }
+
+        var cell = FindVisualParent<DataGridCell>(hit.VisualHit);
+        if (cell is null || !IsUwagiColumn(cell.Column))
+        {
+            return;
+        }
+
+        if (cell.DataContext is not DutyAssignmentsRowViewModel vm)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        _ = EditUwagaMiesiecznaAsync(grid, vm, (int)grid.Tag);
+    }
+
+    private void OnDataGridDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid || _controller is null)
+        {
+            return;
+        }
+
+        var hit = VisualTreeHelper.HitTest(grid, e.GetPosition(grid));
+        if (hit?.VisualHit is null)
+        {
+            return;
+        }
+
+        var cell = FindVisualParent<DataGridCell>(hit.VisualHit);
+        if (cell is null || !IsUwagiColumn(cell.Column))
+        {
+            return;
+        }
+
+        if (cell.DataContext is not DutyAssignmentsRowViewModel vm)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        _ = EditUwagaMiesiecznaAsync(grid, vm, (int)grid.Tag);
+    }
+
+    private async Task EditUwagaMiesiecznaAsync(DataGrid grid, DutyAssignmentsRowViewModel vm, int month)
+    {
+        if (_controller is null)
+        {
+            return;
+        }
+
+        var dialog = new GrafikNotatkaDialog
+        {
+            Owner = Window.GetWindow(this),
+            DialogTitle = "Uwagi",
+            NoteText = vm.UwagaMiesieczna
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var tresc = dialog.NoteText;
+            await _controller.SetUwagaMiesiecznaAsync(vm.FunkcjonariuszId, _year, month, tresc);
+            vm.UwagaMiesieczna = tresc?.Trim() ?? string.Empty;
+            grid.Items.Refresh();
+        }
+        catch (Exception ex)
+        {
+            TukanMessageBox.Show(Window.GetWindow(this), $"Nie udało się zapisać uwagi:\n\n{ex.Message}", "TUKAN");
+        }
+    }
+
+    private static bool IsUwagiColumn(DataGridColumn? column) =>
+        column?.Header is string header
+        && header.Equals(DutyAssignmentsGridBuilder.UwagiColumnHeader, StringComparison.Ordinal);
+
+    private static T? FindVisualParent<T>(DependencyObject child) where T : DependencyObject
+    {
+        while (true)
+        {
+            if (child is T match)
+            {
+                return match;
+            }
+
+            var parent = VisualTreeHelper.GetParent(child);
+            if (parent is null)
+            {
+                return null;
+            }
+
+            child = parent;
+        }
     }
 }

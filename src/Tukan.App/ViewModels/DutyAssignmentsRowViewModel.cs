@@ -9,7 +9,12 @@ public sealed class DutyAssignmentsRowViewModel
 
     public int Numer { get; init; }
 
+    public int FunkcjonariuszId { get; init; }
+
     public string ImieNazwisko { get; init; } = string.Empty;
+
+    /// <summary>Tekst uwagi miesięcznej w ostatniej kolumnie (per pracownik / miesiąc).</summary>
+    public string UwagaMiesieczna { get; set; } = string.Empty;
 
     public string this[int day] => _cells.TryGetValue(day, out var value) ? value : string.Empty;
 

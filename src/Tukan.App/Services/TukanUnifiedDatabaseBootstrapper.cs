@@ -17,7 +17,7 @@ public static class TukanUnifiedDatabaseBootstrapper
     /// <summary>
     /// Podbij przy każdej zmianie schematu CHOMIK/BOBER/SKRYBEK, która wymaga EnsureReady.
     /// </summary>
-    public const string SchemaVersion = "20260802-pa-no-password";
+    public const string SchemaVersion = "20260828-obsada-funkcji-uwagi";
 
     private const string SchemaVersionKey = "TukanSchemaVersion";
 
