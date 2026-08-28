@@ -74,6 +74,32 @@ public sealed class SettingsService(IUstawieniaRepository ustawieniaRepository) 
     public Task SetExportPathGrafikNurkowyAsync(string path, CancellationToken cancellationToken = default) =>
         ustawieniaRepository.SetAsync("ExportPathGrafikNurkowy", path, cancellationToken);
 
+    public async Task<string> GetBackupPathAsync(CancellationToken cancellationToken = default) =>
+        await ustawieniaRepository.GetAsync("SciezkaBackupu", cancellationToken) ?? string.Empty;
+
+    public Task SetBackupPathAsync(string path, CancellationToken cancellationToken = default) =>
+        ustawieniaRepository.SetAsync("SciezkaBackupu", path, cancellationToken);
+
+    public async Task<int> GetBackupRetentionMonthsAsync(CancellationToken cancellationToken = default)
+    {
+        var raw = await ustawieniaRepository.GetAsync("RetencjaBackupuMiesiace", cancellationToken);
+        return NormalizujRetencjeBackupu(raw);
+    }
+
+    public Task SetBackupRetentionMonthsAsync(int months, CancellationToken cancellationToken = default) =>
+        ustawieniaRepository.SetAsync(
+            "RetencjaBackupuMiesiace",
+            NormalizujRetencjeBackupu(months.ToString()).ToString(),
+            cancellationToken);
+
+    private static int NormalizujRetencjeBackupu(string? raw)
+    {
+        if (int.TryParse(raw, out var parsed) && parsed is 1 or 3 or 6 or 9 or 12)
+            return parsed;
+
+        return 6;
+    }
+
     public Task<bool> GetLessColorAsync(CancellationToken cancellationToken = default) =>
         GetBoolSettingAsync("LessColor", defaultValue: true, cancellationToken);
 

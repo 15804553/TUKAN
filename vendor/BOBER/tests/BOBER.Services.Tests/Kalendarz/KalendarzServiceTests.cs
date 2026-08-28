@@ -394,6 +394,12 @@ public sealed class KalendarzServiceTests
         public Task SetExportPathGrafikSluzbAsync(string path, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<string> GetExportPathGrafikNurkowyAsync(CancellationToken cancellationToken = default) => Task.FromResult(string.Empty);
         public Task SetExportPathGrafikNurkowyAsync(string path, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<string> GetBackupPathAsync(CancellationToken cancellationToken = default) => Task.FromResult(string.Empty);
+        public Task SetBackupPathAsync(string path, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<int> GetBackupRetentionMonthsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(6);
+        public Task SetBackupRetentionMonthsAsync(int months, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
         public Task<bool> GetLessColorAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<GrafikRowColorSettings> GetGrafikRowColorSettingsAsync(CancellationToken cancellationToken = default) =>

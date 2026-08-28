@@ -22,6 +22,41 @@
                     Margin="0,0,0,28"
                     Click="OnSaveInstallationNameClick" />
 
+            <TextBlock Text="Kopia zapasowa bazy danych"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource TextBrush}"
+                       Margin="0,0,0,8" />
+            <TextBlock Text="Katalog, w którym zapisywane są pliki kopii zapasowej (.bck). Ustawienie wspólne dla całej jednostki. Puste pole oznacza katalog pliku bazy danych."
+                       Foreground="{StaticResource MutedTextBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,12" />
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="BackupPathTextBox" />
+                <Button Grid.Column="1"
+                        Content="Przeglądaj…"
+                        Margin="8,0,0,0"
+                        Padding="12,6"
+                        Click="OnBrowseBackupPathClick" />
+            </Grid>
+
+            <TextBlock Text="Retencja kopii zapasowych"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource TextBrush}"
+                       Margin="0,0,0,6" />
+            <TextBlock Text="Pliki .bck starsze niż wybrany okres są automatycznie usuwane po wykonaniu backupu."
+                       Foreground="{StaticResource MutedTextBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,8" />
+            <ComboBox x:Name="BackupRetentionComboBox"
+                      MinWidth="180"
+                      HorizontalAlignment="Left"
+                      Margin="0,0,0,28" />
+
             <TextBlock Text="Ścieżki eksportu"
                        FontSize="18"
                        FontWeight="SemiBold"
@@ -83,7 +118,7 @@
                         Click="OnBrowseGrafikNurkowyClick" />
             </Grid>
 
-            <Button Content="Zapisz ścieżki"
+            <Button Content="Zapisz ustawienia"
                     HorizontalAlignment="Left"
                     Padding="16,8"
                     Style="{StaticResource PrimaryButton}"

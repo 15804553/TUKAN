@@ -21,6 +21,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SKRYBEK.App\SKRYBEK.App.csproj" AdditionalProperties="TukanIntegration=true" />
     <ProjectReference Include="..\..\src\SKRYBEK.Core\SKRYBEK.Core.csproj" />
+    <ProjectReference Include="..\..\src\SKRYBEK.Data\SKRYBEK.Data.csproj" />
+    <ProjectReference Include="..\..\src\SKRYBEK.Services\SKRYBEK.Services.csproj" />
   </ItemGroup>
 
 </Project>

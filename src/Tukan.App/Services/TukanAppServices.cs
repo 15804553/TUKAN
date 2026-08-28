@@ -67,7 +67,7 @@ public sealed class TukanAppServices : IDisposable
         return new TukanAppServices(chomik, bober, guestAudit) { Skrybek = skrybek };
     }
 
-    /// <summary>Backup w tle — nie blokuje okna logowania.</summary>
+    /// <summary>Backup w tle przy starcie — nie blokuje okna logowania.</summary>
     public void StartBackgroundBackup()
     {
         _ = RunBackupSafelyAsync();

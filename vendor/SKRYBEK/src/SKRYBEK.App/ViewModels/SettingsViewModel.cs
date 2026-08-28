@@ -27,6 +27,15 @@ public sealed partial class SettingsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(OpisBackupu))]
     private string _wybranaCzestotliwoscBackupu = CzestotliwoscBackupu.Domyslna;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(OpisBackupu))]
+    private string _katalogBackupu = string.Empty;
+
+    private string KatalogBackupuOpis =>
+        string.IsNullOrWhiteSpace(KatalogBackupu)
+            ? "katalogu pliku bazy danych"
+            : KatalogBackupu;
+
     public IReadOnlyList<CzestotliwoscBackupuOpcja> OpcjeCzestotliwosciBackupu { get; } =
     [
         new(CzestotliwoscBackupu.Codziennie, "Codziennie"),
@@ -36,7 +45,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public string OpisBackupu =>
         $"{BackupService.OpisCzestotliwosci(WybranaCzestotliwoscBackupu)} " +
-        "Pliki backupu są przechowywane w katalogu BACKUP\\ obok bazy z rozszerzeniem .bck.";
+        $"Pliki backupu (.bck) są zapisywane w: {KatalogBackupuOpis}. " +
+        "Katalog i retencję starych kopii ustawia Administrator w Ustawieniach → Instalacja.";
 
     public ObservableCollection<Samochod> Samochody { get; } = [];
     public Array TypySamochodow { get; } = Enum.GetValues<TypSamochodu>();
@@ -72,6 +82,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             NrJrg = await ServiceProvider.Services.UstawieniaRepo.GetAsync(UstawieniaKlucze.NrJRG, "4");
             WybranaCzestotliwoscBackupu = await ServiceProvider.Services.Backup.PobierzCzestotliwoscAsync();
+            KatalogBackupu = await ServiceProvider.Services.Backup.PobierzKatalogBackupuAsync();
 
             var poprzedniId = Wybranysamochod?.Id;
             Wybranysamochod = null;
@@ -266,7 +277,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task OdzyskajBazeZBackupuAsync()
     {
-        var katalog = ServiceProvider.Services.Backup.PobierzKatalogBackupu();
+        var katalog = await ServiceProvider.Services.Backup.PobierzKatalogBackupuAsync();
         System.IO.Directory.CreateDirectory(katalog);
 
         var dialog = new OpenFileDialog

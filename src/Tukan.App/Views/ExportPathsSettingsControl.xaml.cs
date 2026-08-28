@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using BOBER.Services.Settings;
 using Microsoft.Win32;
+using SKRYBEK.Core.Models;
 using Tukan.App.Services;
 using Tukan.App.Views.Chrome;
 
@@ -10,6 +11,8 @@ namespace Tukan.App.Views;
 
 public partial class ExportPathsSettingsControl : UserControl
 {
+    private sealed record RetencjaOpcja(int Miesiace, string Etykieta);
+
     private readonly ISettingsService _settings;
 
     public event EventHandler? SettingsSaved;
@@ -29,6 +32,33 @@ public partial class ExportPathsSettingsControl : UserControl
         RozkazyPathTextBox.Text = await _settings.GetExportPathRozkazyAsync();
         GrafikSluzbPathTextBox.Text = await _settings.GetExportPathGrafikSluzbAsync();
         GrafikNurkowyPathTextBox.Text = await _settings.GetExportPathGrafikNurkowyAsync();
+
+        var backupPath = await _settings.GetBackupPathAsync();
+        BackupPathTextBox.Text = string.IsNullOrWhiteSpace(backupPath)
+            ? PobierzDomyslnyKatalogBackupu()
+            : backupPath;
+
+        InicjalizujRetencjeBackupu();
+        var retencja = await _settings.GetBackupRetentionMonthsAsync();
+        BackupRetentionComboBox.SelectedValue = retencja;
+    }
+
+    private void InicjalizujRetencjeBackupu()
+    {
+        if (BackupRetentionComboBox.Items.Count > 0)
+            return;
+
+        foreach (var miesiace in RetencjaBackupu.DozwoloneMiesiace)
+            BackupRetentionComboBox.Items.Add(new RetencjaOpcja(miesiace, RetencjaBackupu.Etykieta(miesiace)));
+
+        BackupRetentionComboBox.DisplayMemberPath = nameof(RetencjaOpcja.Etykieta);
+        BackupRetentionComboBox.SelectedValuePath = nameof(RetencjaOpcja.Miesiace);
+    }
+
+    private static string PobierzDomyslnyKatalogBackupu()
+    {
+        var dbPath = TukanDatabaseOptions.GetFullPath();
+        return Path.GetDirectoryName(dbPath) ?? AppContext.BaseDirectory;
     }
 
     private void OnBrowseRozkazyClick(object sender, RoutedEventArgs e) =>
@@ -40,11 +70,14 @@ public partial class ExportPathsSettingsControl : UserControl
     private void OnBrowseGrafikNurkowyClick(object sender, RoutedEventArgs e) =>
         BrowseInto(GrafikNurkowyPathTextBox);
 
-    private static void BrowseInto(TextBox target)
+    private void OnBrowseBackupPathClick(object sender, RoutedEventArgs e) =>
+        BrowseInto(BackupPathTextBox, "Wybierz katalog kopii zapasowej bazy danych");
+
+    private static void BrowseInto(TextBox target, string? title = null)
     {
         var dlg = new OpenFolderDialog
         {
-            Title = "Wybierz katalog eksportu"
+            Title = title ?? "Wybierz katalog eksportu"
         };
 
         if (!string.IsNullOrWhiteSpace(target.Text) && Directory.Exists(target.Text))
@@ -88,12 +121,32 @@ public partial class ExportPathsSettingsControl : UserControl
             await _settings.SetExportPathRozkazyAsync(RozkazyPathTextBox.Text.Trim());
             await _settings.SetExportPathGrafikSluzbAsync(GrafikSluzbPathTextBox.Text.Trim());
             await _settings.SetExportPathGrafikNurkowyAsync(GrafikNurkowyPathTextBox.Text.Trim());
+            await _settings.SetBackupPathAsync(NormalizujSciezkeBackupu(BackupPathTextBox.Text));
+            var retencja = BackupRetentionComboBox.SelectedValue is int months
+                ? months
+                : RetencjaBackupu.DomyslnaMiesiecy;
+            await _settings.SetBackupRetentionMonthsAsync(retencja);
             SettingsSaved?.Invoke(this, EventArgs.Empty);
-            TukanMessageBox.Show(Window.GetWindow(this), "Ścieżki eksportu zostały zapisane.", "Ustawienia");
+            TukanMessageBox.Show(Window.GetWindow(this), "Ustawienia zostały zapisane.", "Ustawienia");
         }
         catch (Exception ex)
         {
             TukanMessageBox.Show(Window.GetWindow(this), ex.Message, "Błąd");
         }
+    }
+
+    private static string NormalizujSciezkeBackupu(string path)
+    {
+        var trimmed = path.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+            return string.Empty;
+
+        var domyslny = PobierzDomyslnyKatalogBackupu();
+        return string.Equals(
+            Path.GetFullPath(trimmed),
+            Path.GetFullPath(domyslny),
+            StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : trimmed;
     }
 }

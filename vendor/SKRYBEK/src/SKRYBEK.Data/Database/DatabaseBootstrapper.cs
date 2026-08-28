@@ -170,7 +170,9 @@ public sealed class DatabaseBootstrapper
         {
             ["NrJRG"]               = "4",
             ["OstatniBackup"]       = string.Empty,
-            ["CzestotliwoscBackupu"] = CzestotliwoscBackupu.Domyslna
+            ["CzestotliwoscBackupu"] = CzestotliwoscBackupu.Domyslna,
+            [UstawieniaKlucze.SciezkaBackupu] = string.Empty,
+            [UstawieniaKlucze.RetencjaBackupuMiesiace] = RetencjaBackupu.DomyslnaMiesiecy.ToString()
         };
 
         foreach (var (klucz, wartosc) in defaults)

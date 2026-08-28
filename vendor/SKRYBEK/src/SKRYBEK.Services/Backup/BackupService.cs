@@ -9,6 +9,8 @@ namespace SKRYBEK.Services.Backup;
 
 public sealed class BackupService
 {
+    private static readonly TimeSpan LockWait = TimeSpan.FromSeconds(30);
+
     private readonly SkrybekConnectionFactory _factory;
     private readonly UstawieniaRepository _ustawienia;
 
@@ -18,29 +20,60 @@ public sealed class BackupService
         _ustawienia = ustawienia;
     }
 
-    public string PobierzKatalogBackupu()
+    public string PobierzDomyslnyKatalogBackupu()
     {
         var srcPath = _factory.DatabasePath;
-        return Path.Combine(
-            Path.GetDirectoryName(srcPath) ?? AppContext.BaseDirectory,
-            "BACKUP");
+        return Path.GetDirectoryName(srcPath) ?? AppContext.BaseDirectory;
     }
 
-    public async Task<bool> SprawdzIWykonajBackupAsync()
+    public async Task<string> PobierzKatalogBackupuAsync()
+    {
+        var configured = await _ustawienia.GetAsync(UstawieniaKlucze.SciezkaBackupu);
+        return string.IsNullOrWhiteSpace(configured)
+            ? PobierzDomyslnyKatalogBackupu()
+            : configured.Trim();
+    }
+
+    public async Task<int> PobierzRetencjeMiesiaceAsync()
+    {
+        var wartosc = await _ustawienia.GetAsync(
+            UstawieniaKlucze.RetencjaBackupuMiesiace,
+            RetencjaBackupu.DomyslnaMiesiecy.ToString());
+
+        return RetencjaBackupu.Normalizuj(wartosc);
+    }
+
+    /// <summary>
+    /// Sprawdza harmonogram backupu (wspólny dla wszystkich klientów) i wykonuje kopię, gdy nadszedł termin.
+    /// Używa blokady plikowej, aby tylko jeden PC wykonał backup równolegle.
+    /// </summary>
+    public async Task<bool> SprawdzIWykonajBackupAsync(CancellationToken cancellationToken = default)
     {
         var czestotliwosc = await PobierzCzestotliwoscAsync();
-        var ostatni = await _ustawienia.GetAsync(UstawieniaKlucze.OstatniBackup);
-        var teraz = DateTime.Now;
+        if (!await CzyBackupPotrzebnyAsync(czestotliwosc, cancellationToken))
+            return false;
 
-        if (!string.IsNullOrEmpty(ostatni) &&
-            DateTime.TryParse(ostatni, out var ostatniDt) &&
-            CzyBackupAktualny(ostatniDt, teraz, czestotliwosc))
+        var backupDir = await PobierzKatalogBackupuAsync();
+        Directory.CreateDirectory(backupDir);
+        var lockPath = Path.Combine(backupDir, BackupLock.LockFileName);
+
+        using var lockHandle = await BackupLock.TryAcquireAsync(lockPath, LockWait, cancellationToken);
+        if (lockHandle is null)
         {
+            if (!await CzyBackupPotrzebnyAsync(czestotliwosc, cancellationToken))
+                SkrybekLog.Info("Backup wykonany przez inny klient TUKAN.");
             return false;
         }
 
+        if (!await CzyBackupPotrzebnyAsync(czestotliwosc, cancellationToken))
+            return false;
+
+        var teraz = DateTime.Now;
         await WykonajBackupAsync(czestotliwosc);
-        await _ustawienia.SetAsync(UstawieniaKlucze.OstatniBackup, teraz.ToString("yyyy-MM-dd HH:mm:ss"));
+        await _ustawienia.SetAsync(
+            UstawieniaKlucze.OstatniBackup,
+            teraz.ToString("yyyy-MM-dd HH:mm:ss"));
+        await UsunPrzeterminowaneKopieAsync(await PobierzRetencjeMiesiaceAsync());
         return true;
     }
 
@@ -54,12 +87,14 @@ public sealed class BackupService
         if (!File.Exists(srcPath))
             throw new FileNotFoundException("Baza danych SKRYBEK nie znaleziona.", srcPath);
 
-        var backupDir = PobierzKatalogBackupu();
+        var backupDir = await PobierzKatalogBackupuAsync();
         Directory.CreateDirectory(backupDir);
 
         var dstPath = Path.Combine(backupDir, ZbudujNazwePlikuBackupu(DateTime.Now, czestotliwosc));
         File.Copy(srcPath, dstPath, overwrite: true);
         SkrybekLog.Info($"Backup bazy danych: {dstPath}");
+
+        await UsunPrzeterminowaneKopieAsync(await PobierzRetencjeMiesiaceAsync());
     }
 
     /// <summary>
@@ -78,7 +113,7 @@ public sealed class BackupService
         if (!File.Exists(dstPath))
             throw new FileNotFoundException("Baza danych SKRYBEK nie znaleziona.", dstPath);
 
-        var backupDir = PobierzKatalogBackupu();
+        var backupDir = await PobierzKatalogBackupuAsync();
         Directory.CreateDirectory(backupDir);
 
         var bazaNazwa = Path.GetFileNameWithoutExtension(dstPath);
@@ -93,6 +128,31 @@ public sealed class BackupService
 
         SkrybekLog.Info($"Odzyskano bazę z backupu: {sciezkaBackupu} (kopia bezpieczeństwa: {kopiaBezpieczenstwa})");
         await Task.CompletedTask;
+    }
+
+    public async Task UsunPrzeterminowaneKopieAsync(int miesiaceRetencji)
+    {
+        var backupDir = await PobierzKatalogBackupuAsync();
+        if (!Directory.Exists(backupDir))
+            return;
+
+        var granica = DateTime.Now.AddMonths(-RetencjaBackupu.Normalizuj(miesiaceRetencji));
+
+        foreach (var path in Directory.EnumerateFiles(backupDir, "*.bck"))
+        {
+            try
+            {
+                if (File.GetLastWriteTime(path) >= granica)
+                    continue;
+
+                File.Delete(path);
+                SkrybekLog.Info($"Usunięto przeterminowaną kopię zapasową: {path}");
+            }
+            catch (Exception ex)
+            {
+                SkrybekLog.Warning($"Nie udało się usunąć kopii {path}: {ex.Message}");
+            }
+        }
     }
 
     public async Task<string> PobierzCzestotliwoscAsync()
@@ -116,18 +176,35 @@ public sealed class BackupService
     public static string OpisCzestotliwosci(string czestotliwosc) =>
         NormalizujCzestotliwosc(czestotliwosc) switch
         {
-            CzestotliwoscBackupu.Codziennie => "Program automatycznie tworzy backup codziennie przy starcie.",
-            CzestotliwoscBackupu.CoTydzien => "Program automatycznie tworzy backup raz w tygodniu przy starcie.",
-            _ => "Program automatycznie tworzy backup raz w miesiącu przy starcie."
+            CzestotliwoscBackupu.Codziennie =>
+                "Program automatycznie tworzy backup codziennie przy starcie aplikacji.",
+            CzestotliwoscBackupu.CoTydzien =>
+                "Program automatycznie tworzy backup raz w tygodniu przy starcie aplikacji.",
+            _ =>
+                "Program automatycznie tworzy backup raz w miesiącu przy starcie aplikacji."
         };
 
-    internal static bool CzyBackupAktualny(DateTime ostatni, DateTime teraz, string czestotliwosc) =>
+    public static bool CzyBackupAktualny(DateTime ostatni, DateTime teraz, string czestotliwosc) =>
         NormalizujCzestotliwosc(czestotliwosc) switch
         {
             CzestotliwoscBackupu.Codziennie => ostatni.Date >= teraz.Date,
             CzestotliwoscBackupu.CoTydzien => PoczatekTygodnia(ostatni) >= PoczatekTygodnia(teraz),
             _ => new DateTime(ostatni.Year, ostatni.Month, 1) >= new DateTime(teraz.Year, teraz.Month, 1)
         };
+
+    private async Task<bool> CzyBackupPotrzebnyAsync(string czestotliwosc, CancellationToken cancellationToken)
+    {
+        var ostatni = await _ustawienia.GetAsync(UstawieniaKlucze.OstatniBackup);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (string.IsNullOrEmpty(ostatni)
+            || !DateTime.TryParse(ostatni, out var ostatniDt))
+        {
+            return true;
+        }
+
+        return !CzyBackupAktualny(ostatniDt, DateTime.Now, czestotliwosc);
+    }
 
     private static DateTime PoczatekTygodnia(DateTime data)
     {

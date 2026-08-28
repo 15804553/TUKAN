@@ -26,6 +26,16 @@ public interface ISettingsService
     Task SetExportPathGrafikNurkowyAsync(string path, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Katalog kopii zapasowych bazy danych. Pusty — katalog pliku bazy (wspólny dla jednostki).
+    /// </summary>
+    Task<string> GetBackupPathAsync(CancellationToken cancellationToken = default);
+    Task SetBackupPathAsync(string path, CancellationToken cancellationToken = default);
+
+    /// <summary>Okres przechowywania plików .bck (1, 3, 6, 9 lub 12 miesięcy). Domyślnie 6.</summary>
+    Task<int> GetBackupRetentionMonthsAsync(CancellationToken cancellationToken = default);
+    Task SetBackupRetentionMonthsAsync(int months, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// LessColor: eksport grafiku służb bez kolorów ról/nurek — białe wiersze, czarna czcionka,
     /// żółte tło dla WS i D. Domyślnie włączone.
     /// </summary>
