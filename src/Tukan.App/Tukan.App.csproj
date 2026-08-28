@@ -19,12 +19,16 @@
     <Platforms>x86;x64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64</RuntimeIdentifiers>
     <!--
-      Domyślnie MSBuild przy Platform=x86 pisze do bin\x86\Release\...
-      Publish -o bin\x86 wrzuca wtedy katalog Release do dystrybucji.
-      Odwracamy kolejność: bin\{Configuration}\{Platform}\ — publish zostaje czysty.
+      Debug x64 → bin\Debug\x64\
+      Release x86: build pośredni → obj\Release\x86\, dystrybucja → bin\x86\
     -->
     <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
-    <OutputPath>bin\$(Configuration)\$(Platform)\</OutputPath>
+    <OutputPath Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">obj\Release\x86\</OutputPath>
+    <OutputPath Condition="'$(Configuration)|$(Platform)' != 'Release|x86'">bin\$(Configuration)\$(Platform)\</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <PublishDir>$(MSBuildProjectDirectory)\bin\x86\</PublishDir>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Platform)' == 'x64'">
