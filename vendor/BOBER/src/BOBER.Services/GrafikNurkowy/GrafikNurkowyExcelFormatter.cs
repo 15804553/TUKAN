@@ -60,8 +60,9 @@ internal static class GrafikNurkowyExcelFormatter
 
     /// <summary>
     /// Formatowanie warunkowe jak we wzorcu:
-    /// - funkcja „KPP” → czerwona czcionka;
+    /// - kolumna funkcji: „KPP” → czerwona, nurek/mł.nurek → czarna;
     /// - suma dnia &lt; 2 → czerwone tło (brak deklarowanego poziomu gotowości).
+    /// Kolor wpisów w dniach ustawiany jest bezpośrednio w <see cref="StylePersonRows"/>.
     /// </summary>
     private static void ApplyConditionalFormats(
         IXLWorksheet ws,
@@ -243,12 +244,16 @@ internal static class GrafikNurkowyExcelFormatter
 
             var funkcjaCell = ws.Cell(row, GrafikNurkowyConstants.ColFunkcja);
             var funkcja = funkcjaCell.GetString().Trim();
-            funkcjaCell.Style.Font.Bold = true;
-            funkcjaCell.Style.Font.FontSize = 14;
-            funkcjaCell.Style.Font.FontColor = funkcja.Equals(
-                    GrafikNurkowyConstants.FunkcjaKpp, StringComparison.OrdinalIgnoreCase)
+            var isKpp = funkcja.Equals(
+                GrafikNurkowyConstants.FunkcjaKpp, StringComparison.OrdinalIgnoreCase);
+            // KPP — czerwona czcionka funkcji i wpisów dni; nurek / mł.nurek — czarna.
+            var wartoscFontColor = isKpp
                 ? XLColor.FromHtml(GrafikNurkowyConstants.ColorWartoscCzcionka)
                 : XLColor.Black;
+
+            funkcjaCell.Style.Font.Bold = true;
+            funkcjaCell.Style.Font.FontSize = 14;
+            funkcjaCell.Style.Font.FontColor = wartoscFontColor;
             funkcjaCell.Style.Fill.BackgroundColor = rowColor;
             funkcjaCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
             funkcjaCell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
@@ -260,7 +265,7 @@ internal static class GrafikNurkowyExcelFormatter
                 cell.Style.Fill.BackgroundColor = XLColor.FromHtml(GrafikNurkowyConstants.ColorBiale);
                 cell.Style.Font.Bold = true;
                 cell.Style.Font.FontSize = 16;
-                cell.Style.Font.FontColor = XLColor.FromHtml(GrafikNurkowyConstants.ColorWartoscCzcionka);
+                cell.Style.Font.FontColor = wartoscFontColor;
                 cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                 cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
                 ApplyThinBorder(cell);

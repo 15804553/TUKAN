@@ -185,6 +185,13 @@ public sealed class GrafikNurkowyExcelServiceTests
             Assert.Equal(XLAlignmentHorizontalValues.Center,
                 ws.Cell(3, 6).Style.Alignment.Horizontal);
             Assert.True(string.IsNullOrWhiteSpace(ws.Cell(2, 1).GetString()));
+
+            // Nurek (wiersz 3) — czarne wpisy dni; KPP (wiersz 4) — czerwone.
+            var day3Col = GrafikNurkowyConstants.FirstDayCol + 3 - 1;
+            Assert.True(ColorsMatch(ws.Cell(3, day3Col).Style.Font.FontColor, "#000000"));
+            Assert.True(ColorsMatch(ws.Cell(4, day3Col).Style.Font.FontColor, GrafikNurkowyConstants.ColorWartoscCzcionka));
+            Assert.True(ColorsMatch(ws.Cell(4, GrafikNurkowyConstants.ColFunkcja).Style.Font.FontColor,
+                GrafikNurkowyConstants.ColorWartoscCzcionka));
         }
         finally
         {
