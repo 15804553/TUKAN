@@ -30,9 +30,14 @@ public partial class SettingsView : UserControl
         GeneralViewColumnsPanel.Visibility = ShowsKolumny && _controller.CanCustomizeGeneralViewColumns
             ? Visibility.Visible
             : Visibility.Collapsed;
-        var canManageSlowniki = ShowsSlowniki && _controller.CanManageSettings;
-        PersonelSlownikiPanel.Visibility = canManageSlowniki ? Visibility.Visible : Visibility.Collapsed;
-        UprawnieniaPanel.Visibility = ShowsSlowniki && (_controller.CanManagePermissionTypes || canManageSlowniki)
+        var canManageSlowniki = ShowsAnySlownik && _controller.CanManageSettings;
+        PersonelSlownikiPanel.Visibility = canManageSlowniki && (ShowsStopnie || ShowsStanowiska || ShowsOdznaczenia)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        StopniePanel.Visibility = ShowsStopnie && canManageSlowniki ? Visibility.Visible : Visibility.Collapsed;
+        StanowiskaPanel.Visibility = ShowsStanowiska && canManageSlowniki ? Visibility.Visible : Visibility.Collapsed;
+        OdznaczeniaPanel.Visibility = ShowsOdznaczenia && canManageSlowniki ? Visibility.Visible : Visibility.Collapsed;
+        UprawnieniaPanel.Visibility = ShowsUprawnienia && (_controller.CanManagePermissionTypes || canManageSlowniki)
             ? Visibility.Visible
             : Visibility.Collapsed;
 
@@ -46,7 +51,12 @@ public partial class SettingsView : UserControl
 
         if (canManageSlowniki)
         {
-            WirePersonelSlownikiPanels();
+            if (ShowsStopnie)
+                WireStopniePanel();
+            if (ShowsStanowiska)
+                WireStanowiskaPanel();
+            if (ShowsOdznaczenia)
+                WireOdznaczeniaPanel();
         }
 
         Loaded += OnLoaded;
@@ -55,12 +65,24 @@ public partial class SettingsView : UserControl
     private bool ShowsKolumny =>
         _section is ChomikSettingsSection.All or ChomikSettingsSection.Kolumny;
 
-    private bool ShowsSlowniki =>
-        _section is ChomikSettingsSection.All or ChomikSettingsSection.Slowniki;
+    private bool ShowsStopnie =>
+        _section is ChomikSettingsSection.All or ChomikSettingsSection.Slowniki or ChomikSettingsSection.Stopnie;
+
+    private bool ShowsStanowiska =>
+        _section is ChomikSettingsSection.All or ChomikSettingsSection.Slowniki or ChomikSettingsSection.Stanowiska;
+
+    private bool ShowsOdznaczenia =>
+        _section is ChomikSettingsSection.All or ChomikSettingsSection.Slowniki or ChomikSettingsSection.Odznaczenia;
+
+    private bool ShowsUprawnienia =>
+        _section is ChomikSettingsSection.All or ChomikSettingsSection.Slowniki or ChomikSettingsSection.Uprawnienia;
+
+    private bool ShowsAnySlownik =>
+        ShowsStopnie || ShowsStanowiska || ShowsOdznaczenia || ShowsUprawnienia;
 
     private Window? OwnerWindow => Window.GetWindow(this);
 
-    private void WirePersonelSlownikiPanels()
+    private void WireStopniePanel()
     {
         StopniePanel.AddRequested += async nazwa =>
         {
@@ -80,7 +102,10 @@ public partial class SettingsView : UserControl
             await ReloadStopnieAsync();
         };
         StopniePanel.Changed += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+    }
 
+    private void WireStanowiskaPanel()
+    {
         StanowiskaPanel.AddRequested += async nazwa =>
         {
             await _controller.AddStanowiskoAsync(nazwa);
@@ -99,7 +124,10 @@ public partial class SettingsView : UserControl
             await ReloadStanowiskaAsync();
         };
         StanowiskaPanel.Changed += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+    }
 
+    private void WireOdznaczeniaPanel()
+    {
         OdznaczeniaPanel.AddRequested += async nazwa =>
         {
             await _controller.AddTypOdznaczeniaAsync(nazwa);
@@ -124,17 +152,17 @@ public partial class SettingsView : UserControl
     {
         try
         {
-            if (ShowsSlowniki && _controller.CanManageSettings)
-            {
+            if (ShowsStopnie && _controller.CanManageSettings)
                 await ReloadStopnieAsync();
-                await ReloadStanowiskaAsync();
-                await ReloadOdznaczeniaAsync();
-            }
 
-            if (ShowsSlowniki && (_controller.CanManagePermissionTypes || _controller.CanManageSettings))
-            {
+            if (ShowsStanowiska && _controller.CanManageSettings)
+                await ReloadStanowiskaAsync();
+
+            if (ShowsOdznaczenia && _controller.CanManageSettings)
+                await ReloadOdznaczeniaAsync();
+
+            if (ShowsUprawnienia && (_controller.CanManagePermissionTypes || _controller.CanManageSettings))
                 await LoadTypyUprawnienAsync();
-            }
 
             if (ShowsKolumny && _controller.CanCustomizeGeneralViewColumns)
             {

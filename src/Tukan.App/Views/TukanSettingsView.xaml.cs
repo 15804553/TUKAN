@@ -33,22 +33,21 @@ public partial class TukanSettingsView : UserControl
             return;
         }
 
-        InitializeChomikSettings(dashboardController);
-        InitializeRatownikMedycznySettings();
-
         if (IsDcaJrgAccount)
         {
             ConfigureDcaJrgTabs();
+            SelectDefaultTab();
+            return;
         }
-        else
-        {
-            InitializeBoberSettings();
-            RozkazyTab.Visibility = Visibility.Collapsed;
-            InitializeShiftCalendarSettings();
-            if (CanEditPojazdy)
-                InitializePojazdyTab();
-            InitializeGuestAuditSettings();
-        }
+
+        InitializeChomikSettings(dashboardController);
+        InitializeRatownikMedycznySettings();
+        InitializeBoberSettings();
+        RozkazyTab.Visibility = Visibility.Collapsed;
+        InitializeShiftCalendarSettings();
+        if (CanEditPojazdy)
+            InitializePojazdyTab();
+        InitializeGuestAuditSettings();
 
         RefreshUzytkoweTabVisibility();
         SelectDefaultTab();
@@ -81,24 +80,40 @@ public partial class TukanSettingsView : UserControl
 
     private void ConfigureDcaJrgTabs()
     {
-        ChomikTab.Header = "Słowniki";
-        GrafikTab.Visibility = Visibility.Collapsed;
-        RozkazyTab.Visibility = Visibility.Visible;
-        KalendarzTab.Visibility = Visibility.Visible;
-        GuestAuditTab.Visibility = Visibility.Collapsed;
+        SettingsTabControl.Visibility = Visibility.Collapsed;
+        DcaJrgSettingsPanel.Visibility = Visibility.Visible;
 
         var session = _tukanServices.SkrybekSession!;
         var skrybekViewModel = new SettingsViewModel(session);
         _ = skrybekViewModel.LoadAsync();
 
-        SkrybekSettingsHost.Content = new SkrybekSettingsView(
-            session, SkrybekSettingsSection.OgolneZBackupem, skrybekViewModel);
-        InitializePojazdyTab(session, skrybekViewModel);
+        DcaStopnieHost.Content = CreateChomikSection(ChomikSettingsSection.Stopnie, "Ustawienia stopni");
+        DcaStanowiskaHost.Content = CreateChomikSection(ChomikSettingsSection.Stanowiska, "Ustawienia stanowisk");
+        DcaOdznaczeniaHost.Content = CreateChomikSection(ChomikSettingsSection.Odznaczenia, "Ustawienia medali i odznaczeń");
+        DcaUprawnieniaHost.Content = CreateChomikSection(ChomikSettingsSection.Uprawnienia, "Ustawienia uprawnień i kursów");
 
         var kalendarzController = new KalendarzController(_tukanServices.Bober);
         var kalendarzSettings = new KalendarzSettingsView(kalendarzController);
         kalendarzSettings.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
-        KalendarzSettingsHost.Content = kalendarzSettings;
+        DcaKalendarzHost.Content = kalendarzSettings;
+
+        skrybekViewModel.SettingsSaved -= OnSkrybekSettingsSaved;
+        skrybekViewModel.SettingsSaved += OnSkrybekSettingsSaved;
+        DcaRozkazyHost.Content = new SkrybekSettingsView(
+            session, SkrybekSettingsSection.OgolneZBackupem, skrybekViewModel);
+        DcaPojazdyHost.Content = new SkrybekSettingsView(
+            session, SkrybekSettingsSection.Pojazdy, skrybekViewModel);
+    }
+
+    private SettingsView CreateChomikSection(ChomikSettingsSection section, string auditMessage)
+    {
+        var view = new SettingsView(_chomikSettingsController, section);
+        view.SettingsSaved += async (_, _) =>
+        {
+            await TryAuditSettingsAsync(auditMessage);
+            SettingsSaved?.Invoke(this, EventArgs.Empty);
+        };
+        return view;
     }
 
     private void InitializeShiftCalendarSettings()
@@ -186,6 +201,9 @@ public partial class TukanSettingsView : UserControl
     {
         CollapseSettingsExpanders();
 
+        if (IsDcaJrgAccount)
+            return;
+
         var firstVisible = SettingsTabControl.Items
             .OfType<TabItem>()
             .FirstOrDefault(t => t.Visibility == Visibility.Visible);
@@ -200,6 +218,18 @@ public partial class TukanSettingsView : UserControl
         ParametryZmianExpander.IsExpanded = false;
         KolejnoscExpander.IsExpanded = false;
         ZarzadzanieGrafikiemExpander.IsExpanded = false;
+
+        if (IsDcaJrgAccount)
+        {
+            DcaStopnieExpander.IsExpanded = false;
+            DcaStanowiskaExpander.IsExpanded = false;
+            DcaOdznaczeniaExpander.IsExpanded = false;
+            DcaUprawnieniaExpander.IsExpanded = false;
+            DcaKalendarzExpander.IsExpanded = false;
+            DcaRozkazyExpander.IsExpanded = false;
+            DcaPojazdyExpander.IsExpanded = false;
+        }
+
         if (BoberSettingsHost.Content is BoberSettingsView bober)
             bober.CollapseExpanders();
     }

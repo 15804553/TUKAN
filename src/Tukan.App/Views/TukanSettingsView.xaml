@@ -1,7 +1,50 @@
 <UserControl x:Class="Tukan.App.Views.TukanSettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <TabControl x:Name="SettingsTabControl">
+    <Grid>
+        <ScrollViewer x:Name="DcaJrgSettingsPanel"
+                      VerticalScrollBarVisibility="Auto"
+                      Visibility="Collapsed">
+            <StackPanel Margin="16,12">
+                <Expander x:Name="DcaStopnieExpander"
+                          Header="Stopnie"
+                          Style="{StaticResource TukanSettingsExpander}">
+                    <ContentControl x:Name="DcaStopnieHost" />
+                </Expander>
+                <Expander x:Name="DcaStanowiskaExpander"
+                          Header="Stanowiska"
+                          Style="{StaticResource TukanSettingsExpander}">
+                    <ContentControl x:Name="DcaStanowiskaHost" />
+                </Expander>
+                <Expander x:Name="DcaOdznaczeniaExpander"
+                          Header="Medale i odznaczenia"
+                          Style="{StaticResource TukanSettingsExpander}">
+                    <ContentControl x:Name="DcaOdznaczeniaHost" />
+                </Expander>
+                <Expander x:Name="DcaUprawnieniaExpander"
+                          Header="Uprawnienia i kursy"
+                          Style="{StaticResource TukanSettingsExpander}">
+                    <ContentControl x:Name="DcaUprawnieniaHost" />
+                </Expander>
+                <Expander x:Name="DcaKalendarzExpander"
+                          Header="Kalendarz"
+                          Style="{StaticResource TukanSettingsExpander}">
+                    <ContentControl x:Name="DcaKalendarzHost" />
+                </Expander>
+                <Expander x:Name="DcaRozkazyExpander"
+                          Header="Rozkazy"
+                          Style="{StaticResource TukanSettingsExpander}">
+                    <ContentControl x:Name="DcaRozkazyHost" />
+                </Expander>
+                <Expander x:Name="DcaPojazdyExpander"
+                          Header="Pojazdy"
+                          Style="{StaticResource TukanSettingsExpander}">
+                    <ContentControl x:Name="DcaPojazdyHost" />
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+
+        <TabControl x:Name="SettingsTabControl">
         <TabItem x:Name="ChomikTab" Header="Personel">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ContentControl x:Name="ChomikSettingsHost" />
@@ -61,5 +104,6 @@
         <TabItem x:Name="GuestAuditTab" Header="Konto Gość" Visibility="Collapsed">
             <ContentControl x:Name="GuestAuditHost" />
         </TabItem>
-    </TabControl>
+        </TabControl>
+    </Grid>
 </UserControl>

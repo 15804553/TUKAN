@@ -8,5 +8,9 @@ public enum ChomikSettingsSection
 {
     All,
     Slowniki,
-    Kolumny
+    Kolumny,
+    Stopnie,
+    Stanowiska,
+    Odznaczenia,
+    Uprawnienia
 }
