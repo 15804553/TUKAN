@@ -17,7 +17,7 @@ public static class TukanUnifiedDatabaseBootstrapper
     /// <summary>
     /// Podbij przy każdej zmianie schematu CHOMIK/BOBER/SKRYBEK, która wymaga EnsureReady.
     /// </summary>
-    public const string SchemaVersion = "20260828-obsada-funkcji-uwagi";
+    public const string SchemaVersion = "20260911-flaga-kolor-czcionki";
 
     private const string SchemaVersionKey = "TukanSchemaVersion";
 
@@ -60,6 +60,7 @@ public static class TukanUnifiedDatabaseBootstrapper
         var skrybekBootstrapper = new SkrybekDatabaseBootstrapper(skrybekFactory);
         await skrybekBootstrapper.EnsureCreatedAsync();
 
+        await EnsurePerformanceIndexesAsync(unifiedPath, workingPassword, cancellationToken);
         await MarkSchemaCurrentAsync(unifiedPath, workingPassword, cancellationToken);
     }
 
@@ -151,6 +152,63 @@ public static class TukanUnifiedDatabaseBootstrapper
         }
     }
 
+    private static async Task EnsurePerformanceIndexesAsync(
+        string unifiedPath,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = OpenConnection(unifiedPath, password);
+        await connection.OpenAsync(cancellationToken);
+
+        var existingIndexes = connection
+            .GetSchema("Indexes")
+            .Rows
+            .Cast<System.Data.DataRow>()
+            .Select(row => row["INDEX_NAME"]?.ToString())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Cast<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var index in PerformanceIndexes)
+        {
+            if (existingIndexes.Contains(index.Name))
+                continue;
+
+            await using var command = new OleDbCommand(index.Sql, connection);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    private static IReadOnlyList<PerformanceIndex> PerformanceIndexes { get; } =
+    [
+        new("IX_Funkcjonariusze_ZmianaKolejnosc",
+            "CREATE INDEX IX_Funkcjonariusze_ZmianaKolejnosc ON Funkcjonariusze (NumerZmiany, NumerPorzadkowy)"),
+        new("IX_FunkcjonariuszUprawnienia_OsobaTyp",
+            "CREATE INDEX IX_FunkcjonariuszUprawnienia_OsobaTyp ON FunkcjonariuszUprawnienia (FunkcjonariuszId, TypUprawnieniaId)"),
+        new("IX_FunkcjonariuszOdznaczenia_Osoba",
+            "CREATE INDEX IX_FunkcjonariuszOdznaczenia_Osoba ON FunkcjonariuszOdznaczenia (FunkcjonariuszId)"),
+        new("IX_GrafikWpisy_ZmianaOkresOsobaDzien",
+            "CREATE INDEX IX_GrafikWpisy_ZmianaOkresOsobaDzien ON GrafikWpisy (ZmianaId, Rok, Miesiac, FunkcjonariuszId, Dzien)"),
+        new("IX_UrlopPlanWpisy_ZmianaOkresOsobaDzien",
+            "CREATE INDEX IX_UrlopPlanWpisy_ZmianaOkresOsobaDzien ON UrlopPlanWpisy (ZmianaId, Rok, Miesiac, FunkcjonariuszId, Dzien)"),
+        new("IX_KalendarzWpisy_DataZmianaTyp",
+            "CREATE INDEX IX_KalendarzWpisy_DataZmianaTyp ON KalendarzWpisy (Data, ZmianaId, TypWpisu)"),
+        new("IX_KalendarzOdczyty_WpisZmiana",
+            "CREATE INDEX IX_KalendarzOdczyty_WpisZmiana ON KalendarzOdczyty (WpisId, ZmianaId)"),
+        new("IX_Rozkazy_RokZmianaData",
+            "CREATE INDEX IX_Rozkazy_RokZmianaData ON Rozkazy (Rok, ZmianaId, Data)"),
+        new("IX_RozkazSluzba_Rozkaz",
+            "CREATE INDEX IX_RozkazSluzba_Rozkaz ON RozkazSluzba (RozkazId)"),
+        new("IX_RozkazPodzialBojowy_Rozkaz",
+            "CREATE INDEX IX_RozkazPodzialBojowy_Rozkaz ON RozkazPodzialBojowy (RozkazId)"),
+        new("IX_RozkazRatownicy_Rozkaz",
+            "CREATE INDEX IX_RozkazRatownicy_Rozkaz ON RozkazRatwnicyMedyczni (RozkazId)"),
+        new("IX_RozkazNieobecni_Rozkaz",
+            "CREATE INDEX IX_RozkazNieobecni_Rozkaz ON RozkazNieobecni (RozkazId)")
+    ];
+
     private static OleDbConnection OpenConnection(string databasePath, string password) =>
         new(TukanDatabaseOptions.BuildConnectionString(databasePath, password));
+
+    private sealed record PerformanceIndex(string Name, string Sql);
 }

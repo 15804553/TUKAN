@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Data.OleDb;
+using BOBER.Core.Diagnostics;
 using BOBER.Core.Models;
 
 namespace BOBER.Data.Repositories;
@@ -36,46 +37,69 @@ public sealed class UrlopPlanRepository(BoberConnectionFactory connectionFactory
         return await ReadAllAsync(command, cancellationToken);
     }
 
-    public async Task UpsertAsync(UrlopPlanWpis wpis, CancellationToken cancellationToken = default)
+    public Task UpsertAsync(UrlopPlanWpis wpis, CancellationToken cancellationToken = default) =>
+        ApplyBatchAsync([wpis], [], cancellationToken);
+
+    public async Task ApplyBatchAsync(
+        IReadOnlyList<UrlopPlanWpis> upserts,
+        IReadOnlyList<UrlopPlanWpis> deletes,
+        CancellationToken cancellationToken = default)
     {
+        if (upserts.Count == 0 && deletes.Count == 0)
+            return;
+
+        var stopwatch = PerformanceDiagnostics.Start();
         await using var connection = connectionFactory.CreateOpenConnection();
+        using var transaction = connection.BeginTransaction();
 
-        await using var checkCmd = new OleDbCommand(
-            "SELECT COUNT(*) FROM UrlopPlanWpisy WHERE FunkcjonariuszId = ? AND ZmianaId = ? AND Rok = ? AND Miesiac = ? AND Dzien = ?",
-            connection);
-        checkCmd.Parameters.AddWithValue("@p1", wpis.FunkcjonariuszId);
-        checkCmd.Parameters.AddWithValue("@p2", (short)wpis.ZmianaId);
-        checkCmd.Parameters.AddWithValue("@p3", (short)wpis.Rok);
-        checkCmd.Parameters.AddWithValue("@p4", (short)wpis.Miesiac);
-        checkCmd.Parameters.AddWithValue("@p5", (short)wpis.Dzien);
-        var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync(cancellationToken)) > 0;
-
-        if (exists)
+        try
         {
             await using var updateCmd = new OleDbCommand(
                 "UPDATE UrlopPlanWpisy SET TypUrlopu = ? WHERE FunkcjonariuszId = ? AND ZmianaId = ? AND Rok = ? AND Miesiac = ? AND Dzien = ?",
-                connection);
-            updateCmd.Parameters.AddWithValue("@p1", wpis.TypUrlopu);
-            updateCmd.Parameters.AddWithValue("@p2", wpis.FunkcjonariuszId);
-            updateCmd.Parameters.AddWithValue("@p3", (short)wpis.ZmianaId);
-            updateCmd.Parameters.AddWithValue("@p4", (short)wpis.Rok);
-            updateCmd.Parameters.AddWithValue("@p5", (short)wpis.Miesiac);
-            updateCmd.Parameters.AddWithValue("@p6", (short)wpis.Dzien);
-            await updateCmd.ExecuteNonQueryAsync(cancellationToken);
-        }
-        else
-        {
+                connection,
+                transaction);
             await using var insertCmd = new OleDbCommand(
                 "INSERT INTO UrlopPlanWpisy (FunkcjonariuszId, ZmianaId, Rok, Miesiac, Dzien, TypUrlopu) VALUES (?, ?, ?, ?, ?, ?)",
-                connection);
-            insertCmd.Parameters.AddWithValue("@p1", wpis.FunkcjonariuszId);
-            insertCmd.Parameters.AddWithValue("@p2", (short)wpis.ZmianaId);
-            insertCmd.Parameters.AddWithValue("@p3", (short)wpis.Rok);
-            insertCmd.Parameters.AddWithValue("@p4", (short)wpis.Miesiac);
-            insertCmd.Parameters.AddWithValue("@p5", (short)wpis.Dzien);
-            insertCmd.Parameters.AddWithValue("@p6", wpis.TypUrlopu);
-            await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+                connection,
+                transaction);
+            await using var deleteCmd = new OleDbCommand(
+                "DELETE FROM UrlopPlanWpisy WHERE FunkcjonariuszId = ? AND ZmianaId = ? AND Rok = ? AND Miesiac = ? AND Dzien = ?",
+                connection,
+                transaction);
+
+            foreach (var wpis in upserts)
+            {
+                AddUpdateParameters(updateCmd, wpis);
+                var affected = await updateCmd.ExecuteNonQueryAsync(cancellationToken);
+                updateCmd.Parameters.Clear();
+                if (affected == 0)
+                {
+                    AddInsertParameters(insertCmd, wpis);
+                    await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+                    insertCmd.Parameters.Clear();
+                }
+            }
+
+            foreach (var wpis in deletes)
+            {
+                AddKeyParameters(deleteCmd, wpis);
+                await deleteCmd.ExecuteNonQueryAsync(cancellationToken);
+                deleteCmd.Parameters.Clear();
+            }
+
+            transaction.Commit();
         }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+
+        PerformanceDiagnostics.Log(
+            "UrlopPlan.ApplyBatch",
+            "SQL",
+            stopwatch,
+            upserts.Count + deletes.Count);
     }
 
     public async Task DeleteAsync(
@@ -86,16 +110,17 @@ public sealed class UrlopPlanRepository(BoberConnectionFactory connectionFactory
         int dzien,
         CancellationToken cancellationToken = default)
     {
-        await using var connection = connectionFactory.CreateOpenConnection();
-        await using var command = new OleDbCommand(
-            "DELETE FROM UrlopPlanWpisy WHERE FunkcjonariuszId = ? AND ZmianaId = ? AND Rok = ? AND Miesiac = ? AND Dzien = ?",
-            connection);
-        command.Parameters.AddWithValue("@p1", funkcjonariuszId);
-        command.Parameters.AddWithValue("@p2", (short)zmianaId);
-        command.Parameters.AddWithValue("@p3", (short)rok);
-        command.Parameters.AddWithValue("@p4", (short)miesiac);
-        command.Parameters.AddWithValue("@p5", (short)dzien);
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        await ApplyBatchAsync(
+            [],
+            [new UrlopPlanWpis
+            {
+                FunkcjonariuszId = funkcjonariuszId,
+                ZmianaId = zmianaId,
+                Rok = rok,
+                Miesiac = miesiac,
+                Dzien = dzien
+            }],
+            cancellationToken);
     }
 
     public async Task DeleteByHalfYearAsync(
@@ -139,26 +164,35 @@ public sealed class UrlopPlanRepository(BoberConnectionFactory connectionFactory
         CancellationToken cancellationToken = default)
     {
         await using var connection = connectionFactory.CreateOpenConnection();
+        using var transaction = connection.BeginTransaction();
 
-        await using var deleteCmd = new OleDbCommand(
-            "DELETE FROM UrlopPlanWpisy WHERE ZmianaId = ? AND Rok = ?",
-            connection);
-        deleteCmd.Parameters.AddWithValue("@p1", (short)zmianaId);
-        deleteCmd.Parameters.AddWithValue("@p2", (short)rok);
-        await deleteCmd.ExecuteNonQueryAsync(cancellationToken);
-
-        foreach (var wpis in wpisy)
+        try
         {
+            await using var deleteCmd = new OleDbCommand(
+                "DELETE FROM UrlopPlanWpisy WHERE ZmianaId = ? AND Rok = ?",
+                connection,
+                transaction);
+            deleteCmd.Parameters.AddWithValue("@p1", (short)zmianaId);
+            deleteCmd.Parameters.AddWithValue("@p2", (short)rok);
+            await deleteCmd.ExecuteNonQueryAsync(cancellationToken);
+
             await using var insertCmd = new OleDbCommand(
                 "INSERT INTO UrlopPlanWpisy (FunkcjonariuszId, ZmianaId, Rok, Miesiac, Dzien, TypUrlopu) VALUES (?, ?, ?, ?, ?, ?)",
-                connection);
-            insertCmd.Parameters.AddWithValue("@p1", wpis.FunkcjonariuszId);
-            insertCmd.Parameters.AddWithValue("@p2", (short)zmianaId);
-            insertCmd.Parameters.AddWithValue("@p3", (short)rok);
-            insertCmd.Parameters.AddWithValue("@p4", (short)wpis.Miesiac);
-            insertCmd.Parameters.AddWithValue("@p5", (short)wpis.Dzien);
-            insertCmd.Parameters.AddWithValue("@p6", wpis.TypUrlopu);
-            await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+                connection,
+                transaction);
+            foreach (var wpis in wpisy)
+            {
+                AddInsertParameters(insertCmd, wpis, zmianaId, rok);
+                await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+                insertCmd.Parameters.Clear();
+            }
+
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
         }
     }
 
@@ -181,4 +215,33 @@ public sealed class UrlopPlanRepository(BoberConnectionFactory connectionFactory
         Dzien = reader.GetFieldInt32(5),
         TypUrlopu = reader.GetString(6)
     };
+
+    private static void AddUpdateParameters(OleDbCommand command, UrlopPlanWpis wpis)
+    {
+        command.Parameters.AddWithValue("@p1", wpis.TypUrlopu);
+        AddKeyParameters(command, wpis, 2);
+    }
+
+    private static void AddInsertParameters(
+        OleDbCommand command,
+        UrlopPlanWpis wpis,
+        int? zmianaId = null,
+        int? rok = null)
+    {
+        command.Parameters.AddWithValue("@p1", wpis.FunkcjonariuszId);
+        command.Parameters.AddWithValue("@p2", (short)(zmianaId ?? wpis.ZmianaId));
+        command.Parameters.AddWithValue("@p3", (short)(rok ?? wpis.Rok));
+        command.Parameters.AddWithValue("@p4", (short)wpis.Miesiac);
+        command.Parameters.AddWithValue("@p5", (short)wpis.Dzien);
+        command.Parameters.AddWithValue("@p6", wpis.TypUrlopu);
+    }
+
+    private static void AddKeyParameters(OleDbCommand command, UrlopPlanWpis wpis, int firstParameter = 1)
+    {
+        command.Parameters.AddWithValue($"@p{firstParameter}", wpis.FunkcjonariuszId);
+        command.Parameters.AddWithValue($"@p{firstParameter + 1}", (short)wpis.ZmianaId);
+        command.Parameters.AddWithValue($"@p{firstParameter + 2}", (short)wpis.Rok);
+        command.Parameters.AddWithValue($"@p{firstParameter + 3}", (short)wpis.Miesiac);
+        command.Parameters.AddWithValue($"@p{firstParameter + 4}", (short)wpis.Dzien);
+    }
 }

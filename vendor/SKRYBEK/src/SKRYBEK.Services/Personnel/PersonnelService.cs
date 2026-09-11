@@ -1,5 +1,6 @@
 using SKRYBEK.Core.Enums;
 using SKRYBEK.Core.Models;
+using SKRYBEK.Core.Rules;
 using SKRYBEK.Data.Grafik;
 using SKRYBEK.Data.Repositories;
 using SKRYBEK.Services.Logging;
@@ -72,15 +73,21 @@ public sealed class PersonnelService
         var personelPoId = wszyscy.ToDictionary(f => f.Id);
         var wynik = new List<NieobecnyWSluzbie>();
 
-        foreach (var (fid, typ) in nieobecniZBober)
+        foreach (var (fid, typ, typWpisu) in nieobecniZBober)
         {
             personelPoId.TryGetValue(fid, out var osoba);
+            var nazwisko = osoba is not null
+                ? osoba.StopienINazwisko
+                : $"ID:{fid}";
+
+            var adnotacja = BoberOznaczeniaBridge.MapAdnotacja?.Invoke(typWpisu, typ);
+            if (!string.IsNullOrWhiteSpace(adnotacja))
+                nazwisko += adnotacja;
+
             wynik.Add(new NieobecnyWSluzbie
             {
                 FunkcjonariuszId = fid,
-                Nazwisko = osoba is not null
-                    ? osoba.StopienINazwisko
-                    : $"ID:{fid}",
+                Nazwisko = nazwisko,
                 TypNieobecnosci = typ
             });
         }

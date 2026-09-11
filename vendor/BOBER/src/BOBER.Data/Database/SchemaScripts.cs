@@ -21,7 +21,7 @@ internal static class SchemaScripts
             Rok SHORT NOT NULL,
             Miesiac SHORT NOT NULL,
             Dzien SHORT NOT NULL,
-            TypWpisu TEXT(5) NOT NULL,
+            TypWpisu TEXT(20) NOT NULL,
             IsAuto YESNO NOT NULL
         )
         """,
@@ -114,6 +114,30 @@ internal static class SchemaScripts
             Przeczytane YESNO NOT NULL,
             PrzeczytanePrzez TEXT(100),
             DataOdczytu DATETIME
+        )
+        """,
+        """
+        CREATE TABLE OznaczeniaGrafiku (
+            Id AUTOINCREMENT PRIMARY KEY,
+            ZmianaId SHORT NOT NULL,
+            Kod TEXT(20) NOT NULL,
+            Nazwa TEXT(50) NOT NULL,
+            KolorHex TEXT(10) NOT NULL,
+            WPracy YESNO NOT NULL,
+            SekcjaRozkazu SHORT,
+            SkrotKlawiszowy TEXT(20),
+            TekstWyswietlany TEXT(20),
+            MoznaOddac YESNO NOT NULL,
+            MoznaKropke YESNO NOT NULL,
+            ZachowajTloWsPrzyBraku YESNO NOT NULL,
+            DodatkowaSekcjaRozkazu SHORT,
+            RolaNalozania SHORT NOT NULL,
+            Kolejnosc SHORT NOT NULL,
+            EksportDoExcela YESNO NOT NULL,
+            KolorExcelHex TEXT(10),
+            AdnotacjaRozkazu TEXT(40),
+            StylWyswietlania SHORT NOT NULL,
+            FlagaPozycja SHORT NOT NULL
         )
         """
     ];

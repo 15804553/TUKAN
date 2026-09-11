@@ -15,6 +15,10 @@ public static class BoberTypWpisuMapper
         if (string.IsNullOrWhiteSpace(typWpisu))
             return null;
 
+        if (BoberOznaczeniaBridge.TryMap is { } tryMap
+            && tryMap(typWpisu, out var fromCatalog))
+            return fromCatalog;
+
         if (JestOddany(typWpisu))
             return null;
 
@@ -25,13 +29,15 @@ public static class BoberTypWpisuMapper
         return Map(typWpisu);
     }
 
-    /// <summary>Oddaje: sufiks „/” na WS, D lub U — osoba wraca do pracy.</summary>
+    /// <summary>Oddaje: sufiks „/” — osoba wraca do pracy (legacy: D/WS/U/UWS).</summary>
     public static bool JestOddany(string? typWpisu)
     {
         if (string.IsNullOrWhiteSpace(typWpisu))
             return false;
 
         var trimmed = typWpisu.Trim();
+        if (trimmed.Length > 0 && trimmed[^1] == '*')
+            trimmed = trimmed[..^1];
         if (trimmed.Length > 0 && trimmed[^1] == '.')
             trimmed = trimmed[..^1];
 
@@ -39,7 +45,7 @@ public static class BoberTypWpisuMapper
             return false;
 
         var bazowy = trimmed[..^1].Trim().ToUpperInvariant();
-        return bazowy is "D" or "WS" or "U" or "UWS";
+        return bazowy is "D" or "WS" or "U" or "UWS" or "UR";
     }
 
     public static string BazowyKod(string? typWpisu)
@@ -52,13 +58,12 @@ public static class BoberTypWpisuMapper
             trimmed = trimmed[..^1];
         if (trimmed.Length > 0 && trimmed[^1] == '.')
             trimmed = trimmed[..^1];
+        if (trimmed.Length > 0 && trimmed[^1] == '*')
+            trimmed = trimmed[..^1];
 
         return trimmed;
     }
 
-    /// <summary>
-    /// S (szkolenie) → Delegowany; C (chory) → Chory; Del → Delegowany; itd.
-    /// </summary>
     public static TypNieobecnosci Map(string? kod)
     {
         if (string.IsNullOrWhiteSpace(kod))
@@ -71,7 +76,6 @@ public static class BoberTypWpisuMapper
             "U" or "URL" or "URLOP" or "UR"
                 => TypNieobecnosci.Urlop,
 
-            // UWS — urlop z wolną służbą → sekcja WOLNA SŁUŻBA (nie URLOP)
             "UWS" or "U+WS" or "U/WS"
                 => TypNieobecnosci.CzasWolny,
 

@@ -2,6 +2,7 @@ using BOBER.Core.Constants;
 using BOBER.Core.Models;
 using BOBER.Data.Repositories;
 using BOBER.Services.Grafik;
+using BOBER.Services.Logging;
 using BOBER.Services.Personnel;
 using BOBER.Services.Settings;
 
@@ -38,26 +39,19 @@ public sealed class UrlopPlanService(
         string typUrlopu,
         CancellationToken cancellationToken = default)
     {
-        await EnsureGuestCanEditUrlopAsync(zmianaId, cancellationToken);
-        var normalized = UrlopTypy.Normalize(typUrlopu);
-        await urlopPlanRepository.UpsertAsync(new UrlopPlanWpis
-        {
-            FunkcjonariuszId = funkcjonariuszId,
-            ZmianaId = zmianaId,
-            Rok = rok,
-            Miesiac = miesiac,
-            Dzien = dzien,
-            TypUrlopu = normalized
-        }, cancellationToken);
-
-        var append = BOBER.Core.Audit.GuestChangeAudit.TryAppendAsync;
-        if (append is not null)
-        {
-            var osoby = await funkcjonariusze.GetByZmianaAsync(zmianaId, cancellationToken);
-            var name = osoby.FirstOrDefault(f => f.Id == funkcjonariuszId)?.PelneImieNazwisko
-                ?? $"ID {funkcjonariuszId}";
-            await append("Urlopy", $"Plan urlopów [{name}] {dzien:00}.{miesiac:00}.{rok} → {normalized}");
-        }
+        await ApplyBatchAsync(
+            zmianaId,
+            [new UrlopPlanWpis
+            {
+                FunkcjonariuszId = funkcjonariuszId,
+                ZmianaId = zmianaId,
+                Rok = rok,
+                Miesiac = miesiac,
+                Dzien = dzien,
+                TypUrlopu = typUrlopu
+            }],
+            [],
+            cancellationToken);
     }
 
     public async Task ClearWpisAsync(
@@ -68,16 +62,78 @@ public sealed class UrlopPlanService(
         int dzien,
         CancellationToken cancellationToken = default)
     {
+        await ApplyBatchAsync(
+            zmianaId,
+            [],
+            [new UrlopPlanWpis
+            {
+                FunkcjonariuszId = funkcjonariuszId,
+                ZmianaId = zmianaId,
+                Rok = rok,
+                Miesiac = miesiac,
+                Dzien = dzien
+            }],
+            cancellationToken);
+    }
+
+    public async Task ApplyBatchAsync(
+        int zmianaId,
+        IReadOnlyList<UrlopPlanWpis> upserts,
+        IReadOnlyList<UrlopPlanWpis> deletes,
+        CancellationToken cancellationToken = default)
+    {
         await EnsureGuestCanEditUrlopAsync(zmianaId, cancellationToken);
-        await urlopPlanRepository.DeleteAsync(funkcjonariuszId, zmianaId, rok, miesiac, dzien, cancellationToken);
+
+        var normalizedUpserts = upserts
+            .Select(wpis => new UrlopPlanWpis
+            {
+                FunkcjonariuszId = wpis.FunkcjonariuszId,
+                ZmianaId = zmianaId,
+                Rok = wpis.Rok,
+                Miesiac = wpis.Miesiac,
+                Dzien = wpis.Dzien,
+                TypUrlopu = UrlopTypy.Normalize(wpis.TypUrlopu)
+            })
+            .ToList();
+        var normalizedDeletes = deletes
+            .Select(wpis => new UrlopPlanWpis
+            {
+                FunkcjonariuszId = wpis.FunkcjonariuszId,
+                ZmianaId = zmianaId,
+                Rok = wpis.Rok,
+                Miesiac = wpis.Miesiac,
+                Dzien = wpis.Dzien
+            })
+            .ToList();
+        await urlopPlanRepository.ApplyBatchAsync(normalizedUpserts, normalizedDeletes, cancellationToken);
 
         var append = BOBER.Core.Audit.GuestChangeAudit.TryAppendAsync;
-        if (append is not null)
+        if (append is null)
+            return;
+
+        try
         {
             var osoby = await funkcjonariusze.GetByZmianaAsync(zmianaId, cancellationToken);
-            var name = osoby.FirstOrDefault(f => f.Id == funkcjonariuszId)?.PelneImieNazwisko
-                ?? $"ID {funkcjonariuszId}";
-            await append("Urlopy", $"Plan urlopów [{name}] usunięto {dzien:00}.{miesiac:00}.{rok}");
+            var names = osoby.ToDictionary(person => person.Id, person => person.PelneImieNazwisko);
+            foreach (var wpis in normalizedUpserts)
+            {
+                var name = names.GetValueOrDefault(wpis.FunkcjonariuszId, $"ID {wpis.FunkcjonariuszId}");
+                await append(
+                    "Urlopy",
+                    $"Plan urlopów [{name}] {wpis.Dzien:00}.{wpis.Miesiac:00}.{wpis.Rok} → {wpis.TypUrlopu}");
+            }
+
+            foreach (var wpis in normalizedDeletes)
+            {
+                var name = names.GetValueOrDefault(wpis.FunkcjonariuszId, $"ID {wpis.FunkcjonariuszId}");
+                await append(
+                    "Urlopy",
+                    $"Plan urlopów [{name}] usunięto {wpis.Dzien:00}.{wpis.Miesiac:00}.{wpis.Rok}");
+            }
+        }
+        catch (Exception ex)
+        {
+            BoberLog.Warning(ex, "Nie udało się zapisać audytu zmiany planu urlopów.");
         }
     }
 
@@ -154,6 +210,7 @@ public sealed class UrlopPlanService(
         var updated = 0;
         var skipped = 0;
         var skippedDetails = new List<string>();
+        var changes = new List<GrafikWpis>();
 
         foreach (var wpis in planWpisy)
         {
@@ -170,7 +227,7 @@ public sealed class UrlopPlanService(
             var typWpisu = wpis.TypUrlopu == UrlopTypy.Rodzicielski
                 ? GrafikWpisTypy.UrlopRodzicielski
                 : GrafikWpisTypy.Urlop;
-            await grafikRepository.UpsertAsync(new GrafikWpis
+            changes.Add(new GrafikWpis
             {
                 FunkcjonariuszId = wpis.FunkcjonariuszId,
                 ZmianaId = zmianaId,
@@ -179,13 +236,15 @@ public sealed class UrlopPlanService(
                 Dzien = wpis.Dzien,
                 TypWpisu = typWpisu,
                 IsAuto = true
-            }, cancellationToken);
+            });
 
             if (isUpdate)
                 updated++;
             else
                 applied++;
         }
+
+        await grafikRepository.ApplyBatchAsync(changes, [], cancellationToken);
 
         return new UrlopPlanSyncResult
         {

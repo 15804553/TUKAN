@@ -83,11 +83,12 @@ public sealed class GrafikWpisTypyTests
 
     [Theory]
     [InlineData("U.", "U")]
-    [InlineData("WS.", "")]
+    [InlineData("WS.", "WS")]
     [InlineData("?", "")]
     [InlineData("U", "U")]
     [InlineData("UWS", "U")]
     [InlineData("UWS.", "U")]
+    [InlineData("WS", "WS")]
     public void TekstGlowny_BezZnaczka(string? typ, string expected)
     {
         Assert.Equal(expected, GrafikWpisTypy.TekstGlowny(typ));

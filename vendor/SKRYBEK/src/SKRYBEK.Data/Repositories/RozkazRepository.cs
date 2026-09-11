@@ -33,6 +33,50 @@ public sealed class RozkazRepository
         return list;
     }
 
+    public async Task<List<RozkazDzienny>> GetForDutyAssignmentsAsync(int rok, int zmianaId)
+    {
+        var ordersById = new Dictionary<int, RozkazDzienny>();
+        await using var conn = _factory.Create();
+        await conn.OpenAsync();
+
+        await using var cmd = new OleDbCommand(
+            """
+            SELECT r.Id, r.NumerRozkazu, r.Rok, r.Data, r.ZmianaId,
+                   r.Zajecia, r.Uwagi, r.DataUtworzenia, r.Status,
+                   s.Id, s.RozkazId, s.Stanowisko, s.FunkcjonariuszId, s.Nazwisko
+            FROM Rozkazy AS r
+            INNER JOIN RozkazSluzba AS s ON r.Id = s.RozkazId
+            WHERE r.Rok = ? AND r.ZmianaId = ?
+            ORDER BY r.Data, s.Stanowisko
+            """,
+            conn);
+        cmd.Parameters.AddWithValue("Rok", rok);
+        cmd.Parameters.AddWithValue("ZmianaId", (short)zmianaId);
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var orderId = reader.GetIntSafe(0);
+            if (!ordersById.TryGetValue(orderId, out var order))
+            {
+                order = MapRozkaz(reader);
+                order.Sluzba = [];
+                ordersById.Add(orderId, order);
+            }
+
+            order.Sluzba.Add(new PozycjaSluzby
+            {
+                Id = reader.GetIntSafe(9),
+                RozkazId = reader.GetIntSafe(10),
+                Stanowisko = (StanowiskoSluzby)reader.GetIntSafe(11),
+                FunkcjonariuszId = reader.GetIntOrNull(12),
+                Nazwisko = reader.GetStringSafe(13)
+            });
+        }
+
+        return ordersById.Values.ToList();
+    }
+
     public async Task<RozkazDzienny?> GetByIdAsync(int id)
     {
         await using var conn = _factory.Create();

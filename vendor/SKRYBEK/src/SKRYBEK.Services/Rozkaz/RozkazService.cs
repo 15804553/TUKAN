@@ -20,6 +20,9 @@ public sealed class RozkazService
     public async Task<List<RozkazDzienny>> GetByRokAsync(int rok)
         => await _repo.GetByRokAsync(rok);
 
+    public Task<List<RozkazDzienny>> GetForDutyAssignmentsAsync(int rok, int zmianaId) =>
+        _repo.GetForDutyAssignmentsAsync(rok, zmianaId);
+
     public async Task<RozkazDzienny?> GetByIdAsync(int id)
         => await _repo.GetByIdAsync(id);
 

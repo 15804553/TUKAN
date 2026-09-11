@@ -27,11 +27,13 @@ public sealed class UrlopPlanController(AppServices services, int zmianaId, stri
     private IReadOnlyList<Funkcjonariusz>? _funkcjonariusze;
 
     private Dictionary<string, string>? _kolory;
+    private readonly Dictionary<int, IReadOnlyDictionary<int, HashSet<int>>> _workDaysByYear = new();
 
     public int MaxUrlopowNaSluzbie { get; private set; } = UrlopPlanInstructions.DefaultMaxUrlopowNaSluzbie;
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
+        _workDaysByYear.Clear();
         _funkcjonariusze = await services.Funkcjonariusze.GetByZmianaAsync(ZmianaId, cancellationToken);
         var kolory = await services.Kolory.GetAllAsync(cancellationToken);
         _kolory = kolory.ToDictionary(k => k.KluczRoli, k => k.KolorHex, StringComparer.OrdinalIgnoreCase);
@@ -53,17 +55,20 @@ public sealed class UrlopPlanController(AppServices services, int zmianaId, stri
         CancellationToken cancellationToken = default)
 
     {
+        if (!_workDaysByYear.TryGetValue(rok, out var months))
+        {
+            var allWorkDays = await services.Calendar.GetWorkDaysAsync(ZmianaId, rok, cancellationToken);
+            months = allWorkDays
+                .GroupBy(date => date.Month)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(date => date.Day).ToHashSet());
+            _workDaysByYear[rok] = months;
+        }
 
-        var allWorkDays = await services.Calendar.GetWorkDaysAsync(ZmianaId, rok, cancellationToken);
-
-        return allWorkDays
-
-            .Where(d => d.Month == miesiac)
-
-            .Select(d => d.Day)
-
-            .ToHashSet();
-
+        return months.TryGetValue(miesiac, out var days)
+            ? days.ToHashSet()
+            : [];
     }
 
 
@@ -100,6 +105,12 @@ public sealed class UrlopPlanController(AppServices services, int zmianaId, stri
     public Task ClearWpisAsync(int fid, int rok, int miesiac, int dzien, CancellationToken ct = default) =>
 
         services.UrlopPlan.ClearWpisAsync(fid, ZmianaId, rok, miesiac, dzien, ct);
+
+    public Task ApplyBatchAsync(
+        IReadOnlyList<UrlopPlanWpis> upserts,
+        IReadOnlyList<UrlopPlanWpis> deletes,
+        CancellationToken cancellationToken = default) =>
+        services.UrlopPlan.ApplyBatchAsync(ZmianaId, upserts, deletes, cancellationToken);
 
 
 

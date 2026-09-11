@@ -1,4 +1,5 @@
 using System.IO;
+using BOBER.Core.Diagnostics;
 using BOBER.Services.Logging;
 using Serilog;
 using SKRYBEK.App;
@@ -64,7 +65,11 @@ public sealed class TukanAppServices : IDisposable
             new GuestAuditLogService(),
             new GuestAuditSettingsService(bober.Ustawienia));
 
-        return new TukanAppServices(chomik, bober, guestAudit) { Skrybek = skrybek };
+        await DatabasePerformanceDiagnostics.InspectAsync(unifiedPath, databasePassword);
+
+        var services = new TukanAppServices(chomik, bober, guestAudit) { Skrybek = skrybek };
+        WireOznaczeniaBridge();
+        return services;
     }
 
     /// <summary>Backup w tle przy starcie — nie blokuje okna logowania.</summary>
@@ -110,6 +115,10 @@ public sealed class TukanAppServices : IDisposable
         SkrybekSession = skrybekSession;
         SkrybekSession.NormalizePaFlags();
         WireGuestAuditBridges();
+
+        var zmianaId = Bober.Auth.CurrentSession?.ZmianaId ?? 1;
+        await Bober.Oznaczenia.ReloadAsync(zmianaId);
+
         return (true, string.Empty);
     }
 
@@ -124,6 +133,7 @@ public sealed class TukanAppServices : IDisposable
     public void Dispose()
     {
         Logout();
+        PerformanceDiagnostics.Sink = null;
     }
 
     private void WireGuestAuditBridges()
@@ -161,6 +171,65 @@ public sealed class TukanAppServices : IDisposable
         SKRYBEK.Core.Audit.GuestChangeAudit.Clear();
     }
 
+    private static void WireOznaczeniaBridge()
+    {
+        SKRYBEK.Core.Rules.BoberOznaczeniaBridge.TryMap = (string? typWpisu, out SKRYBEK.Core.Enums.TypNieobecnosci? sekcja) =>
+        {
+            sekcja = null;
+            if (string.IsNullOrWhiteSpace(typWpisu))
+                return true;
+
+            var bazowy = BOBER.Core.Constants.GrafikWpisTypy.BazowyKod(typWpisu);
+            var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(bazowy);
+            if (ozn is null)
+                return false;
+
+            if (BOBER.Core.Constants.GrafikWpisTypy.MaOddal(typWpisu) && ozn.MoznaOddac)
+            {
+                sekcja = null;
+                return true;
+            }
+
+            if (ozn.WPracy)
+            {
+                sekcja = null;
+                return true;
+            }
+
+            if (ozn.SekcjaRozkazu is null)
+            {
+                sekcja = null;
+                return true;
+            }
+
+            sekcja = (SKRYBEK.Core.Enums.TypNieobecnosci)(int)ozn.SekcjaRozkazu.Value;
+            return true;
+        };
+
+        SKRYBEK.Core.Rules.BoberOznaczeniaBridge.MapDodatkowaSekcja = typWpisu =>
+        {
+            var bazowy = BOBER.Core.Constants.GrafikWpisTypy.BazowyKod(typWpisu);
+            var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(bazowy);
+            if (ozn?.DodatkowaSekcjaRozkazu is null)
+                return null;
+            return (SKRYBEK.Core.Enums.TypNieobecnosci)(int)ozn.DodatkowaSekcjaRozkazu.Value;
+        };
+
+        SKRYBEK.Core.Rules.BoberOznaczeniaBridge.MapAdnotacja = (typWpisu, typSekcji) =>
+        {
+            var bazowy = BOBER.Core.Constants.GrafikWpisTypy.BazowyKod(typWpisu);
+            var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(bazowy);
+            if (ozn is null || string.IsNullOrWhiteSpace(ozn.AdnotacjaRozkazu) || ozn.SekcjaRozkazu is null)
+                return null;
+
+            var oczekiwana = (SKRYBEK.Core.Enums.TypNieobecnosci)(int)ozn.SekcjaRozkazu.Value;
+            if (oczekiwana != typSekcji)
+                return null;
+
+            return ozn.AdnotacjaRozkazu;
+        };
+    }
+
     private static void ConfigureLogging()
     {
         var logDir = Path.Combine(AppContext.BaseDirectory, "LOG");
@@ -171,7 +240,16 @@ public sealed class TukanAppServices : IDisposable
         SkrybekLog.Initialize(
             logPath,
             rollingInterval: RollingInterval.Infinite,
-            minimumLevel: Serilog.Events.LogEventLevel.Warning);
+            minimumLevel: PerformanceDiagnostics.IsEnabled
+                ? Serilog.Events.LogEventLevel.Information
+                : Serilog.Events.LogEventLevel.Warning);
+        PerformanceDiagnostics.Sink = measurement =>
+            BoberLog.Information(
+                "WYDAJNOSC Operacja={Operation} Etap={Stage} CzasMs={ElapsedMilliseconds:F1} Elementy={ItemCount}",
+                measurement.Operation,
+                measurement.Stage,
+                measurement.ElapsedMilliseconds,
+                measurement.ItemCount);
     }
 
     private static void UsunStarePlikiLogow(string logDir, DateTime starszeNiz)

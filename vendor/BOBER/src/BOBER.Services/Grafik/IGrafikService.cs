@@ -15,7 +15,11 @@ public interface IGrafikService
         string typWpisu,
         bool isAuto = false,
         CancellationToken cancellationToken = default);
-    Task ClearWpisAsync(int funkcjonariuszId, int rok, int miesiac, int dzien, CancellationToken cancellationToken = default);
+    Task ApplyBatchAsync(
+        IReadOnlyList<GrafikWpis> upserts,
+        IReadOnlyList<GrafikWpis> deletes,
+        CancellationToken cancellationToken = default);
+    Task ClearWpisAsync(int funkcjonariuszId, int zmianaId, int rok, int miesiac, int dzien, CancellationToken cancellationToken = default);
     Task ClearHalfYearAsync(int zmianaId, int rok, int polrocze, CancellationToken cancellationToken = default);
     Task GenerateBaseScheduleAsync(int zmianaId, int rok, IReadOnlyList<int> funkcjonariuszIds, CancellationToken cancellationToken = default);
 

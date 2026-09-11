@@ -1,5 +1,6 @@
 using SKRYBEK.Core.Enums;
 using SKRYBEK.Core.Models;
+using BOBER.Core.Diagnostics;
 using Tukan.App.Services;
 using Tukan.App.ViewModels;
 using BoberFunkcjonariusz = BOBER.Core.Models.Funkcjonariusz;
@@ -26,26 +27,28 @@ public sealed class DutyAssignmentsController
 
     public async Task<HashSet<int>> GetWorkDaysForMonthAsync(int year, int month)
     {
-        var daysInMonth = DateTime.DaysInMonth(year, month);
-        var workDays = new HashSet<int>();
-
-        for (var day = 1; day <= daysInMonth; day++)
-        {
-            var date = new DateOnly(year, month, day);
-            if (await _services.Skrybek.Personnel.CzyDzienSluzbyAsync(_shiftNumber, date))
-            {
-                workDays.Add(day);
-            }
-        }
-
-        return workDays;
+        var allWorkDays = await _services.Bober.Calendar.GetWorkDaysAsync(_shiftNumber, year);
+        return allWorkDays
+            .Where(date => date.Month == month)
+            .Select(date => date.Day)
+            .ToHashSet();
     }
 
     public async Task<IReadOnlyList<DutyAssignmentsRowViewModel>> BuildRowsAsync(int year, int month)
     {
+        var totalStopwatch = PerformanceDiagnostics.Start();
+        var dataStopwatch = PerformanceDiagnostics.Start();
         // Ta sama kolejność co w grafiku służb (KolejnoscFunkcjonariuszy z BOBER).
         var personnel = await _services.Bober.Funkcjonariusze.GetByZmianaAsync(_shiftNumber);
         var uwagi = await _services.Bober.ObsadaFunkcji.GetUwagiMonthAsync(_shiftNumber, year, month);
+        var orders = await GetOrdersForMonthAsync(year, month);
+        PerformanceDiagnostics.Log(
+            "ObsadaFunkcji.LoadMonth",
+            "Dane",
+            dataStopwatch,
+            personnel.Count + uwagi.Count + orders.Count);
+
+        var processingStopwatch = PerformanceDiagnostics.Start();
         var uwagiLookup = uwagi
             .GroupBy(u => u.FunkcjonariuszId)
             .ToDictionary(g => g.Key, g => g.Last().Tresc);
@@ -63,7 +66,7 @@ public sealed class DutyAssignmentsController
         var rowsById = personnel.Zip(rows).ToDictionary(pair => pair.First.Id, pair => pair.Second);
         var rowsByName = BuildNameLookup(personnel, rows);
 
-        foreach (var order in await GetOrdersForMonthAsync(year, month))
+        foreach (var order in orders)
         {
             foreach (var assignment in order.Sluzba)
             {
@@ -78,6 +81,8 @@ public sealed class DutyAssignmentsController
             }
         }
 
+        PerformanceDiagnostics.Log("ObsadaFunkcji.LoadMonth", "Przetwarzanie", processingStopwatch, rows.Count);
+        PerformanceDiagnostics.Log("ObsadaFunkcji.LoadMonth", "Calkowity", totalStopwatch, rows.Count);
         return rows;
     }
 
@@ -86,24 +91,11 @@ public sealed class DutyAssignmentsController
     /// </summary>
     private async Task<IReadOnlyList<RozkazDzienny>> GetOrdersForMonthAsync(int year, int month)
     {
-        var summaries = await _services.Skrybek.Rozkaz.GetByRokAsync(year);
-        var matchingOrders = summaries
-            .Where(order => order.ZmianaId == _shiftNumber)
+        var orders = await _services.Skrybek.Rozkaz.GetForDutyAssignmentsAsync(year, _shiftNumber);
+        return orders
             .Where(order => order.Data.Month == month)
             .OrderBy(order => order.Data)
             .ToList();
-
-        var fullOrders = new List<RozkazDzienny>(matchingOrders.Count);
-        foreach (var summary in matchingOrders)
-        {
-            var fullOrder = await _services.Skrybek.Rozkaz.GetByIdAsync(summary.Id);
-            if (fullOrder is not null)
-            {
-                fullOrders.Add(fullOrder);
-            }
-        }
-
-        return fullOrders;
     }
 
     public async Task SetUwagaMiesiecznaAsync(

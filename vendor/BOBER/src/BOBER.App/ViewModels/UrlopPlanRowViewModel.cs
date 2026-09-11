@@ -56,6 +56,7 @@ public sealed class UrlopPlanRowViewModel : INotifyPropertyChanged
         set
         {
             _cells[day] = value ?? string.Empty;
+            OnPropertyChanged($"Item[{day}]");
             OnPropertyChanged($"[{day}]");
         }
     }

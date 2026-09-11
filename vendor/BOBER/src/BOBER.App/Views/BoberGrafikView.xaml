@@ -1,6 +1,8 @@
 <UserControl x:Class="BOBER.App.Views.BoberGrafikView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Focusable="True"
+             PreviewKeyDown="OnViewPreviewKeyDown">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -79,10 +81,12 @@
                 BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="12,5,12,5">
-            <TextBlock Foreground="{StaticResource ForegroundMutedBrush}"
+            <TextBlock x:Name="ShortcutsLegendTextBlock"
+                       Foreground="{StaticResource ForegroundMutedBrush}"
                        FontSize="11"
                        VerticalAlignment="Center"
-                       Text="Skróty: Spacja — w pracy | D — Dyżur | W — Wolna służba | U — Urlop | U+W — Urlop z WS | E — Delegacja | S — Szkolenie | C — Chory | O — Oddaje | . — chętna oddać | / — potrzebuje wolne (?) | Ctrl+Z — Cofnij" />
+                       TextWrapping="Wrap"
+                       Text="Skróty: Spacja — w pracy | O — Oddaje | . — chętna oddać | Ctrl+Z — Cofnij" />
         </Border>
     </Grid>
 </UserControl>

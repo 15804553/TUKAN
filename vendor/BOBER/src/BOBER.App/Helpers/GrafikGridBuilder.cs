@@ -7,6 +7,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using BOBER.App.ViewModels;
 using BOBER.Core.Constants;
+using BOBER.Core.Enums;
+using BOBER.Core.Oznaczenia;
 
 namespace BOBER.App.Helpers;
 
@@ -377,7 +379,6 @@ public static class GrafikGridBuilder
         var contentGrid = new FrameworkElementFactory(typeof(Grid));
 
         var textFactory = new FrameworkElementFactory(typeof(TextBlock));
-        // Typ wpisu + flaga planu → U / Uₚ / Uᵣ (urlop przeniesiony z planu urlopów).
         var tekstBinding = new MultiBinding { Converter = WpisTekstConverter.Instance };
         tekstBinding.Bindings.Add(new Binding($"[{day}]"));
         tekstBinding.Bindings.Add(new Binding($"{nameof(GrafikRowViewModel.FromUrlopPlan)}[{day}]"));
@@ -388,33 +389,75 @@ public static class GrafikGridBuilder
         textFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2, 2, 2, 2));
 
         var textStyle = new Style(typeof(TextBlock));
-        textStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, NormalDayFg));
         textStyle.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.SemiBold));
+        textFactory.SetBinding(TextBlock.ForegroundProperty,
+            new Binding($"[{day}]") { Converter = WpisGlownyCzcionkaConverter.Instance });
 
-        var oddalStrike = new DataTrigger
+        var boldTrigger = new DataTrigger
         {
-            Binding = new Binding($"[{day}]") { Converter = OddalFlagConverter.Instance },
+            Binding = new Binding($"[{day}]") { Converter = WpisStylBoldConverter.Instance },
             Value = true
         };
-        oddalStrike.Setters.Add(new Setter(TextBlock.TextDecorationsProperty, TextDecorations.Strikethrough));
-        oddalStrike.Setters.Add(new Setter(TextBlock.FontSizeProperty, 16.0));
-        textStyle.Triggers.Add(oddalStrike);
+        boldTrigger.Setters.Add(new Setter(TextBlock.FontWeightProperty, FontWeights.Bold));
+        textStyle.Triggers.Add(boldTrigger);
+
+        var italicTrigger = new DataTrigger
+        {
+            Binding = new Binding($"[{day}]") { Converter = WpisStylItalicConverter.Instance },
+            Value = true
+        };
+        italicTrigger.Setters.Add(new Setter(TextBlock.FontStyleProperty, FontStyles.Italic));
+        textStyle.Triggers.Add(italicTrigger);
+
+        var strikeTrigger = new DataTrigger
+        {
+            Binding = new Binding($"[{day}]") { Converter = WpisStylStrikeConverter.Instance },
+            Value = true
+        };
+        strikeTrigger.Setters.Add(new Setter(TextBlock.TextDecorationsProperty, TextDecorations.Strikethrough));
+        strikeTrigger.Setters.Add(new Setter(TextBlock.FontSizeProperty, 16.0));
+        textStyle.Triggers.Add(strikeTrigger);
+
+        var underlineTrigger = new DataTrigger
+        {
+            Binding = new Binding($"[{day}]") { Converter = WpisStylUnderlineConverter.Instance },
+            Value = true
+        };
+        underlineTrigger.Setters.Add(new Setter(TextBlock.TextDecorationsProperty, TextDecorations.Underline));
+        textStyle.Triggers.Add(underlineTrigger);
+
         textFactory.SetValue(FrameworkElement.StyleProperty, textStyle);
         contentGrid.AppendChild(textFactory);
 
-        // Znaczek „.” / „?” — grubszy, ale nadal mniejszy niż główne litery U/D/S.
-        var markFactory = new FrameworkElementFactory(typeof(TextBlock));
-        markFactory.SetBinding(TextBlock.TextProperty,
-            new Binding($"[{day}]") { Converter = WpisZnaczekConverter.Instance });
-        markFactory.SetValue(TextBlock.FontSizeProperty, 14.0);
-        markFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.ExtraBold);
-        markFactory.SetValue(TextBlock.ForegroundProperty, NormalDayFg);
-        markFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Right);
-        markFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Top);
-        markFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 2, 0));
-        markFactory.SetBinding(UIElement.VisibilityProperty,
-            new Binding($"[{day}]") { Converter = ZnaczekVisibilityConverter.Instance });
-        contentGrid.AppendChild(markFactory);
+        // Znaczek LEWA.
+        var markLeftFactory = new FrameworkElementFactory(typeof(TextBlock));
+        markLeftFactory.SetBinding(TextBlock.TextProperty,
+            new Binding($"[{day}]") { Converter = WpisZnaczekLewaConverter.Instance });
+        markLeftFactory.SetValue(TextBlock.FontSizeProperty, 14.0);
+        markLeftFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.ExtraBold);
+        markLeftFactory.SetBinding(TextBlock.ForegroundProperty,
+            new Binding($"[{day}]") { Converter = WpisZnaczekLewaKolorConverter.Instance });
+        markLeftFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Left);
+        markLeftFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Top);
+        markLeftFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2, 0, 0, 0));
+        markLeftFactory.SetBinding(UIElement.VisibilityProperty,
+            new Binding($"[{day}]") { Converter = ZnaczekLewaVisibilityConverter.Instance });
+        contentGrid.AppendChild(markLeftFactory);
+
+        // Znaczek PRAWA (• / ? / własne).
+        var markRightFactory = new FrameworkElementFactory(typeof(TextBlock));
+        markRightFactory.SetBinding(TextBlock.TextProperty,
+            new Binding($"[{day}]") { Converter = WpisZnaczekPrawaConverter.Instance });
+        markRightFactory.SetValue(TextBlock.FontSizeProperty, 14.0);
+        markRightFactory.SetValue(TextBlock.FontWeightProperty, FontWeights.ExtraBold);
+        markRightFactory.SetBinding(TextBlock.ForegroundProperty,
+            new Binding($"[{day}]") { Converter = WpisZnaczekPrawaKolorConverter.Instance });
+        markRightFactory.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Right);
+        markRightFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Top);
+        markRightFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 2, 0));
+        markRightFactory.SetBinding(UIElement.VisibilityProperty,
+            new Binding($"[{day}]") { Converter = ZnaczekPrawaVisibilityConverter.Instance });
+        contentGrid.AppendChild(markRightFactory);
 
         borderFactory.AppendChild(contentGrid);
         return borderFactory;
@@ -576,13 +619,35 @@ public static class GrafikGridBuilder
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             var typ = value?.ToString();
+            var kod = GrafikWpisTypy.BazowyKod(typ);
+            var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(kod);
+
+            if (ozn is not null)
+            {
+                // Flagi: KolorHex = czcionka, nie tło komórki.
+                if (ozn.JestFlaga)
+                    return GrafikWpisTypy.MaZachowaneTloWs(typ) ? colors.WsTlo : Brushes.Transparent;
+
+                if (ozn.MaWlasnyKolor)
+                {
+                    try
+                    {
+                        var color = (Color)ColorConverter.ConvertFromString(ozn.KolorHex)!;
+                        return new SolidColorBrush(color);
+                    }
+                    catch
+                    {
+                        return colors.WsTlo;
+                    }
+                }
+
+                return GrafikWpisTypy.MaZachowaneTloWs(typ) ? colors.WsTlo : Brushes.Transparent;
+            }
 
             if (GrafikWpisTypy.MaTloWolnejSluzby(typ))
                 return colors.WsTlo;
 
-            var kod = GrafikWpisTypy.BazowyKod(typ);
-
-            // Del/S: własny kolor → on; „brak” → żółte tylko gdy zachowano tło WS (sufiks *), inaczej bez wypełnienia.
+            // Fallback Del/S bez katalogu.
             if (kod.Equals(GrafikWpisTypy.Delegacja, StringComparison.OrdinalIgnoreCase))
             {
                 if (colors.DelTlo is not null)
@@ -620,23 +685,34 @@ public static class GrafikGridBuilder
             throw new NotSupportedException();
     }
 
-    private sealed class WpisZnaczekConverter : IValueConverter
+    private sealed class WpisZnaczekLewaConverter : IValueConverter
     {
-        public static readonly WpisZnaczekConverter Instance = new();
+        public static readonly WpisZnaczekLewaConverter Instance = new();
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-            GrafikWpisTypy.TekstZnaczka(value?.ToString());
+            GrafikWpisTypy.TekstZnaczkaLewa(value?.ToString());
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
             throw new NotSupportedException();
     }
 
-    private sealed class ZnaczekVisibilityConverter : IValueConverter
+    private sealed class WpisZnaczekPrawaConverter : IValueConverter
     {
-        public static readonly ZnaczekVisibilityConverter Instance = new();
+        public static readonly WpisZnaczekPrawaConverter Instance = new();
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-            string.IsNullOrEmpty(GrafikWpisTypy.TekstZnaczka(value?.ToString()))
+            GrafikWpisTypy.TekstZnaczkaPrawa(value?.ToString());
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class ZnaczekLewaVisibilityConverter : IValueConverter
+    {
+        public static readonly ZnaczekLewaVisibilityConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            string.IsNullOrEmpty(GrafikWpisTypy.TekstZnaczkaLewa(value?.ToString()))
                 ? Visibility.Collapsed
                 : Visibility.Visible;
 
@@ -644,19 +720,164 @@ public static class GrafikGridBuilder
             throw new NotSupportedException();
     }
 
-    private sealed class OddalFlagConverter : IValueConverter
+    private sealed class ZnaczekPrawaVisibilityConverter : IValueConverter
     {
-        public static readonly OddalFlagConverter Instance = new();
+        public static readonly ZnaczekPrawaVisibilityConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            string.IsNullOrEmpty(GrafikWpisTypy.TekstZnaczkaPrawa(value?.ToString()))
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private static Brush BrushFromHex(string? hex, Brush fallback)
+    {
+        if (string.IsNullOrWhiteSpace(hex))
+            return fallback;
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex)!;
+            return new SolidColorBrush(color);
+        }
+        catch
+        {
+            return fallback;
+        }
+    }
+
+    private sealed class WpisGlownyCzcionkaConverter : IValueConverter
+    {
+        public static readonly WpisGlownyCzcionkaConverter Instance = new();
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             var typ = value?.ToString();
-            if (!GrafikWpisTypy.MaOddal(typ))
-                return false;
+            if (GrafikWpisTypy.MaOddal(typ))
+            {
+                var centrum = OznaczeniaLookup.FindCentrumFlaga();
+                if (centrum is not null)
+                    return BrushFromHex(centrum.EffectiveKolorCzcionkiHex, NormalDayFg);
+            }
 
-            var bazowy = GrafikWpisTypy.BazowyKod(typ);
-            return !bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase);
+            return NormalDayFg;
         }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class WpisZnaczekLewaKolorConverter : IValueConverter
+    {
+        public static readonly WpisZnaczekLewaKolorConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var typ = value?.ToString();
+            if (GrafikWpisTypy.MaKropke(typ))
+            {
+                var chce = OznaczeniaLookup.FindChceOddac();
+                if (chce?.FlagaPozycja == FlagaPozycjaOznaczenia.Lewa)
+                    return BrushFromHex(chce.EffectiveKolorCzcionkiHex, NormalDayFg);
+            }
+
+            var ozn = OznaczeniaLookup.FindByKod(GrafikWpisTypy.BazowyKod(typ));
+            if (ozn?.FlagaPozycja == FlagaPozycjaOznaczenia.Lewa)
+                return BrushFromHex(ozn.EffectiveKolorCzcionkiHex, NormalDayFg);
+
+            return NormalDayFg;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class WpisZnaczekPrawaKolorConverter : IValueConverter
+    {
+        public static readonly WpisZnaczekPrawaKolorConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var typ = value?.ToString();
+            if (GrafikWpisTypy.MaKropke(typ))
+            {
+                var chce = OznaczeniaLookup.FindChceOddac();
+                if (chce is not null && chce.FlagaPozycja != FlagaPozycjaOznaczenia.Lewa)
+                    return BrushFromHex(chce.EffectiveKolorCzcionkiHex, NormalDayFg);
+            }
+
+            var ozn = OznaczeniaLookup.FindByKod(GrafikWpisTypy.BazowyKod(typ));
+            if (ozn?.FlagaPozycja == FlagaPozycjaOznaczenia.Prawa)
+                return BrushFromHex(ozn.EffectiveKolorCzcionkiHex, NormalDayFg);
+
+            return NormalDayFg;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private static StylWyswietlaniaOznaczenia ResolveEffectiveStyl(string? typWpisu)
+    {
+        // Oddaje (sufiks /) — styl z oznaczenia z flagą CENTRUM.
+        if (GrafikWpisTypy.MaOddal(typWpisu))
+        {
+            var bazowy = GrafikWpisTypy.BazowyKod(typWpisu);
+            if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase))
+                return StylWyswietlaniaOznaczenia.Normalny;
+
+            var centrum = OznaczeniaLookup.FindCentrumFlaga();
+            return centrum?.StylWyswietlania ?? StylWyswietlaniaOznaczenia.Przekreslenie;
+        }
+
+        var ozn = OznaczeniaLookup.FindByKod(GrafikWpisTypy.BazowyKod(typWpisu));
+        if (ozn is null || ozn.FlagaPozycja != FlagaPozycjaOznaczenia.Nie)
+            return StylWyswietlaniaOznaczenia.Normalny;
+
+        return ozn.StylWyswietlania;
+    }
+
+    private sealed class WpisStylBoldConverter : IValueConverter
+    {
+        public static readonly WpisStylBoldConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            ResolveEffectiveStyl(value?.ToString()) == StylWyswietlaniaOznaczenia.Pogrubienie;
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class WpisStylItalicConverter : IValueConverter
+    {
+        public static readonly WpisStylItalicConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            ResolveEffectiveStyl(value?.ToString()) == StylWyswietlaniaOznaczenia.Kursywa;
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class WpisStylStrikeConverter : IValueConverter
+    {
+        public static readonly WpisStylStrikeConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            ResolveEffectiveStyl(value?.ToString()) == StylWyswietlaniaOznaczenia.Przekreslenie;
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class WpisStylUnderlineConverter : IValueConverter
+    {
+        public static readonly WpisStylUnderlineConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+            ResolveEffectiveStyl(value?.ToString()) == StylWyswietlaniaOznaczenia.Podkreslenie;
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
             throw new NotSupportedException();

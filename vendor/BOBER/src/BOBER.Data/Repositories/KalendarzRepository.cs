@@ -5,6 +5,8 @@ namespace BOBER.Data.Repositories;
 
 public sealed class KalendarzRepository(BoberConnectionFactory connectionFactory) : IKalendarzRepository
 {
+    private const int MaxIdsPerQuery = 200;
+
     public async Task<IReadOnlyList<KalendarzWpis>> GetByMonthAsync(
         int rok,
         int miesiac,
@@ -65,10 +67,12 @@ public sealed class KalendarzRepository(BoberConnectionFactory connectionFactory
         {
             result.Add(ReadWpis(reader));
         }
+        await reader.CloseAsync();
 
+        var odczyty = await GetOdczytyInternalAsync(connection, result, cancellationToken);
         foreach (var wpis in result)
         {
-            wpis.Odczyt = await GetOdczytInternalAsync(connection, wpis.Id, wpis.ZmianaId, cancellationToken);
+            wpis.Odczyt = odczyty.GetValueOrDefault((wpis.Id, wpis.ZmianaId));
         }
 
         return result;
@@ -358,19 +362,56 @@ public sealed class KalendarzRepository(BoberConnectionFactory connectionFactory
         if (!await reader.ReadAsync(cancellationToken))
             return null;
 
-        return new KalendarzOdczyt
-        {
-            WpisId = Convert.ToInt32(reader["WpisId"]),
-            ZmianaId = Convert.ToInt32(reader["ZmianaId"]),
-            Przeczytane = Convert.ToBoolean(reader["Przeczytane"]),
-            PrzeczytanePrzez = reader["PrzeczytanePrzez"] is DBNull
-                ? null
-                : reader["PrzeczytanePrzez"]?.ToString(),
-            DataOdczytu = reader["DataOdczytu"] is DBNull or null
-                ? null
-                : Convert.ToDateTime(reader["DataOdczytu"])
-        };
+        return ReadOdczyt(reader);
     }
+
+    private static async Task<IReadOnlyDictionary<(int WpisId, int ZmianaId), KalendarzOdczyt>>
+        GetOdczytyInternalAsync(
+            OleDbConnection connection,
+            IReadOnlyList<KalendarzWpis> wpisy,
+            CancellationToken cancellationToken)
+    {
+        if (wpisy.Count == 0)
+            return new Dictionary<(int, int), KalendarzOdczyt>();
+
+        var ids = wpisy.Select(wpis => wpis.Id).Distinct().ToArray();
+        var result = new Dictionary<(int, int), KalendarzOdczyt>();
+        foreach (var idBatch in ids.Chunk(MaxIdsPerQuery))
+        {
+            var placeholders = string.Join(", ", Enumerable.Repeat("?", idBatch.Length));
+            await using var command = new OleDbCommand(
+                $"""
+                 SELECT WpisId, ZmianaId, Przeczytane, PrzeczytanePrzez, DataOdczytu
+                 FROM KalendarzOdczyty
+                 WHERE WpisId IN ({placeholders})
+                 """,
+                connection);
+            foreach (var id in idBatch)
+                AddLong(command, id);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var odczyt = ReadOdczyt(reader);
+                result[(odczyt.WpisId, odczyt.ZmianaId)] = odczyt;
+            }
+        }
+
+        return result;
+    }
+
+    private static KalendarzOdczyt ReadOdczyt(System.Data.Common.DbDataReader reader) => new()
+    {
+        WpisId = Convert.ToInt32(reader["WpisId"]),
+        ZmianaId = Convert.ToInt32(reader["ZmianaId"]),
+        Przeczytane = Convert.ToBoolean(reader["Przeczytane"]),
+        PrzeczytanePrzez = reader["PrzeczytanePrzez"] is DBNull
+            ? null
+            : reader["PrzeczytanePrzez"]?.ToString(),
+        DataOdczytu = reader["DataOdczytu"] is DBNull or null
+            ? null
+            : Convert.ToDateTime(reader["DataOdczytu"])
+    };
 
     private static async Task ResetOdczytInternalAsync(
         OleDbConnection connection,

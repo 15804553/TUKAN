@@ -17,6 +17,11 @@ public interface IUrlopPlanRepository
 
     Task UpsertAsync(UrlopPlanWpis wpis, CancellationToken cancellationToken = default);
 
+    Task ApplyBatchAsync(
+        IReadOnlyList<UrlopPlanWpis> upserts,
+        IReadOnlyList<UrlopPlanWpis> deletes,
+        CancellationToken cancellationToken = default);
+
     Task DeleteAsync(
         int funkcjonariuszId,
         int zmianaId,

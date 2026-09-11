@@ -128,9 +128,20 @@ public sealed class SettingsController(AppServices services)
             "Zarządzanie grafikiem jest wyłączone dla użytkownika Gość — włącz je w Konto Gość (użytkownik Zmiana).");
     }
 
+    public Task<IReadOnlyList<OznaczenieGrafiku>> GetOznaczeniaAsync(CancellationToken ct = default) =>
+        services.Oznaczenia.GetAllAsync(ZmianaId, ct);
+
+    public Task SaveOznaczeniaAsync(IReadOnlyList<OznaczenieGrafiku> items, CancellationToken ct = default) =>
+        services.Oznaczenia.SaveAsync(ZmianaId, items, ct);
+
+    public Task<int> CountWpisowZKodemAsync(string kod, CancellationToken ct = default) =>
+        services.Oznaczenia.CountWpisowZKodemAsync(kod, ZmianaId, ct);
+
     public IReadOnlyList<(string Klucz, string Etykieta)> GetKolorKeys() =>
         RoleKeys.WszystkieKolory
-            .Where(k => k != RoleKeys.Nurek)
+            .Where(k => k != RoleKeys.Nurek
+                        && k != RoleKeys.Delegacja
+                        && k != RoleKeys.Szkolenie)
             .Select(k => (k, RoleKeys.DomyslneEtykiety.TryGetValue(k, out var e) ? e : k))
             .ToList();
 }

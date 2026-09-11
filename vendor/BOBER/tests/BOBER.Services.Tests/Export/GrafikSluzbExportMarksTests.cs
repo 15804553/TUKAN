@@ -15,10 +15,10 @@ public sealed class GrafikSluzbExportMarksTests
     [InlineData("U", "U")]
     [InlineData("U/", "U")]
     [InlineData("D/", "D")]
-    [InlineData("WS/", "—")]
-    [InlineData("WS", "")]
+    [InlineData("WS/", "WS")]
+    [InlineData("WS", "WS")]
     [InlineData("U.", "U•")]
-    [InlineData("WS.", "•")]
+    [InlineData("WS.", "WS•")]
     [InlineData("?", "?")]
     public void TekstWyswietlany_NoweZnaczkiDoEksportu(string kod, string expected)
     {

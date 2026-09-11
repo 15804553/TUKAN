@@ -8,6 +8,7 @@ using BOBER.App.Logging;
 using BOBER.App.ViewModels;
 using BOBER.App.Views.Chrome;
 using BOBER.Core.Constants;
+using BOBER.Core.Diagnostics;
 using BOBER.Core.Models;
 using BOBER.Services.Urlop;
 using Microsoft.Win32;
@@ -25,6 +26,8 @@ public partial class UrlopPlanView : UserControl
     private bool _isSettingUp;
     private bool _isRestrictingSelection;
     private int _setupGeneration;
+    private int _cachedYear;
+    private IReadOnlyList<UrlopPlanWpis>? _yearWpisyCache;
 
     public bool IsEmbedded { get; set; }
 
@@ -79,6 +82,7 @@ public partial class UrlopPlanView : UserControl
             return;
 
         await _controller.LoadAsync();
+        InvalidateYearCache();
         Array.Fill(_monthLoaded, false);
 
         var month = MonthTabControl.SelectedItem is TabItem { Tag: int m } ? m : (int?)null;
@@ -118,6 +122,7 @@ public partial class UrlopPlanView : UserControl
         {
             MonthTabControl.Items.Clear();
             _monthGrids.Clear();
+            InvalidateYearCache();
             Array.Fill(_monthLoaded, false);
             _selectedCell = null;
 
@@ -332,9 +337,9 @@ public partial class UrlopPlanView : UserControl
 
         try
         {
-            var yearWpisy = await _controller.GetYearAsync(_year);
+            var yearWpisy = await GetYearWpisyAsync();
             var yearCounts = BuildYearCountsByPerson(yearWpisy);
-            var wpisy = await _controller.GetMonthAsync(_year, month);
+            var wpisy = yearWpisy.Where(wpis => wpis.Miesiac == month);
             var wpisyLookup = wpisy
                 .GroupBy(w => (w.FunkcjonariuszId, w.Dzien))
                 .ToDictionary(g => g.Key, g => g.Last().TypUrlopu);
@@ -377,6 +382,24 @@ public partial class UrlopPlanView : UserControl
         {
             UiErrorReporter.Show(OwnerWindow, ex, "Błąd ładowania planu urlopów");
         }
+    }
+
+    private async Task<IReadOnlyList<UrlopPlanWpis>> GetYearWpisyAsync(bool force = false)
+    {
+        if (_controller is null)
+            return [];
+
+        var requestedYear = _year;
+        if (!force && _yearWpisyCache is not null && _cachedYear == requestedYear)
+            return _yearWpisyCache;
+
+        var entries = await _controller.GetYearAsync(requestedYear);
+        if (requestedYear != _year)
+            return await GetYearWpisyAsync(force);
+
+        _yearWpisyCache = entries;
+        _cachedYear = requestedYear;
+        return _yearWpisyCache;
     }
 
     private static UrlopPlanRowViewModel BuildSummaryRow(IReadOnlyList<UrlopPlanRowViewModel> rows, int daysInMonth)
@@ -429,29 +452,28 @@ public partial class UrlopPlanView : UserControl
         }
     }
 
-    private async Task RefreshPersonYearCountsInAllGridsAsync(int funkcjonariuszId)
+    private async Task RefreshPersonYearCountsInAllGridsAsync(IReadOnlySet<int> funkcjonariuszIds)
     {
         if (_controller is null)
             return;
 
-        var yearWpisy = await _controller.GetYearAsync(_year);
+        var yearWpisy = await GetYearWpisyAsync(force: true);
         var yearCounts = BuildYearCountsByPerson(yearWpisy);
-        if (!yearCounts.TryGetValue(funkcjonariuszId, out var counts))
-            counts = (0, 0, 0);
 
         foreach (var (month, grid) in _monthGrids)
         {
             if (!_monthLoaded[month] || grid.ItemsSource is not IEnumerable<UrlopPlanRowViewModel> rows)
                 continue;
 
-            var personRow = rows.FirstOrDefault(r => r.FunkcjonariuszId == funkcjonariuszId);
-            if (personRow is null)
-                continue;
-
-            personRow.WypoczynkowyCount = counts.Wypoczynkowy;
-            personRow.DodatkowyCount = counts.Dodatkowy;
-            personRow.RodzicielskiCount = counts.Rodzicielski;
-            grid.Items.Refresh();
+            foreach (var personRow in rows.Where(row =>
+                         row.FunkcjonariuszId.HasValue
+                         && funkcjonariuszIds.Contains(row.FunkcjonariuszId.Value)))
+            {
+                var counts = yearCounts.GetValueOrDefault(personRow.FunkcjonariuszId!.Value);
+                personRow.WypoczynkowyCount = counts.Wypoczynkowy;
+                personRow.DodatkowyCount = counts.Dodatkowy;
+                personRow.RodzicielskiCount = counts.Rodzicielski;
+            }
         }
     }
 
@@ -481,6 +503,7 @@ public partial class UrlopPlanView : UserControl
             return;
 
         _year = year;
+        InvalidateYearCache();
         Array.Fill(_monthLoaded, false);
 
         if (MonthTabControl.SelectedItem is TabItem { Tag: int month })
@@ -726,46 +749,71 @@ public partial class UrlopPlanView : UserControl
 
         try
         {
+            var totalStopwatch = PerformanceDiagnostics.Start();
             var affectedPersons = new HashSet<int>();
-            var month = cells[0].Month;
+            var affectedDays = new HashSet<int>();
+            var upserts = new List<UrlopPlanWpis>();
+            var deletes = new List<UrlopPlanWpis>();
 
             foreach (var (vm, cellMonth, day) in cells)
             {
                 if (!vm.FunkcjonariuszId.HasValue)
                     continue;
 
+                var wpis = new UrlopPlanWpis
+                {
+                    FunkcjonariuszId = vm.FunkcjonariuszId.Value,
+                    ZmianaId = _controller.ZmianaId,
+                    Rok = _year,
+                    Miesiac = cellMonth,
+                    Dzien = day,
+                    TypUrlopu = typ
+                };
                 if (string.IsNullOrEmpty(typ))
-                {
-                    await _controller.ClearWpisAsync(vm.FunkcjonariuszId.Value, _year, cellMonth, day);
-                    vm.ClearCell(day);
-                }
+                    deletes.Add(wpis);
                 else
-                {
-                    await _controller.SetWpisAsync(vm.FunkcjonariuszId.Value, _year, cellMonth, day, typ);
-                    vm.SetCell(day, typ);
-                }
+                    upserts.Add(wpis);
 
                 affectedPersons.Add(vm.FunkcjonariuszId.Value);
+                affectedDays.Add(day);
             }
 
+            var dataStopwatch = PerformanceDiagnostics.Start();
+            await _controller.ApplyBatchAsync(upserts, deletes);
+            PerformanceDiagnostics.Log(
+                "UrlopPlan.EdycjaKomorek",
+                "Dane",
+                dataStopwatch,
+                upserts.Count + deletes.Count);
+
+            foreach (var (vm, _, day) in cells)
+            {
+                if (string.IsNullOrEmpty(typ))
+                    vm.ClearCell(day);
+                else
+                    vm.SetCell(day, typ);
+            }
+
+            var uiStopwatch = PerformanceDiagnostics.Start();
             if (dataGrid.ItemsSource is IEnumerable<UrlopPlanRowViewModel> rows)
             {
                 var summary = rows.LastOrDefault(r => r.IsSummaryRow);
                 if (summary is not null)
                 {
-                    var daysInMonth = DateTime.DaysInMonth(_year, month);
-                    for (var d = 1; d <= daysInMonth; d++)
+                    foreach (var day in affectedDays)
                     {
-                        var count = rows.Where(r => !r.IsSummaryRow).Count(r => r.GetCell(d) is "w" or "d" or "r");
-                        summary.SetCell(d, count > 0 ? count.ToString() : "");
+                        var count = rows
+                            .Where(row => !row.IsSummaryRow)
+                            .Count(row => row.GetCell(day) is "w" or "d" or "r");
+                        summary.SetCell(day, count > 0 ? count.ToString() : "");
                     }
                 }
             }
 
-            dataGrid.Items.Refresh();
-            foreach (var personId in affectedPersons)
-                await RefreshPersonYearCountsInAllGridsAsync(personId);
+            PerformanceDiagnostics.Log("UrlopPlan.EdycjaKomorek", "UI", uiStopwatch, cells.Count);
+            await RefreshPersonYearCountsInAllGridsAsync(affectedPersons);
             await RefreshValidationAsync();
+            PerformanceDiagnostics.Log("UrlopPlan.EdycjaKomorek", "Calkowity", totalStopwatch, cells.Count);
         }
         catch (Exception ex)
         {
@@ -796,6 +844,7 @@ public partial class UrlopPlanView : UserControl
         try
         {
             await _controller.ImportFromExcelAsync(_year, dialog.FileName);
+            InvalidateYearCache();
             Array.Fill(_monthLoaded, false);
             if (MonthTabControl.SelectedItem is TabItem { Tag: int month })
                 await LoadMonthAsync(month, force: true);
@@ -850,6 +899,7 @@ public partial class UrlopPlanView : UserControl
         try
         {
             await _controller.ClearYearAsync(_year);
+            InvalidateYearCache();
             Array.Fill(_monthLoaded, false);
             for (var month = 1; month <= 12; month++)
                 await LoadMonthAsync(month, force: true);
@@ -860,6 +910,12 @@ public partial class UrlopPlanView : UserControl
         {
             UiErrorReporter.Show(OwnerWindow, ex, "Błąd czyszczenia planu urlopów");
         }
+    }
+
+    private void InvalidateYearCache()
+    {
+        _yearWpisyCache = null;
+        _cachedYear = 0;
     }
 
     private async void OnApplyToGrafikClick(object sender, RoutedEventArgs e)

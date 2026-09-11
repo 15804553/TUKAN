@@ -1,6 +1,7 @@
 using System.Data.OleDb;
 using BOBER.Core.Constants;
 using BOBER.Core.Enums;
+using BOBER.Core.Models;
 using BOBER.Core.Security;
 
 namespace BOBER.Data.Database;
@@ -15,6 +16,7 @@ internal static class DatabaseSeed
         await EnsureUsersAsync(connection, cancellationToken);
         await EnsureKoloryAsync(connection, cancellationToken);
         await EnsureUstawieniaAsync(connection, options, cancellationToken);
+        await EnsureOznaczeniaGrafikuAsync(connection, cancellationToken);
     }
 
     private static async Task EnsureUsersAsync(OleDbConnection connection, CancellationToken cancellationToken)
@@ -129,5 +131,98 @@ internal static class DatabaseSeed
                 await insert.ExecuteNonQueryAsync(cancellationToken);
             }
         }
+    }
+
+    private static async Task EnsureOznaczeniaGrafikuAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        var kolorWs = await GetKolorHexAsync(connection, RoleKeys.WolnaSluzba, cancellationToken);
+        var kolorDel = await GetKolorHexAsync(connection, RoleKeys.Delegacja, cancellationToken);
+        var kolorS = await GetKolorHexAsync(connection, RoleKeys.Szkolenie, cancellationToken);
+        var defaults = OznaczeniaGrafikuSeed.CreateDefaults(kolorWs, kolorDel, kolorS);
+
+        for (short zmianaId = 1; zmianaId <= 3; zmianaId++)
+        {
+            await using var countCmd = new OleDbCommand(
+                "SELECT COUNT(*) FROM OznaczeniaGrafiku WHERE ZmianaId = ?",
+                connection);
+            countCmd.Parameters.AddWithValue("@p1", zmianaId);
+            var count = Convert.ToInt32(await countCmd.ExecuteScalarAsync(cancellationToken));
+            if (count > 0)
+                continue;
+
+            foreach (var item in defaults)
+                await InsertOznaczenieAsync(connection, zmianaId, item, cancellationToken);
+        }
+    }
+
+    private static async Task InsertOznaczenieAsync(
+        OleDbConnection connection,
+        short zmianaId,
+        OznaczenieGrafiku item,
+        CancellationToken cancellationToken)
+    {
+        await using var cmd = new OleDbCommand(
+            """
+            INSERT INTO OznaczeniaGrafiku
+                (ZmianaId, Kod, Nazwa, KolorHex, WPracy, SekcjaRozkazu, SkrotKlawiszowy,
+                 TekstWyswietlany, MoznaOddac, MoznaKropke, ZachowajTloWsPrzyBraku,
+                 DodatkowaSekcjaRozkazu, RolaNalozania, Kolejnosc,
+                 EksportDoExcela, KolorExcelHex, AdnotacjaRozkazu,
+                 StylWyswietlania, FlagaPozycja)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            connection);
+
+        cmd.Parameters.AddWithValue("@p0", zmianaId);
+        cmd.Parameters.AddWithValue("@p1", item.Kod);
+        cmd.Parameters.AddWithValue("@p2", item.Nazwa);
+        cmd.Parameters.AddWithValue("@p3", item.KolorHex);
+        cmd.Parameters.AddWithValue("@p4", item.WPracy);
+        AddNullableShort(cmd, item.SekcjaRozkazu is null ? null : (short?)item.SekcjaRozkazu.Value);
+        cmd.Parameters.AddWithValue("@p6", item.SkrotKlawiszowy ?? string.Empty);
+        cmd.Parameters.AddWithValue("@p7", (object?)item.TekstWyswietlany ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@p8", item.MoznaOddac);
+        cmd.Parameters.AddWithValue("@p9", item.MoznaKropke);
+        cmd.Parameters.AddWithValue("@p10", item.ZachowajTloWsPrzyBraku);
+        AddNullableShort(
+            cmd,
+            item.DodatkowaSekcjaRozkazu is null ? null : (short?)item.DodatkowaSekcjaRozkazu.Value);
+        cmd.Parameters.AddWithValue("@p12", (short)item.RolaNalozania);
+        cmd.Parameters.AddWithValue("@p13", item.Kolejnosc);
+        cmd.Parameters.AddWithValue("@p14", item.EksportDoExcela);
+        cmd.Parameters.AddWithValue("@p15",
+            string.IsNullOrWhiteSpace(item.KolorExcelHex) ? item.KolorHex : item.KolorExcelHex);
+        cmd.Parameters.AddWithValue("@p16", item.AdnotacjaRozkazu ?? string.Empty);
+        cmd.Parameters.AddWithValue("@p17", (short)item.StylWyswietlania);
+        cmd.Parameters.AddWithValue("@p18", (short)item.FlagaPozycja);
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task<string?> GetKolorHexAsync(
+        OleDbConnection connection,
+        string klucz,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var cmd = new OleDbCommand(
+                "SELECT KolorHex FROM KoloryStanowisk WHERE KluczRoli = ?",
+                connection);
+            cmd.Parameters.AddWithValue("@p1", klucz);
+            var raw = await cmd.ExecuteScalarAsync(cancellationToken);
+            return raw is null or DBNull ? null : raw.ToString();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void AddNullableShort(OleDbCommand command, short? value)
+    {
+        var p = command.Parameters.Add("@p", OleDbType.SmallInt);
+        p.Value = value.HasValue ? value.Value : DBNull.Value;
     }
 }

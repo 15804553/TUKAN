@@ -8,6 +8,7 @@ using BOBER.Services.Grafik;
 using BOBER.Services.GrafikNurkowy;
 using BOBER.Services.Kalendarz;
 using BOBER.Services.ObsadaFunkcji;
+using BOBER.Services.Oznaczenia;
 using BOBER.Services.Personnel;
 using BOBER.Services.Settings;
 using BOBER.Services.Urlop;
@@ -37,6 +38,7 @@ public sealed class AppServices
         var kolejnoscRepository = new KolejnoscRepository(boberFactory);
         var koloryRepository = new KoloryRepository(boberFactory);
         var ustawieniaRepository = new UstawieniaRepository(boberFactory);
+        var oznaczeniaRepository = new OznaczeniaGrafikuRepository(boberFactory);
         var chomikRepository = new ChomikRepository(chomikFactory);
 
         Chomik = chomikRepository;
@@ -45,6 +47,7 @@ public sealed class AppServices
         Ustawienia = ustawieniaRepository;
         Kolory = koloryRepository;
         Kolejnosc = kolejnoscRepository;
+        Oznaczenia = new OznaczeniaService(oznaczeniaRepository);
 
         var calendarEngine = new ShiftCalendarEngine(ustawieniaRepository);
         Grafik = new GrafikService(grafikRepository, grafikNotatkaRepository, grafikUwagaMiesiecznaRepository);
@@ -79,6 +82,7 @@ public sealed class AppServices
     public IUstawieniaRepository Ustawienia { get; }
     public IKoloryRepository Kolory { get; }
     public IKolejnoscRepository Kolejnosc { get; }
+    public IOznaczeniaService Oznaczenia { get; }
     public IGrafikService Grafik { get; }
     public IObsadaFunkcjiService ObsadaFunkcji { get; }
     public ShiftCalendarEngine Calendar { get; }

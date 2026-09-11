@@ -9,6 +9,11 @@ public interface IUrlopPlanService
     Task<IReadOnlyList<UrlopPlanWpis>> GetMonthAsync(int zmianaId, int rok, int miesiac, CancellationToken cancellationToken = default);
     Task SetWpisAsync(int funkcjonariuszId, int zmianaId, int rok, int miesiac, int dzien, string typUrlopu, CancellationToken cancellationToken = default);
     Task ClearWpisAsync(int funkcjonariuszId, int zmianaId, int rok, int miesiac, int dzien, CancellationToken cancellationToken = default);
+    Task ApplyBatchAsync(
+        int zmianaId,
+        IReadOnlyList<UrlopPlanWpis> upserts,
+        IReadOnlyList<UrlopPlanWpis> deletes,
+        CancellationToken cancellationToken = default);
     Task ClearHalfYearAsync(int zmianaId, int rok, int polrocze, CancellationToken cancellationToken = default);
     Task ClearYearAsync(int zmianaId, int rok, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<UrlopPlanValidationIssue>> ValidateAsync(int zmianaId, int rok, CancellationToken cancellationToken = default);

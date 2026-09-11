@@ -1,64 +1,36 @@
+using BOBER.Core.Enums;
+using BOBER.Core.Models;
+using BOBER.Core.Oznaczenia;
+
 namespace BOBER.Core.Constants;
 
 /// <summary>
 /// Kody wpisów w komórkach grafiku i reguły ich interpretacji przy podsumowaniach.
-/// Oddaje (O) — nakładka „/” na WS/D/U/UWS (obecność).
-/// Kropka (.) — chętna oddać, tylko z D, U, UWS lub WS (nie wpływa na stan etatowy).
-/// Pytajnik (?) — potrzebuje wolne, tylko gdy osoba jest w pracy (nie wpływa na stan).
-/// UWS — urlop z wolną służbą (żółte tło jak WS, napis „U”; z planu — „Uₚ”).
-/// Urlop z planu urlopów (IsAuto) wyświetlany jako Uₚ; urlop wpisany ręcznie — U.
-/// Urlop rodzicielski z planu — Uᵣ (TypWpisu „Ur”).
+/// Oddaje (O) — nakładka „/” (obecność). Kropka (.) — chętna oddać.
+/// Gdy załadowany <see cref="OznaczeniaLookup"/> — reguły biorą z katalogu oznaczeń.
 /// </summary>
 public static class GrafikWpisTypy
 {
     public const string Dyzur = "D";
     public const string WolnaSluzba = "WS";
     public const string Urlop = "U";
-    /// <summary>Urlop z wolną służbą — tło WS, tekst „U”; w rozkazie → WOLNA SŁUŻBA.</summary>
     public const string UrlopZWolnaSluzba = "UWS";
-    /// <summary>Urlop rodzicielski przeniesiony z planu urlopów.</summary>
     public const string UrlopRodzicielski = "Ur";
     public const string Delegacja = "Del";
     public const string Szkolenie = "S";
     public const string Chory = "C";
     public const string PotrzebujeWolne = "?";
 
-    /// <summary>
-    /// Indeks dolny „p” (U+209A) — urlop przeniesiony z planu urlopów (IsAuto).
-    /// Ręczny urlop w grafiku miesięcznym pozostaje zwykłym „U”.
-    /// </summary>
     public const string UrlopPlanowanyIndeks = "\u209A";
-
-    /// <summary>Tekst urlopu planowanego w UI i Excelu: Uₚ.</summary>
     public const string UrlopPlanowanyTekst = Urlop + UrlopPlanowanyIndeks;
-
-    /// <summary>
-    /// Indeks dolny „r” (U+1D63) — urlop rodzicielski z planu (jak „p” w Uₚ).
-    /// </summary>
     public const string UrlopRodzicielskiIndeks = "\u1D63";
-
-    /// <summary>Tekst urlopu rodzicielskiego w UI i Excelu: Uᵣ.</summary>
     public const string UrlopRodzicielskiTekst = Urlop + UrlopRodzicielskiIndeks;
 
-    /// <summary>Sufiks Oddaje — bazowy kod (WS/D/U/UWS) zostaje pod spodem.</summary>
     public const char OddalSufiks = '/';
-
-    /// <summary>Sufiks „chętna oddać” — tylko z D, U, UWS lub WS.</summary>
     public const char KropkaSufiks = '.';
-
-    /// <summary>
-    /// Sufiks zachowania żółtego tła WS przy Del/S z „brakiem koloru” (np. „Del*”).
-    /// Nie jest wyświetlany w UI; tylko w typie zapisanym w DB / komórce.
-    /// </summary>
     public const char ZachowajTloWsSufiks = '*';
+    public const string OddalZnak = "\u2014";
 
-    /// <summary>Znak wizualny długiej pauzy (Oddaje) w komórce.</summary>
-    public const string OddalZnak = "\u2014"; // —
-
-    /// <summary>
-    /// Czy wpis oznacza nieobecność w składzie. Pusta komórka / ? / Oddaje = w pracy.
-    /// Kropka nie zmienia statusu obecności.
-    /// </summary>
     public static bool JestNieobecnoscia(string? typWpisu)
     {
         if (string.IsNullOrWhiteSpace(typWpisu))
@@ -71,6 +43,10 @@ public static class GrafikWpisTypy
             return false;
 
         var kod = BazowyKod(typWpisu);
+        var ozn = OznaczeniaLookup.FindByKod(kod);
+        if (ozn is not null)
+            return !ozn.WPracy;
+
         return kod.Equals(Dyzur, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
@@ -83,10 +59,13 @@ public static class GrafikWpisTypy
             || kod.Equals("DD", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Czy kod bazowy (WS, D, U, UWS, Ur) można oddać klawiszem O.</summary>
     public static bool MoznaOddac(string? typWpisu)
     {
         var kod = BazowyKod(typWpisu);
+        var ozn = OznaczeniaLookup.FindByKod(kod);
+        if (ozn is not null)
+            return ozn.MoznaOddac;
+
         return kod.Equals(Dyzur, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
@@ -94,35 +73,68 @@ public static class GrafikWpisTypy
             || kod.Equals(UrlopRodzicielski, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>U, UWS lub Ur — osoba na urlopie w grafiku.</summary>
     public static bool JestUrlopem(string? typWpisu)
     {
         var kod = BazowyKod(typWpisu);
+        var ozn = OznaczeniaLookup.FindByKod(kod);
+        if (ozn is not null)
+        {
+            return ozn.RolaNalozania is RolaNalozaniaOznaczenia.Urlop
+                or RolaNalozaniaOznaczenia.UrlopZWolnaSluzba
+                || ozn.SekcjaRozkazu == SekcjaRozkazuGrafiku.Urlop;
+        }
+
         return kod.Equals(Urlop, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(UrlopRodzicielski, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Czy wpis to urlop rodzicielski z planu (TypWpisu „Ur”).</summary>
     public static bool JestUrlopemRodzicielskim(string? typWpisu) =>
         BazowyKod(typWpisu).Equals(UrlopRodzicielski, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Czy komórka ma żółte tło wolnej służby (WS, D, UWS). Del/S: własne kolory lub zachowane tło WS (*).</summary>
     public static bool MaTloWolnejSluzby(string? typWpisu)
     {
         var kod = BazowyKod(typWpisu);
+        var ozn = OznaczeniaLookup.FindByKod(kod);
+        if (ozn is not null)
+        {
+            return ozn.RolaNalozania is RolaNalozaniaOznaczenia.WolnaSluzba
+                or RolaNalozaniaOznaczenia.UrlopZWolnaSluzba
+                || kod.Equals(Dyzur, StringComparison.OrdinalIgnoreCase);
+        }
+
         return kod.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(Dyzur, StringComparison.OrdinalIgnoreCase)
             || kod.Equals(UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// U+W → UWS, W na UWS → U, U na WS → UWS; w pozostałych przypadkach zwraca <paramref name="nowyTyp"/>.
-    /// </summary>
     public static string ResolvePoNalozeniu(string? aktualnyTyp, string nowyTyp)
     {
         var bazowy = BazowyKod(aktualnyTyp);
         var nowy = (nowyTyp ?? string.Empty).Trim();
+
+        if (OznaczeniaLookup.HasItems)
+        {
+            var aktualne = OznaczeniaLookup.FindByKod(bazowy);
+            var nowe = OznaczeniaLookup.FindByKod(nowy);
+            var uws = OznaczeniaLookup.FindByRola(RolaNalozaniaOznaczenia.UrlopZWolnaSluzba);
+            var urlop = OznaczeniaLookup.FindByRola(RolaNalozaniaOznaczenia.Urlop);
+
+            if (nowe?.RolaNalozania == RolaNalozaniaOznaczenia.WolnaSluzba && uws is not null)
+            {
+                if (aktualne?.RolaNalozania == RolaNalozaniaOznaczenia.UrlopZWolnaSluzba && urlop is not null)
+                    return urlop.Kod;
+                if (aktualne?.RolaNalozania == RolaNalozaniaOznaczenia.Urlop)
+                    return uws.Kod;
+            }
+
+            if (nowe?.RolaNalozania == RolaNalozaniaOznaczenia.Urlop
+                && aktualne?.RolaNalozania == RolaNalozaniaOznaczenia.WolnaSluzba
+                && uws is not null)
+                return uws.Kod;
+
+            return nowy;
+        }
 
         if (nowy.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase))
         {
@@ -141,14 +153,13 @@ public static class GrafikWpisTypy
         return nowy;
     }
 
-    /// <summary>S, C lub Del — nie podlegają oddaniu; UI pokazuje komunikat.</summary>
     public static bool NieMoznaOddacBoZakazanyTyp(string? typWpisu)
     {
-        var kod = BazowyKod(typWpisu);
-        return kod.Equals(Szkolenie, StringComparison.OrdinalIgnoreCase)
-            || kod.Equals(Chory, StringComparison.OrdinalIgnoreCase)
-            || kod.Equals(Delegacja, StringComparison.OrdinalIgnoreCase)
-            || kod.Equals("DEL", StringComparison.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(typWpisu))
+            return false;
+        if (MoznaOddac(typWpisu))
+            return false;
+        return !string.IsNullOrEmpty(BazowyKod(typWpisu));
     }
 
     public static bool MaOddal(string? typWpisu)
@@ -172,17 +183,12 @@ public static class GrafikWpisTypy
         return trimmed.Length > 0 && trimmed[^1] == KropkaSufiks;
     }
 
-    public static bool MaPytajnik(string? typWpisu)
-    {
-        var kod = BazowyKod(typWpisu);
-        return kod == PotrzebujeWolne;
-    }
+    public static bool MaPytajnik(string? typWpisu) =>
+        BazowyKod(typWpisu) == PotrzebujeWolne;
 
-    /// <summary>Czy komórka oznacza osobę w pracy (pusta lub tylko ?).</summary>
     public static bool JestWPracy(string? typWpisu) =>
-        string.IsNullOrWhiteSpace(typWpisu) || MaPytajnik(typWpisu);
+        string.IsNullOrWhiteSpace(typWpisu) || MaPytajnik(typWpisu) || !JestNieobecnoscia(typWpisu);
 
-    /// <summary>Czy typ ma zachować żółte tło WS (sufiks *).</summary>
     public static bool MaZachowaneTloWs(string? typWpisu)
     {
         if (string.IsNullOrWhiteSpace(typWpisu))
@@ -192,7 +198,6 @@ public static class GrafikWpisTypy
         return t.Length > 0 && t[^1] == ZachowajTloWsSufiks;
     }
 
-    /// <summary>Usuwa sufiks zachowania tła WS (np. „Del*” → „Del”).</summary>
     public static string UsunSufiksZachowanegoTla(string? typWpisu)
     {
         if (string.IsNullOrWhiteSpace(typWpisu))
@@ -205,7 +210,6 @@ public static class GrafikWpisTypy
         return t;
     }
 
-    /// <summary>Kod bez sufiksów Oddaje, kropki i zachowania tła (np. „U.” → „U”, „Del*” → „Del”).</summary>
     public static string BazowyKod(string? typWpisu)
     {
         if (string.IsNullOrWhiteSpace(typWpisu))
@@ -222,11 +226,19 @@ public static class GrafikWpisTypy
         return trimmed;
     }
 
-    /// <summary>Typ do zapisu z zachowaniem tła WS (np. „Del” → „Del*”).</summary>
     public static string ZZachowanymTlemWs(string typWpisu) =>
         UsunSufiksZachowanegoTla(typWpisu) + ZachowajTloWsSufiks;
 
-    /// <summary>Czy bazowy kod to Del lub S.</summary>
+    public static bool ZachowujeTloWsPrzyBraku(string? typWpisu)
+    {
+        var kod = BazowyKod(typWpisu);
+        var ozn = OznaczeniaLookup.FindByKod(kod);
+        if (ozn is not null)
+            return ozn.ZachowajTloWsPrzyBraku;
+
+        return JestDelLubS(kod);
+    }
+
     public static bool JestDelLubS(string? typWpisu)
     {
         var b = BazowyKod(typWpisu);
@@ -234,47 +246,42 @@ public static class GrafikWpisTypy
             || b.Equals(Szkolenie, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Del/S przy zapisie: zachowaj żółte tło WS (sufiks *), gdy poprzednio było WS/D/UWS
-    /// albo Del/S z już zachowanym tłem. Przy „braku koloru” pusta służba → bez żółtego.
-    /// </summary>
     public static string ResolveDelSDlaZapisu(string? poprzedniTyp, string nowyTyp)
     {
         var czysty = UsunSufiksZachowanegoTla(nowyTyp);
-        if (!JestDelLubS(czysty))
+        if (!ZachowujeTloWsPrzyBraku(czysty))
             return czysty;
 
         var zachowaj = MaTloWolnejSluzby(poprzedniTyp)
-            || (JestDelLubS(poprzedniTyp) && MaZachowaneTloWs(poprzedniTyp));
+            || (ZachowujeTloWsPrzyBraku(poprzedniTyp) && MaZachowaneTloWs(poprzedniTyp));
 
         return zachowaj ? ZZachowanymTlemWs(czysty) : czysty;
     }
 
-    /// <summary>Dodaje lub usuwa Oddaje. Zwraca null, gdy nie wolno.</summary>
     public static string? PrzelaczOddal(string? typWpisu)
     {
         if (!MoznaOddac(typWpisu))
             return null;
 
         var bazowy = BazowyKod(typWpisu);
-        // Oddaje i kropka się wykluczają — przy Oddaje zdejmujemy kropkę.
         return MaOddal(typWpisu) ? bazowy : bazowy + OddalSufiks;
     }
 
-    /// <summary>Dodaje lub usuwa kropkę (tylko D / U / UWS / WS). Zwraca null, gdy nie wolno.</summary>
     public static string? PrzelaczKropke(string? typWpisu)
     {
-        if (!MoznaOddac(typWpisu))
+        var kod = BazowyKod(typWpisu);
+        var ozn = OznaczeniaLookup.FindByKod(kod);
+        var wolno = ozn?.MoznaKropke ?? MoznaOddac(typWpisu);
+        if (!wolno)
             return null;
 
         var bazowy = BazowyKod(typWpisu);
         if (MaKropke(typWpisu))
-            return bazowy; // zdejmij kropkę i ewentualne Oddaje
+            return bazowy;
 
         return bazowy + KropkaSufiks;
     }
 
-    /// <summary>Dodaje lub usuwa „?” — tylko gdy osoba jest w pracy. Zwraca null, gdy nie wolno.</summary>
     public static string? PrzelaczPytajnik(string? typWpisu)
     {
         if (MaPytajnik(typWpisu))
@@ -286,64 +293,103 @@ public static class GrafikWpisTypy
         return PotrzebujeWolne;
     }
 
-    /// <summary>
-    /// Tekst główny komórki (bez kropki/? — te rysujemy mniejszym znakiem).
-    /// <paramref name="fromUrlopPlan"/> — urlop z planu → Uₚ; rodzicielski → Uᵣ; ręczny → U.
-    /// </summary>
     public static string TekstGlowny(string? typWpisu, bool fromUrlopPlan = false)
     {
         if (MaPytajnik(typWpisu))
             return string.Empty;
 
         var bazowy = BazowyKod(typWpisu);
-        var jestWs = bazowy.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase);
+        var ozn = OznaczeniaLookup.FindByKod(bazowy);
 
-        if (jestWs)
-            return MaOddal(typWpisu) ? OddalZnak : string.Empty;
+        // Flaga LEWA/PRAWA/CENTRUM — symbol nie jest tekstem głównym ( CENTRUM = nakładka Oddaje ).
+        if (ozn is not null && ozn.FlagaPozycja != Enums.FlagaPozycjaOznaczenia.Nie)
+            return string.Empty;
 
-        // Ur — urlop rodzicielski z planu → Uᵣ
+        if (ozn is not null)
+        {
+            if (JestUrlopemRodzicielskim(typWpisu))
+                return UrlopRodzicielskiTekst;
+
+            if (JestUrlopem(typWpisu) && fromUrlopPlan && !JestUrlopemRodzicielskim(typWpisu))
+                return UrlopPlanowanyTekst;
+
+            if (!string.IsNullOrEmpty(ozn.TekstWyswietlany))
+                return ozn.TekstWyswietlany;
+
+            return bazowy;
+        }
+
+        if (bazowy.Equals(WolnaSluzba, StringComparison.OrdinalIgnoreCase))
+            return WolnaSluzba;
+
         if (JestUrlopemRodzicielskim(typWpisu))
             return UrlopRodzicielskiTekst;
 
-        // U / UWS — żółte tło przy UWS; planowany → Uₚ, ręczny → U
         if (JestUrlopem(typWpisu))
             return fromUrlopPlan ? UrlopPlanowanyTekst : Urlop;
 
-        if (string.IsNullOrEmpty(bazowy))
-            return string.Empty;
-
-        return bazowy;
+        return string.IsNullOrEmpty(bazowy) ? string.Empty : bazowy;
     }
 
-    /// <summary>Mniejszy znaczek w komórce: „•” (chętna oddać) lub „?”.</summary>
-    public static string TekstZnaczka(string? typWpisu)
+    public static string TekstZnaczka(string? typWpisu) => TekstZnaczkaPrawa(typWpisu);
+
+    public static string TekstZnaczkaLewa(string? typWpisu)
     {
+        if (MaKropke(typWpisu))
+        {
+            var chce = OznaczeniaLookup.FindChceOddac();
+            if (chce?.FlagaPozycja == Enums.FlagaPozycjaOznaczenia.Lewa)
+                return SymbolZnaczka(chce);
+        }
+
+        var ozn = OznaczeniaLookup.FindByKod(BazowyKod(typWpisu));
+        if (ozn?.FlagaPozycja != Enums.FlagaPozycjaOznaczenia.Lewa)
+            return string.Empty;
+
+        return SymbolZnaczka(ozn);
+    }
+
+    public static string TekstZnaczkaPrawa(string? typWpisu)
+    {
+        if (MaKropke(typWpisu))
+        {
+            var chce = OznaczeniaLookup.FindChceOddac();
+            if (chce is null)
+                return "\u2022";
+            if (chce.FlagaPozycja is Enums.FlagaPozycjaOznaczenia.Lewa)
+                return string.Empty;
+            return SymbolZnaczka(chce);
+        }
+
+        var ozn = OznaczeniaLookup.FindByKod(BazowyKod(typWpisu));
+        if (ozn?.FlagaPozycja == Enums.FlagaPozycjaOznaczenia.Prawa)
+            return SymbolZnaczka(ozn);
+
         if (MaPytajnik(typWpisu))
             return PotrzebujeWolne;
-        if (MaKropke(typWpisu))
-            return "\u2022"; // • — grubsza kropka niż „.”
+
         return string.Empty;
     }
 
-    /// <summary>
-    /// Tekst do eksportu Excel (główny + znaczek). Oddaje przy U/D → przekreślenie; przy WS → „—”.
-    /// <paramref name="fromUrlopPlan"/> — urlop z planu → Uₚ; rodzicielski → Uᵣ.
-    /// </summary>
+    private static string SymbolZnaczka(Models.OznaczenieGrafiku? ozn)
+    {
+        if (ozn is null)
+            return string.Empty;
+        if (!string.IsNullOrEmpty(ozn.TekstWyswietlany))
+            return ozn.TekstWyswietlany;
+        return ozn.Kod;
+    }
+
     public static string TekstWyswietlany(string? typWpisu, bool fromUrlopPlan = false)
     {
         var glowny = TekstGlowny(typWpisu, fromUrlopPlan);
-        var znaczek = TekstZnaczka(typWpisu);
-
-        if (string.IsNullOrEmpty(znaczek))
-            return glowny;
-
-        return string.IsNullOrEmpty(glowny) ? znaczek : glowny + znaczek;
+        var lewy = TekstZnaczkaLewa(typWpisu);
+        var prawy = TekstZnaczkaPrawa(typWpisu);
+        return string.Concat(lewy, glowny, prawy);
     }
 
-    private static string BezKropki(string trimmed)
-    {
-        return trimmed.Length > 0 && trimmed[^1] == KropkaSufiks
+    private static string BezKropki(string trimmed) =>
+        trimmed.Length > 0 && trimmed[^1] == KropkaSufiks
             ? trimmed[..^1]
             : trimmed;
-    }
 }

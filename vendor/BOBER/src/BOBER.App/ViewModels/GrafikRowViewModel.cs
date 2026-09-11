@@ -72,6 +72,8 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
         set
         {
             _cells[day] = value ?? string.Empty;
+            // WPF: bindowanie Path=[n] odświeża się po "Item[]" (nie po "Item[n]").
+            OnPropertyChanged("Item[]");
             OnPropertyChanged($"Item[{day}]");
             OnPropertyChanged($"[{day}]");
         }
@@ -112,6 +114,7 @@ public sealed class DayIndexedFlags : INotifyPropertyChanged
             if (_flags.TryGetValue(day, out var current) && current == value)
                 return;
             _flags[day] = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs($"Item[{day}]"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs($"[{day}]"));
         }
@@ -131,6 +134,7 @@ public sealed class DayIndexedTexts : INotifyPropertyChanged
         set
         {
             _cells[day] = value ?? string.Empty;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs($"Item[{day}]"));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs($"[{day}]"));
         }

@@ -180,10 +180,9 @@ public sealed class PersonnelRepository
     }
 
     /// <summary>
-    /// Pobiera nieobecnych z BOBER wraz z typem nieobecności.
-    /// Kolumna TypWpisu: U, UWS, Del, WS, D, S, C (+ opcjonalnie Oddał „/”).
+    /// Pobiera nieobecnych z BOBER wraz z typem nieobecności i surowym TypWpisu (pod adnotacje).
     /// </summary>
-    public async Task<List<(int FunkcjonariuszId, Core.Enums.TypNieobecnosci Typ)>> PobierzNieobecnychZTypemAsync(
+    public async Task<List<(int FunkcjonariuszId, Core.Enums.TypNieobecnosci Typ, string TypWpisu)>> PobierzNieobecnychZTypemAsync(
         DateOnly data, int nrZmiany)
     {
         if (string.IsNullOrWhiteSpace(_bober.DatabasePath))
@@ -209,7 +208,7 @@ public sealed class PersonnelRepository
             cmd.Parameters.AddWithValue("@p4", (short)data.Day);
 
             await using var reader = await cmd.ExecuteReaderAsync();
-            var wynik = new List<(int, Core.Enums.TypNieobecnosci)>();
+            var wynik = new List<(int, Core.Enums.TypNieobecnosci, string)>();
             while (await reader.ReadAsync())
             {
                 var fid = reader.GetIntSafe(0);
@@ -218,7 +217,12 @@ public sealed class PersonnelRepository
                 if (typ is null)
                     continue;
 
-                wynik.Add((fid, typ.Value));
+                var typWpisu = typStr ?? string.Empty;
+                wynik.Add((fid, typ.Value, typWpisu));
+
+                var dodatkowa = BoberOznaczeniaBridge.MapDodatkowaSekcja?.Invoke(typWpisu);
+                if (dodatkowa is not null && dodatkowa.Value != typ.Value)
+                    wynik.Add((fid, dodatkowa.Value, typWpisu));
             }
             return wynik;
         }

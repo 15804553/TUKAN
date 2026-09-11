@@ -5,8 +5,18 @@ using BOBER.Core.Constants;
 using BOBER.Core.Models;
 using BOBER.Core.Rules;
 using BOBER.Services;
+using BOBER.Services.Logging;
 
 namespace BOBER.App.Controllers;
+
+public sealed record GrafikCellChange(
+    int FunkcjonariuszId,
+    int Rok,
+    int Miesiac,
+    int Dzien,
+    string PreviousTyp,
+    string NewTyp,
+    bool IsAuto = false);
 
 /// <summary>Grafik roczny: wiersze DataGrid, kolory ról, podsumowania dzienne, eksport Excel.</summary>
 public sealed class MainController(AppServices services)
@@ -19,6 +29,7 @@ public sealed class MainController(AppServices services)
     private IReadOnlyDictionary<string, string>? _kolory;
     private int _stanZmiany = 10;
     private int _stanMinimalny = 6;
+    private readonly Dictionary<int, IReadOnlyDictionary<int, HashSet<int>>> _workDaysByYear = new();
 
     public int CurrentYear { get; } = DateTime.Today.Year;
     public int ZmianaId => services.Auth.CurrentSession?.ZmianaId ?? 1;
@@ -29,12 +40,17 @@ public sealed class MainController(AppServices services)
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
+        _workDaysByYear.Clear();
         _funkcjonariusze = await services.Funkcjonariusze.GetByZmianaAsync(ZmianaId, cancellationToken);
         var kolory = await services.Kolory.GetAllAsync(cancellationToken);
         _kolory = kolory.ToDictionary(k => k.KluczRoli, k => k.KolorHex, StringComparer.OrdinalIgnoreCase);
         _stanZmiany = await services.Settings.GetStanZmianyAsync(ZmianaId, cancellationToken);
         _stanMinimalny = await services.Settings.GetStanMinimalnyAsync(ZmianaId, cancellationToken);
+        await ReloadOznaczeniaAsync(cancellationToken);
     }
+
+    public Task ReloadOznaczeniaAsync(CancellationToken cancellationToken = default) =>
+        services.Oznaczenia.ReloadAsync(ZmianaId, cancellationToken);
 
     public IReadOnlyList<Funkcjonariusz> GetFunkcjonariusze() => _funkcjonariusze ?? [];
 
@@ -184,8 +200,11 @@ public sealed class MainController(AppServices services)
 
     public GrafikCellColors GetCellColors()
     {
-        var nieobecnoscHex = GetKolorHex(RoleKeys.WolnaSluzba, RoleKeys.DomyslneKoloryWpisow);
-        var nieobecnosc = ParseBrush(nieobecnoscHex);
+        var wsHex = BOBER.Core.Oznaczenia.OznaczeniaLookup.KolorWsHex();
+        if (string.IsNullOrWhiteSpace(wsHex) || RoleKeys.IsBrakWypelnienia(wsHex))
+            wsHex = GetKolorHex(RoleKeys.WolnaSluzba, RoleKeys.DomyslneKoloryWpisow);
+
+        var nieobecnosc = ParseBrush(wsHex!);
         return new GrafikCellColors
         {
             DyzurTlo = nieobecnosc,
@@ -225,13 +244,20 @@ public sealed class MainController(AppServices services)
         int miesiac,
         int dzien,
         string typWpisu,
+        string previousTyp,
         bool isAuto = false,
         CancellationToken cancellationToken = default)
     {
-        var oldTyp = await ResolveCurrentTypAsync(funkcjonariuszId, rok, miesiac, dzien, cancellationToken);
-        await services.Grafik.SetWpisAsync(
-            funkcjonariuszId, ZmianaId, rok, miesiac, dzien, typWpisu, isAuto, cancellationToken);
-        await TryAuditGrafikAsync(funkcjonariuszId, oldTyp, typWpisu);
+        await ApplyChangesAsync(
+            [new GrafikCellChange(
+                funkcjonariuszId,
+                rok,
+                miesiac,
+                dzien,
+                previousTyp,
+                typWpisu,
+                isAuto)],
+            cancellationToken);
     }
 
     public async Task ClearWpisAsync(
@@ -239,37 +265,72 @@ public sealed class MainController(AppServices services)
         int rok,
         int miesiac,
         int dzien,
+        string previousTyp,
         CancellationToken cancellationToken = default)
     {
-        var oldTyp = await ResolveCurrentTypAsync(funkcjonariuszId, rok, miesiac, dzien, cancellationToken);
-        await services.Grafik.ClearWpisAsync(funkcjonariuszId, rok, miesiac, dzien, cancellationToken);
-        await TryAuditGrafikAsync(funkcjonariuszId, oldTyp, "—");
+        await ApplyChangesAsync(
+            [new GrafikCellChange(funkcjonariuszId, rok, miesiac, dzien, previousTyp, string.Empty)],
+            cancellationToken);
     }
 
-    private async Task<string> ResolveCurrentTypAsync(
-        int funkcjonariuszId,
-        int rok,
-        int miesiac,
-        int dzien,
-        CancellationToken cancellationToken)
+    public async Task ApplyChangesAsync(
+        IReadOnlyList<GrafikCellChange> changes,
+        CancellationToken cancellationToken = default)
     {
-        var month = await services.Grafik.GetMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
-        var existing = month.LastOrDefault(w => w.FunkcjonariuszId == funkcjonariuszId && w.Dzien == dzien);
-        return string.IsNullOrWhiteSpace(existing?.TypWpisu) ? "—" : existing!.TypWpisu;
+        var upserts = changes
+            .Where(change => !string.IsNullOrEmpty(change.NewTyp))
+            .Select(change => new GrafikWpis
+            {
+                FunkcjonariuszId = change.FunkcjonariuszId,
+                ZmianaId = ZmianaId,
+                Rok = change.Rok,
+                Miesiac = change.Miesiac,
+                Dzien = change.Dzien,
+                TypWpisu = change.NewTyp,
+                IsAuto = change.IsAuto
+            })
+            .ToList();
+        var deletes = changes
+            .Where(change => string.IsNullOrEmpty(change.NewTyp))
+            .Select(change => new GrafikWpis
+            {
+                FunkcjonariuszId = change.FunkcjonariuszId,
+                ZmianaId = ZmianaId,
+                Rok = change.Rok,
+                Miesiac = change.Miesiac,
+                Dzien = change.Dzien
+            })
+            .ToList();
+
+        await services.Grafik.ApplyBatchAsync(upserts, deletes, cancellationToken);
+
+        foreach (var change in changes)
+        {
+            var oldTyp = string.IsNullOrWhiteSpace(change.PreviousTyp) ? "—" : change.PreviousTyp;
+            var newTyp = string.IsNullOrWhiteSpace(change.NewTyp) ? "—" : change.NewTyp;
+            await TryAuditGrafikAsync(change.FunkcjonariuszId, oldTyp, newTyp);
+        }
     }
 
     private async Task TryAuditGrafikAsync(int funkcjonariuszId, string oldTyp, string newTyp)
     {
-        if (string.Equals(oldTyp, newTyp, StringComparison.OrdinalIgnoreCase))
-            return;
+        try
+        {
+            if (string.Equals(oldTyp, newTyp, StringComparison.OrdinalIgnoreCase))
+                return;
 
-        var append = BOBER.Core.Audit.GuestChangeAudit.TryAppendAsync;
-        if (append is null)
-            return;
+            var append = BOBER.Core.Audit.GuestChangeAudit.TryAppendAsync;
+            if (append is null)
+                return;
 
-        var osoba = (_funkcjonariusze ?? []).FirstOrDefault(f => f.Id == funkcjonariuszId);
-        var name = osoba?.PelneImieNazwisko ?? $"ID {funkcjonariuszId}";
-        await append("Grafik", $"Grafik służb [{name}] {oldTyp} na {newTyp}");
+            var osoba = (_funkcjonariusze ?? []).FirstOrDefault(f => f.Id == funkcjonariuszId);
+            var name = osoba?.PelneImieNazwisko ?? $"ID {funkcjonariuszId}";
+            await append("Grafik", $"Grafik służb [{name}] {oldTyp} na {newTyp}");
+        }
+        catch (Exception ex)
+        {
+            BoberLog.Warning(ex, "Nie udało się zapisać audytu zmiany grafiku.");
+        }
     }
 
     public async Task ExportMonthAsync(
@@ -311,10 +372,14 @@ public sealed class MainController(AppServices services)
 
         var wpisyByMonth = new Dictionary<int, IReadOnlyList<GrafikWpis>>();
         var workDaysByMonth = new Dictionary<int, IReadOnlyCollection<int>>();
+        var yearEntries = await services.Grafik.GetYearAsync(ZmianaId, rok, cancellationToken);
+        var entriesByMonth = yearEntries
+            .GroupBy(entry => entry.Miesiac)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<GrafikWpis>)group.ToList());
 
         for (var miesiac = 1; miesiac <= 12; miesiac++)
         {
-            wpisyByMonth[miesiac] = await services.Grafik.GetMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
+            wpisyByMonth[miesiac] = entriesByMonth.GetValueOrDefault(miesiac) ?? [];
             workDaysByMonth[miesiac] = await GetWorkDaysForMonthAsync(rok, miesiac, cancellationToken);
         }
 
@@ -393,11 +458,20 @@ public sealed class MainController(AppServices services)
         int miesiac,
         CancellationToken cancellationToken = default)
     {
-        var allWorkDays = await services.Calendar.GetWorkDaysAsync(ZmianaId, rok, cancellationToken);
-        return allWorkDays
-            .Where(d => d.Month == miesiac)
-            .Select(d => d.Day)
-            .ToHashSet();
+        if (!_workDaysByYear.TryGetValue(rok, out var months))
+        {
+            var allWorkDays = await services.Calendar.GetWorkDaysAsync(ZmianaId, rok, cancellationToken);
+            months = allWorkDays
+                .GroupBy(date => date.Month)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(date => date.Day).ToHashSet());
+            _workDaysByYear[rok] = months;
+        }
+
+        return months.TryGetValue(miesiac, out var days)
+            ? days.ToHashSet()
+            : [];
     }
 
     public int GetStanMinimalny() => _stanMinimalny;

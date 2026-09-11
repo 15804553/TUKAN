@@ -44,11 +44,18 @@ public sealed class GrafikService(
 
     public Task ClearWpisAsync(
         int funkcjonariuszId,
+        int zmianaId,
         int rok,
         int miesiac,
         int dzien,
         CancellationToken cancellationToken = default) =>
-        grafikRepository.DeleteAsync(funkcjonariuszId, rok, miesiac, dzien, cancellationToken);
+        grafikRepository.DeleteAsync(funkcjonariuszId, zmianaId, rok, miesiac, dzien, cancellationToken);
+
+    public Task ApplyBatchAsync(
+        IReadOnlyList<GrafikWpis> upserts,
+        IReadOnlyList<GrafikWpis> deletes,
+        CancellationToken cancellationToken = default) =>
+        grafikRepository.ApplyBatchAsync(upserts, deletes, cancellationToken);
 
     public Task ClearHalfYearAsync(
         int zmianaId,

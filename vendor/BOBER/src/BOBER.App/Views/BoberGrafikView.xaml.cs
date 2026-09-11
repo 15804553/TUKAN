@@ -11,6 +11,7 @@ using BOBER.App.Logging;
 using BOBER.App.ViewModels;
 using BOBER.App.Views.Chrome;
 using BOBER.Core.Constants;
+using BOBER.Core.Diagnostics;
 using BOBER.Core.Grafik;
 
 namespace BOBER.App.Views;
@@ -27,6 +28,7 @@ public partial class BoberGrafikView : UserControl
     private bool _isRestrictingSelection;
     private readonly GrafikUndoStack _undoStack = new();
     private bool _isUndoing;
+    private Window? _shortcutHostWindow;
 
     private static readonly string[] MonthNames =
     [
@@ -43,8 +45,9 @@ public partial class BoberGrafikView : UserControl
         Resources = UrlopPlanPalette.CreateResources();
         InitializeComponent();
         Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
         IsVisibleChanged += OnIsVisibleChanged;
-        PreviewKeyDown += OnPreviewUndoKeyDown;
+        Focusable = true;
         _undoStack.Changed += (_, _) => UpdateUndoButtonState();
     }
 
@@ -69,6 +72,7 @@ public partial class BoberGrafikView : UserControl
         }
 
         await _controller.LoadAsync();
+        RefreshShortcutsLegend();
         Array.Fill(_monthLoaded, false);
         _undoStack.Clear();
 
@@ -90,8 +94,49 @@ public partial class BoberGrafikView : UserControl
 
     private async void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (e.NewValue is not true || !IsEmbedded) return;
-        await OdswiezPoAktywacjiAsync();
+        if (e.NewValue is true)
+        {
+            AttachWindowShortcuts();
+            if (IsEmbedded)
+                await OdswiezPoAktywacjiAsync();
+            return;
+        }
+
+        DetachWindowShortcuts();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) => DetachWindowShortcuts();
+
+    private void AttachWindowShortcuts()
+    {
+        var window = Window.GetWindow(this);
+        if (window is null || ReferenceEquals(_shortcutHostWindow, window))
+            return;
+
+        DetachWindowShortcuts();
+        _shortcutHostWindow = window;
+        window.AddHandler(
+            UIElement.PreviewKeyDownEvent,
+            new KeyEventHandler(OnHostWindowPreviewKeyDown),
+            handledEventsToo: true);
+        window.AddHandler(
+            UIElement.PreviewTextInputEvent,
+            new TextCompositionEventHandler(OnHostWindowPreviewTextInput),
+            handledEventsToo: true);
+    }
+
+    private void DetachWindowShortcuts()
+    {
+        if (_shortcutHostWindow is null)
+            return;
+
+        _shortcutHostWindow.RemoveHandler(
+            UIElement.PreviewKeyDownEvent,
+            (KeyEventHandler)OnHostWindowPreviewKeyDown);
+        _shortcutHostWindow.RemoveHandler(
+            UIElement.PreviewTextInputEvent,
+            (TextCompositionEventHandler)OnHostWindowPreviewTextInput);
+        _shortcutHostWindow = null;
     }
 
     private void ApplyEmbeddedUi()
@@ -109,6 +154,8 @@ public partial class BoberGrafikView : UserControl
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        AttachWindowShortcuts();
+
         if (!_initializeCalled)
         {
             return;
@@ -137,6 +184,7 @@ public partial class BoberGrafikView : UserControl
         try
         {
             await _controller.LoadAsync();
+            RefreshShortcutsLegend();
         }
         catch (Exception ex)
         {
@@ -230,14 +278,21 @@ public partial class BoberGrafikView : UserControl
             Style = (Style)FindResource("UrlopPlanDataGrid"),
             Tag = month,
             Name = $"MonthGrid_{month}",
-            SelectionMode = DataGridSelectionMode.Extended
+            IsReadOnly = true,
+            SelectionUnit = DataGridSelectionUnit.Cell,
+            SelectionMode = DataGridSelectionMode.Extended,
+            Focusable = true,
+            IsTabStop = true
         };
 
         dataGrid.LoadingRow += OnDataGridLoadingRow;
         dataGrid.MouseRightButtonDown += OnDataGridRightClick;
         dataGrid.MouseDoubleClick += OnDataGridDoubleClick;
         dataGrid.SelectedCellsChanged += OnSelectedCellsChanged;
-        dataGrid.KeyDown += OnDataGridKeyDown;
+        dataGrid.AddHandler(
+            UIElement.PreviewKeyDownEvent,
+            new KeyEventHandler(OnDataGridPreviewKeyDown),
+            handledEventsToo: true);
         dataGrid.PreviewMouseLeftButtonDown += OnDataGridPreviewMouseLeftButtonDown;
 
         scrollViewer.Content = dataGrid;
@@ -292,11 +347,38 @@ public partial class BoberGrafikView : UserControl
 
     private void OnDataGridPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is DataGrid grid)
+        if (sender is not DataGrid grid)
+            return;
+
+        grid.Focus();
+        Keyboard.Focus(grid);
+
+        // Upewnij się, że kliknięta komórka dnia jest bieżąca / w selekcji pod skróty.
+        var hit = VisualTreeHelper.HitTest(grid, e.GetPosition(grid));
+        if (hit?.VisualHit is null)
+            return;
+
+        var cell = FindVisualParent<DataGridCell>(hit.VisualHit);
+        var row = cell is not null ? FindVisualParent<DataGridRow>(cell) : null;
+        if (row?.Item is not GrafikRowViewModel vm
+            || vm.IsSummaryRow
+            || vm.IsNotesRow
+            || !vm.FunkcjonariuszId.HasValue
+            || cell?.Column?.Header is not DayHeaderViewModel dayHeader)
+            return;
+
+        var month = (int)grid.Tag;
+        var cellInfo = new DataGridCellInfo(vm, cell.Column);
+        if (!grid.SelectedCells.Any(c =>
+                ReferenceEquals(c.Item, vm) && ReferenceEquals(c.Column, cell.Column)))
         {
-            grid.Focus();
-            Keyboard.Focus(grid);
+            if (Keyboard.Modifiers is ModifierKeys.None)
+                RestrictSelection(grid, [cellInfo]);
         }
+
+        grid.CurrentCell = cellInfo;
+        _selectedCell = (vm, month, dayHeader.Day);
+        UpdateRowSelectionHighlight(grid, vm);
     }
 
     private void OnSelectedCellsChanged(object? sender, SelectedCellsChangedEventArgs e)
@@ -309,6 +391,15 @@ public partial class BoberGrafikView : UserControl
         {
             if (grid.SelectedCells.Count > 0)
                 RestrictSelection(grid, Array.Empty<DataGridCellInfo>());
+
+            // Nie kasuj zapamiętanej komórki, jeśli CurrentCell nadal wskazuje dzień służby.
+            if (TryGetCurrentDayTarget(grid, out var currentTarget))
+            {
+                _selectedCell = currentTarget;
+                UpdateRowSelectionHighlight(grid, currentTarget.Vm);
+                return;
+            }
+
             _selectedCell = null;
             UpdateRowSelectionHighlight(grid, null);
             return;
@@ -414,19 +505,235 @@ public partial class BoberGrafikView : UserControl
 
     private List<(GrafikRowViewModel Vm, int Month, int Day)> ResolveActionTargets(DataGrid dataGrid)
     {
+        var month = (int)dataGrid.Tag;
         var targets = GetSelectedDayCells(dataGrid);
-        if (targets.Count == 0 && _selectedCell is not null)
-            targets = [_selectedCell.Value];
+
+        if (targets.Count == 0
+            && _selectedCell is { } remembered
+            && remembered.Month == month
+            && remembered.Vm.FunkcjonariuszId.HasValue)
+            targets = [remembered];
+
+        if (targets.Count == 0 && TryGetCurrentDayTarget(dataGrid, out var current))
+        {
+            targets = [current];
+            _selectedCell = current;
+        }
+
         return targets;
     }
 
-    private async void OnPreviewUndoKeyDown(object sender, KeyEventArgs e)
+    private static bool TryGetCurrentDayTarget(
+        DataGrid dataGrid,
+        out (GrafikRowViewModel Vm, int Month, int Day) target)
     {
-        if (e.Key != Key.Z || Keyboard.Modifiers != ModifierKeys.Control)
+        target = default;
+        if (dataGrid.CurrentCell.Item is not GrafikRowViewModel vm
+            || vm.IsSummaryRow
+            || vm.IsNotesRow
+            || !vm.FunkcjonariuszId.HasValue
+            || dataGrid.CurrentCell.Column?.Header is not DayHeaderViewModel dayHeader)
+            return false;
+
+        target = (vm, (int)dataGrid.Tag, dayHeader.Day);
+        return true;
+    }
+
+    private DataGrid? GetSelectedMonthGrid()
+    {
+        if (MonthTabControl.SelectedItem is not TabItem selectedTab)
+            return null;
+        return FindMonthGrid((int)selectedTab.Tag);
+    }
+
+    /// <summary>Jak w planie urlopów: siatka z zapamiętanej komórki, inaczej aktywna zakładka.</summary>
+    private DataGrid? ResolveShortcutGrid()
+    {
+        if (_selectedCell is { } cell)
+        {
+            var remembered = FindMonthGrid(cell.Month);
+            if (remembered is not null)
+                return remembered;
+        }
+
+        return GetSelectedMonthGrid();
+    }
+
+    private bool CanHandleGrafikShortcuts()
+    {
+        if (!IsVisible || !IsLoaded || _controller is null)
+            return false;
+
+        if (IsTextInputFocused())
+            return false;
+
+        // Jak UrlopPlan: wystarczy zapamiętana komórka dnia (fokus bywa poza DataGrid).
+        if (_selectedCell is not null)
+            return true;
+
+        if (Keyboard.FocusedElement is DependencyObject focused)
+            return ReferenceEquals(focused, this) || IsDescendantOf(this, focused);
+
+        return false;
+    }
+
+    private static bool IsTextInputFocused() =>
+        Keyboard.FocusedElement is TextBox
+            or PasswordBox
+            or ComboBox
+            or RichTextBox;
+
+    private async void OnViewPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Handled || IsTextInputFocused())
+            return;
+
+        if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            await UndoLastChangeAsync();
+            return;
+        }
+
+        var grid = ResolveShortcutGrid();
+        if (grid is null)
+            return;
+
+        await TryHandleGrafikShortcutAsync(grid, e);
+    }
+
+    private async void OnDataGridPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Handled || sender is not DataGrid dataGrid)
+            return;
+
+        await TryHandleGrafikShortcutAsync(dataGrid, e);
+    }
+
+    private async void OnHostWindowPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Handled || !CanHandleGrafikShortcuts())
+            return;
+
+        if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            await UndoLastChangeAsync();
+            return;
+        }
+
+        var grid = ResolveShortcutGrid();
+        if (grid is null)
+            return;
+
+        await TryHandleGrafikShortcutAsync(grid, e);
+    }
+
+    private async void OnHostWindowPreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (e.Handled || !CanHandleGrafikShortcuts())
+            return;
+
+        var grid = ResolveShortcutGrid();
+        if (grid is null)
+            return;
+
+        var targets = ResolveActionTargets(grid);
+        if (targets.Count == 0 || string.IsNullOrEmpty(e.Text))
+            return;
+
+        var token = e.Text.Trim();
+        if (token.Length == 0)
+            return;
+
+        var ch = token[0];
+        if (ch is '.' or ',')
+        {
+            e.Handled = true;
+            await ApplyKropkaToCellsAsync(grid, targets);
+            return;
+        }
+
+        if (ch is '/' or '?')
+        {
+            e.Handled = true;
+            await ApplyPytajnikToCellsAsync(grid, targets);
+            return;
+        }
+
+        if (!char.IsLetterOrDigit(ch))
+            return;
+
+        var keyName = char.ToUpperInvariant(ch).ToString();
+        var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindBySkrot(keyName)
+            ?? BOBER.Core.Oznaczenia.OznaczeniaLookup.FindBySkrot(token);
+
+        string? typWpisu = null;
+        if (ozn is not null)
+        {
+            if (ozn.Kod == GrafikWpisTypy.PotrzebujeWolne || (ozn.WPracy && ozn.Kod == "?"))
+            {
+                e.Handled = true;
+                await ApplyPytajnikToCellsAsync(grid, targets);
+                return;
+            }
+
+            if (ozn.FlagaPozycja == BOBER.Core.Enums.FlagaPozycjaOznaczenia.Centrum
+                || ozn.Kod.Equals(OznaczeniaGrafikuSeed.KodOddaje, StringComparison.OrdinalIgnoreCase))
+            {
+                e.Handled = true;
+                await ApplyOddalToCellsAsync(grid, targets);
+                return;
+            }
+
+            if (OznaczeniaGrafikuSeed.IsChceOddacKod(ozn.Kod))
+            {
+                e.Handled = true;
+                await ApplyKropkaToCellsAsync(grid, targets);
+                return;
+            }
+
+            typWpisu = ozn.Kod;
+        }
+        else
+        {
+            typWpisu = keyName switch
+            {
+                "D" => GrafikWpisTypy.Dyzur,
+                "W" => GrafikWpisTypy.WolnaSluzba,
+                "U" => GrafikWpisTypy.Urlop,
+                "E" => GrafikWpisTypy.Delegacja,
+                "S" => GrafikWpisTypy.Szkolenie,
+                "C" => GrafikWpisTypy.Chory,
+                "O" => null, // Oddaje obsługuje KeyDown
+                _ => null
+            };
+
+            if (keyName == "O")
+            {
+                e.Handled = true;
+                await ApplyOddalToCellsAsync(grid, targets);
+                return;
+            }
+        }
+
+        if (typWpisu is null)
             return;
 
         e.Handled = true;
-        await UndoLastChangeAsync();
+        await ApplyWpisToCellsAsync(grid, targets, typWpisu);
+    }
+
+    private static bool IsDescendantOf(DependencyObject root, DependencyObject? node)
+    {
+        while (node is not null)
+        {
+            if (ReferenceEquals(node, root))
+                return true;
+            node = VisualTreeHelper.GetParent(node);
+        }
+
+        return false;
     }
 
     private async void OnUndoClick(object sender, RoutedEventArgs e) =>
@@ -467,6 +774,7 @@ public partial class BoberGrafikView : UserControl
         try
         {
             var months = new HashSet<int>();
+            var pendingChanges = new List<(GrafikRowViewModel Vm, GrafikUndoCell Cell, bool FromPlan)>();
 
             foreach (var cell in entry.Cells)
             {
@@ -475,22 +783,33 @@ public partial class BoberGrafikView : UserControl
                 if (vm is null)
                     continue;
 
-                if (string.IsNullOrEmpty(cell.PreviousTyp))
-                {
-                    await _controller.ClearWpisAsync(cell.FunkcjonariuszId, _year, cell.Month, cell.Day);
-                    vm.ClearCell(cell.Day);
-                }
-                else
-                {
-                    var fromPlan = cell.PreviousFromUrlopPlan
-                        && GrafikWpisTypy.JestUrlopem(cell.PreviousTyp);
-                    await _controller.SetWpisAsync(
-                        cell.FunkcjonariuszId, _year, cell.Month, cell.Day,
-                        cell.PreviousTyp, isAuto: fromPlan);
-                    vm.SetCell(cell.Day, cell.PreviousTyp, fromUrlopPlan: fromPlan);
-                }
-
+                var fromPlan = cell.PreviousFromUrlopPlan
+                    && GrafikWpisTypy.JestUrlopem(cell.PreviousTyp);
+                pendingChanges.Add((vm, cell, fromPlan));
                 months.Add(cell.Month);
+            }
+
+            await _controller.ApplyChangesAsync(
+                pendingChanges
+                    .Select(change => new GrafikCellChange(
+                        change.Cell.FunkcjonariuszId,
+                        _year,
+                        change.Cell.Month,
+                        change.Cell.Day,
+                        change.Vm.GetCell(change.Cell.Day),
+                        change.Cell.PreviousTyp,
+                        change.FromPlan))
+                    .ToList());
+
+            foreach (var change in pendingChanges)
+            {
+                if (string.IsNullOrEmpty(change.Cell.PreviousTyp))
+                    change.Vm.ClearCell(change.Cell.Day);
+                else
+                    change.Vm.SetCell(
+                        change.Cell.Day,
+                        change.Cell.PreviousTyp,
+                        fromUrlopPlan: change.FromPlan);
             }
 
             foreach (var month in months)
@@ -499,7 +818,6 @@ public partial class BoberGrafikView : UserControl
                 if (dataGrid is null)
                     continue;
 
-                dataGrid.Items.Refresh();
                 await RefreshSummaryRowAsync(dataGrid, month);
             }
         }
@@ -522,53 +840,98 @@ public partial class BoberGrafikView : UserControl
         return rows.FirstOrDefault(r => r.FunkcjonariuszId == funkcjonariuszId);
     }
 
-    private async void OnDataGridKeyDown(object sender, KeyEventArgs e)
+    private async Task TryHandleGrafikShortcutAsync(DataGrid dataGrid, KeyEventArgs e)
     {
-        if (_controller is null || sender is not DataGrid dataGrid)
+        if (_controller is null || e.Handled)
+            return;
+
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
+            or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin
+            or Key.Tab or Key.Escape or Key.Enter
+            or Key.Up or Key.Down or Key.Left or Key.Right
+            or Key.Home or Key.End or Key.PageUp or Key.PageDown)
+            return;
+
+        // Ctrl+Z — cofanie; nie nadpisuj skrótem „Z”.
+        if (key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
             return;
 
         var targets = ResolveActionTargets(dataGrid);
         if (targets.Count == 0)
             return;
 
-        if (e.Key == Key.O)
+        if (key == Key.O && Keyboard.Modifiers == ModifierKeys.None)
         {
             e.Handled = true;
             await ApplyOddalToCellsAsync(dataGrid, targets);
             return;
         }
 
-        if (e.Key is Key.OemPeriod or Key.Decimal)
+        if (key is Key.OemPeriod or Key.Decimal)
         {
             e.Handled = true;
             await ApplyKropkaToCellsAsync(dataGrid, targets);
             return;
         }
 
-        // „/” — znaczek „?” (potrzebuje wolne); na klawiaturze PL/US: Oem2 / OemQuestion / Divide
-        if (e.Key is Key.Oem2 or Key.OemQuestion or Key.Divide)
+        if (key == Key.Space)
         {
             e.Handled = true;
-            await ApplyPytajnikToCellsAsync(dataGrid, targets);
+            await ApplyWpisToCellsAsync(dataGrid, targets, "");
             return;
         }
 
-        var typWpisu = e.Key switch
-        {
-            Key.D => GrafikWpisTypy.Dyzur,
-            Key.W => GrafikWpisTypy.WolnaSluzba,
-            Key.U => GrafikWpisTypy.Urlop,
-            Key.E => GrafikWpisTypy.Delegacja,
-            Key.S => GrafikWpisTypy.Szkolenie,
-            Key.C => GrafikWpisTypy.Chory,
-            Key.Space => "",
-            _ => null
-        };
-        if (typWpisu is null)
+        if (Keyboard.Modifiers is not ModifierKeys.None and not ModifierKeys.Shift)
             return;
 
+        var keyName = key.ToString();
+        var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindBySkrot(keyName);
+        if (ozn is null && key is Key.OemQuestion or Key.Divide or Key.Oem2)
+            ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindBySkrot("/");
+
+        if (ozn is null)
+        {
+            var typWpisu = key switch
+            {
+                Key.D => GrafikWpisTypy.Dyzur,
+                Key.W => GrafikWpisTypy.WolnaSluzba,
+                Key.U => GrafikWpisTypy.Urlop,
+                Key.E => GrafikWpisTypy.Delegacja,
+                Key.S => GrafikWpisTypy.Szkolenie,
+                Key.C => GrafikWpisTypy.Chory,
+                Key.Oem2 or Key.OemQuestion or Key.Divide => GrafikWpisTypy.PotrzebujeWolne,
+                _ => null
+            };
+            if (typWpisu is null)
+                return;
+
+            e.Handled = true;
+            if (typWpisu == GrafikWpisTypy.PotrzebujeWolne)
+                await ApplyPytajnikToCellsAsync(dataGrid, targets);
+            else
+                await ApplyWpisToCellsAsync(dataGrid, targets, typWpisu);
+            return;
+        }
+
         e.Handled = true;
-        await ApplyWpisToCellsAsync(dataGrid, targets, typWpisu);
+        if (ozn.FlagaPozycja == BOBER.Core.Enums.FlagaPozycjaOznaczenia.Centrum
+            || ozn.Kod.Equals(OznaczeniaGrafikuSeed.KodOddaje, StringComparison.OrdinalIgnoreCase))
+        {
+            await ApplyOddalToCellsAsync(dataGrid, targets);
+            return;
+        }
+
+        if (OznaczeniaGrafikuSeed.IsChceOddacKod(ozn.Kod))
+        {
+            await ApplyKropkaToCellsAsync(dataGrid, targets);
+            return;
+        }
+
+        if (ozn.Kod == GrafikWpisTypy.PotrzebujeWolne || (ozn.WPracy && ozn.Kod == "?"))
+            await ApplyPytajnikToCellsAsync(dataGrid, targets);
+        else
+            await ApplyWpisToCellsAsync(dataGrid, targets, ozn.Kod);
     }
 
     private void OnDataGridLoadingRow(object? sender, DataGridRowEventArgs e)
@@ -686,6 +1049,42 @@ public partial class BoberGrafikView : UserControl
         column?.Header is string header
         && header.Equals(GrafikGridBuilder.UwagiColumnHeader, StringComparison.Ordinal);
 
+    private void RefreshShortcutsLegend()
+    {
+        var parts = new List<string> { "Skróty: Spacja — w pracy" };
+        var katalog = BOBER.Core.Oznaczenia.OznaczeniaLookup.Items;
+        if (katalog.Count > 0)
+        {
+            foreach (var o in katalog.OrderBy(x => x.Kolejnosc))
+            {
+                if (string.IsNullOrWhiteSpace(o.SkrotKlawiszowy))
+                    continue;
+                var gesture = BOBER.Core.Oznaczenia.SkrotKlawiszowyRules.FormatForDisplay(o.SkrotKlawiszowy);
+                var opis = string.IsNullOrWhiteSpace(o.Nazwa) ? o.Kod : o.Nazwa;
+                parts.Add($"{gesture} — {opis}");
+            }
+        }
+        else
+        {
+            parts.AddRange(
+            [
+                "D — Dyżur",
+                "W — Wolna służba",
+                "U — Urlop",
+                "E — Delegacja",
+                "S — Szkolenie",
+                "C — Chory",
+                "/ — potrzebuje wolne (?)"
+            ]);
+        }
+
+        parts.Add("O — Oddaje");
+        var chce = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindChceOddac();
+        parts.Add($". — {chce?.Nazwa ?? "Chce oddać"}");
+        parts.Add("Ctrl+Z — Cofnij");
+        ShortcutsLegendTextBlock.Text = string.Join(" | ", parts);
+    }
+
     private void ShowCellContextMenu(
         DataGrid grid,
         List<(GrafikRowViewModel Vm, int Month, int Day)> targets)
@@ -703,21 +1102,46 @@ public partial class BoberGrafikView : UserControl
             Template = CreateContextMenuTemplate()
         };
 
-        var menuItems = new (string Label, string Akcja, string Gesture)[]
+        var menuItems = new List<(string Label, string Akcja, string Gesture)>();
+        var katalog = BOBER.Core.Oznaczenia.OznaczeniaLookup.Items;
+        if (katalog.Count > 0)
         {
-            ($"D — Dyżur{labelSuffix}", GrafikWpisTypy.Dyzur, "D"),
-            ($"WS — Wolna służba{labelSuffix}", GrafikWpisTypy.WolnaSluzba, "W"),
-            ($"U — Urlop{labelSuffix}", GrafikWpisTypy.Urlop, "U"),
-            ($"Del — Delegacja{labelSuffix}", GrafikWpisTypy.Delegacja, "E"),
-            ($"S — Szkolenie{labelSuffix}", GrafikWpisTypy.Szkolenie, "S"),
-            ($"C — Chory{labelSuffix}", GrafikWpisTypy.Chory, "C"),
-            ($"O — Oddaje{labelSuffix}", "ODDAJE", "O"),
-            ($". — Osoba chętna oddać{labelSuffix}", "KROPKA", "."),
-            ($"? — Osoba potrzebuje wolne{labelSuffix}", "PYTAJNIK", "/"),
-            ($"— Wyczyść{labelSuffix}", "", "Spacja"),
-            ("Notatka", "NOTATKA", ""),
-            ("Uwagi", "UWAGI", "")
-        };
+            foreach (var o in katalog.OrderBy(x => x.Kolejnosc))
+            {
+                // Nakładki systemowe (Oddaje / Chce oddać) — osobne pozycje menu.
+                if (o.FlagaPozycja == BOBER.Core.Enums.FlagaPozycjaOznaczenia.Centrum
+                    || OznaczeniaGrafikuSeed.IsChceOddacKod(o.Kod)
+                    || o.Kod.Equals(OznaczeniaGrafikuSeed.KodOddaje, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var gesture = string.IsNullOrWhiteSpace(o.SkrotKlawiszowy)
+                    ? ""
+                    : BOBER.Core.Oznaczenia.SkrotKlawiszowyRules.FormatForDisplay(o.SkrotKlawiszowy);
+                menuItems.Add(($" {o.Kod} — {o.Nazwa}{labelSuffix}".TrimStart(), o.Kod, gesture));
+            }
+        }
+        else
+        {
+            menuItems.AddRange(
+            [
+                ($"D — Dyżur{labelSuffix}", GrafikWpisTypy.Dyzur, "D"),
+                ($"WS — Wolna służba{labelSuffix}", GrafikWpisTypy.WolnaSluzba, "W"),
+                ($"U — Urlop{labelSuffix}", GrafikWpisTypy.Urlop, "U"),
+                ($"Del — Delegacja{labelSuffix}", GrafikWpisTypy.Delegacja, "E"),
+                ($"S — Szkolenie{labelSuffix}", GrafikWpisTypy.Szkolenie, "S"),
+                ($"C — Chory{labelSuffix}", GrafikWpisTypy.Chory, "C"),
+            ]);
+        }
+
+        menuItems.Add(($"O — Oddaje{labelSuffix}", "ODDAJE", "O"));
+        var chceOddac = katalog.FirstOrDefault(o => OznaczeniaGrafikuSeed.IsChceOddacKod(o.Kod));
+        var chceLabel = chceOddac?.Nazwa ?? "Chce oddać";
+        menuItems.Add(($". — {chceLabel}{labelSuffix}", "KROPKA", "."));
+        if (katalog.All(o => o.Kod != GrafikWpisTypy.PotrzebujeWolne))
+            menuItems.Add(($"? — Osoba potrzebuje wolne{labelSuffix}", "PYTAJNIK", "/"));
+        menuItems.Add(($"— Wyczyść{labelSuffix}", "", "Spacja"));
+        menuItems.Add(("Notatka", "NOTATKA", ""));
+        menuItems.Add(("Uwagi", "UWAGI", ""));
 
         var primary = targets[0];
         foreach (var (label, akcja, gesture) in menuItems)
@@ -805,7 +1229,6 @@ public partial class BoberGrafikView : UserControl
             var tresc = dialog.NoteText;
             await _controller.SetUwagaMiesiecznaAsync(vm.FunkcjonariuszId.Value, _year, month, tresc);
             vm.UwagaMiesieczna = tresc?.Trim() ?? string.Empty;
-            dataGrid.Items.Refresh();
         }
         catch (Exception ex)
         {
@@ -836,7 +1259,6 @@ public partial class BoberGrafikView : UserControl
             var tresc = dialog.NoteText;
             await _controller.SetNotatkaAsync(_year, month, day, tresc);
             _controller.UpdateNotesRowCell(notesRow, day, tresc);
-            dataGrid.Items.Refresh();
             dataGrid.ScrollIntoView(notesRow);
         }
         catch (Exception ex)
@@ -857,6 +1279,7 @@ public partial class BoberGrafikView : UserControl
             var hasForbidden = false;
             var applied = false;
             var undoCells = new List<GrafikUndoCell>();
+            var pendingChanges = new List<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)>();
 
             foreach (var (vm, month, day) in cells)
             {
@@ -875,7 +1298,7 @@ public partial class BoberGrafikView : UserControl
                     continue;
 
                 undoCells.Add(CaptureUndoCell(vm, month, day));
-                await ApplyWpisSilentAsync(vm, month, day, nowy);
+                pendingChanges.Add((vm, month, day, nowy));
                 applied = true;
             }
 
@@ -890,8 +1313,8 @@ public partial class BoberGrafikView : UserControl
 
             if (applied)
             {
+                await ApplyWpisySilentAsync(pendingChanges);
                 CommitUndoEntry(undoCells);
-                dataGrid.Items.Refresh();
                 await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
             }
         }
@@ -913,6 +1336,7 @@ public partial class BoberGrafikView : UserControl
             var applied = false;
             var anyInvalid = false;
             var undoCells = new List<GrafikUndoCell>();
+            var pendingChanges = new List<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)>();
 
             foreach (var (vm, month, day) in cells)
             {
@@ -927,7 +1351,7 @@ public partial class BoberGrafikView : UserControl
                 }
 
                 undoCells.Add(CaptureUndoCell(vm, month, day));
-                await ApplyWpisSilentAsync(vm, month, day, nowy);
+                pendingChanges.Add((vm, month, day, nowy));
                 applied = true;
             }
 
@@ -942,8 +1366,8 @@ public partial class BoberGrafikView : UserControl
 
             if (applied)
             {
+                await ApplyWpisySilentAsync(pendingChanges);
                 CommitUndoEntry(undoCells);
-                dataGrid.Items.Refresh();
                 await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
             }
         }
@@ -965,6 +1389,7 @@ public partial class BoberGrafikView : UserControl
             var applied = false;
             var anyInvalid = false;
             var undoCells = new List<GrafikUndoCell>();
+            var pendingChanges = new List<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)>();
 
             foreach (var (vm, month, day) in cells)
             {
@@ -979,7 +1404,7 @@ public partial class BoberGrafikView : UserControl
                 }
 
                 undoCells.Add(CaptureUndoCell(vm, month, day));
-                await ApplyWpisSilentAsync(vm, month, day, nowy);
+                pendingChanges.Add((vm, month, day, nowy));
                 applied = true;
             }
 
@@ -994,8 +1419,8 @@ public partial class BoberGrafikView : UserControl
 
             if (applied)
             {
+                await ApplyWpisySilentAsync(pendingChanges);
                 CommitUndoEntry(undoCells);
-                dataGrid.Items.Refresh();
                 await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
             }
         }
@@ -1016,6 +1441,7 @@ public partial class BoberGrafikView : UserControl
         try
         {
             var undoCells = new List<GrafikUndoCell>();
+            var pendingChanges = new List<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)>();
 
             foreach (var (vm, month, day) in cells)
             {
@@ -1027,11 +1453,11 @@ public partial class BoberGrafikView : UserControl
                     : GrafikWpisTypy.ResolvePoNalozeniu(vm.GetCell(day), typWpisu);
 
                 undoCells.Add(CaptureUndoCell(vm, month, day));
-                await ApplyWpisSilentAsync(vm, month, day, resolved);
+                pendingChanges.Add((vm, month, day, resolved));
             }
 
+            await ApplyWpisySilentAsync(pendingChanges);
             CommitUndoEntry(undoCells);
-            dataGrid.Items.Refresh();
             await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
         }
         catch (Exception ex)
@@ -1040,25 +1466,54 @@ public partial class BoberGrafikView : UserControl
         }
     }
 
-    private async Task ApplyWpisSilentAsync(
-        GrafikRowViewModel vm,
-        int month,
-        int day,
-        string typWpisu)
+    private async Task ApplyWpisySilentAsync(
+        IReadOnlyList<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)> pendingChanges)
     {
-        if (_controller is null || !vm.FunkcjonariuszId.HasValue)
+        if (_controller is null || pendingChanges.Count == 0)
             return;
 
-        if (string.IsNullOrEmpty(typWpisu))
+        var uiUpdates = new List<(GrafikRowViewModel Vm, int Day, string NewTyp, bool FromPlan)>();
+        var changes = new List<GrafikCellChange>();
+
+        foreach (var change in pendingChanges)
         {
-            await _controller.ClearWpisAsync(vm.FunkcjonariuszId.Value, _year, month, day);
-            vm.ClearCell(day);
+            if (!change.Vm.FunkcjonariuszId.HasValue)
+                continue;
+
+            var previousTyp = change.Vm.GetCell(change.Day);
+            var newTyp = string.IsNullOrEmpty(change.NewTyp)
+                ? string.Empty
+                : GrafikWpisTypy.ResolveDelSDlaZapisu(previousTyp, change.NewTyp);
+
+            changes.Add(new GrafikCellChange(
+                change.Vm.FunkcjonariuszId.Value,
+                _year,
+                change.Month,
+                change.Day,
+                previousTyp,
+                newTyp));
+
+            uiUpdates.Add((
+                change.Vm,
+                change.Day,
+                newTyp,
+                change.Vm.FromUrlopPlan[change.Day]
+                    && GrafikWpisTypy.JestUrlopem(newTyp)));
         }
-        else
+
+        if (changes.Count == 0)
+            return;
+
+        var dataStopwatch = PerformanceDiagnostics.Start();
+        await _controller.ApplyChangesAsync(changes);
+        PerformanceDiagnostics.Log("Grafik.EdycjaKomorek", "Dane", dataStopwatch, changes.Count);
+
+        foreach (var (vm, day, newTyp, fromPlan) in uiUpdates)
         {
-            var toSave = GrafikWpisTypy.ResolveDelSDlaZapisu(vm.GetCell(day), typWpisu);
-            await _controller.SetWpisAsync(vm.FunkcjonariuszId.Value, _year, month, day, toSave);
-            vm.SetCell(day, toSave);
+            if (string.IsNullOrEmpty(newTyp))
+                vm.ClearCell(day);
+            else
+                vm.SetCell(day, newTyp, fromUrlopPlan: fromPlan);
         }
     }
 
@@ -1069,6 +1524,7 @@ public partial class BoberGrafikView : UserControl
             return Task.CompletedTask;
         }
 
+        var uiStopwatch = PerformanceDiagnostics.Start();
         var allRows = rows.ToList();
         var summaryRow = allRows.FirstOrDefault(r => r.IsSummaryRow);
         if (summaryRow is null)
@@ -1077,7 +1533,7 @@ public partial class BoberGrafikView : UserControl
         }
 
         _controller.RefreshSummaryRow(summaryRow, allRows, month);
-        dataGrid.Items.Refresh();
+        PerformanceDiagnostics.Log("Grafik.EdycjaKomorek", "UI", uiStopwatch, allRows.Count);
         return Task.CompletedTask;
     }
 

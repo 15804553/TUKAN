@@ -13,6 +13,8 @@ namespace Chomik.App.Views.Pages;
 
 public partial class GeneralPersonnelView : UserControl
 {
+    private const int SearchDebounceMilliseconds = 350;
+
     public static readonly DependencyProperty CanEditGeneralViewDatesProperty =
         DependencyProperty.Register(
             nameof(CanEditGeneralViewDates),
@@ -33,6 +35,8 @@ public partial class GeneralPersonnelView : UserControl
     private bool _suppressGridEditEvents;
     private bool _isInitializingFilters;
     private bool _stopnieLoaded;
+    private CancellationTokenSource? _searchCancellation;
+    private int _loadGeneration;
     private GeneralViewColumnPreferences _columnPreferences = GeneralViewColumnPreferences.DefaultVisible;
 
     public event EventHandler<int>? PersonnelEditRequested;
@@ -63,6 +67,7 @@ public partial class GeneralPersonnelView : UserControl
         ShiftFilterComboBox.IsEnabled = _controller.CanFilterByShift;
         ApplyAllColumnVisibility();
         Loaded += OnViewLoaded;
+        Unloaded += OnViewUnloaded;
     }
 
     public void ApplyColumnPreferences(GeneralViewColumnPreferences preferences)
@@ -214,8 +219,9 @@ public partial class GeneralPersonnelView : UserControl
         }
     }
 
-    public async Task LoadPersonnelAsync()
+    public async Task LoadPersonnelAsync(CancellationToken cancellationToken = default)
     {
+        var generation = ++_loadGeneration;
         StatusTextBlock.Text = "Ładowanie danych z bazy...";
         _isLoading = true;
         _suppressGridEditEvents = true;
@@ -225,12 +231,19 @@ public partial class GeneralPersonnelView : UserControl
         try
         {
             await Task.Yield();
-            loadResult = await _controller.LoadPersonnelAsync(filter).ConfigureAwait(true);
+            loadResult = await _controller.LoadPersonnelAsync(filter, cancellationToken).ConfigureAwait(true);
+            if (generation != _loadGeneration)
+                return;
+
             PersonnelDataGrid.ItemsSource = loadResult.Rows;
             PersonnelDataGrid.SelectedIndex = -1;
             await WaitForGridLayoutAsync();
             totalStopwatch.Stop();
             StatusTextBlock.Text = FormatLoadStatusMessage(loadResult, totalStopwatch.Elapsed.TotalSeconds);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Nowsza wartość filtra zastąpiła ten odczyt.
         }
         catch (Exception ex)
         {
@@ -241,8 +254,11 @@ public partial class GeneralPersonnelView : UserControl
         }
         finally
         {
-            _isLoading = false;
-            _suppressGridEditEvents = false;
+            if (generation == _loadGeneration)
+            {
+                _isLoading = false;
+                _suppressGridEditEvents = false;
+            }
         }
     }
 
@@ -253,8 +269,12 @@ public partial class GeneralPersonnelView : UserControl
             return $"Wyświetlono {loadResult.Rows.Count} osób (pamięć podręczna, łącznie {totalSeconds:F1} s).";
         }
 
+        var uiSeconds = Math.Max(
+            0,
+            totalSeconds - loadResult.DatabaseSeconds - loadResult.MappingSeconds);
         return
-            $"Wyświetlono {loadResult.Rows.Count} osób. Czas: baza {loadResult.DatabaseSeconds:F1} s, przygotowanie {loadResult.MappingSeconds:F1} s, łącznie {totalSeconds:F1} s.";
+            $"Wyświetlono {loadResult.Rows.Count} osób. Czas: baza {loadResult.DatabaseSeconds:F1} s, " +
+            $"przygotowanie {loadResult.MappingSeconds:F1} s, UI {uiSeconds:F1} s, łącznie {totalSeconds:F1} s.";
     }
 
     private Task WaitForGridLayoutAsync()
@@ -366,10 +386,30 @@ public partial class GeneralPersonnelView : UserControl
     private async void OnFilterTextChanged(object sender, TextChangedEventArgs e)
     {
         UpdateClearSearchButtonVisibility();
-        if (IsLoaded)
+        if (!IsLoaded)
+            return;
+
+        _searchCancellation?.Cancel();
+        _searchCancellation?.Dispose();
+        _searchCancellation = new CancellationTokenSource();
+        var cancellationToken = _searchCancellation.Token;
+
+        try
         {
-            await LoadPersonnelAsync();
+            await Task.Delay(SearchDebounceMilliseconds, cancellationToken);
+            await LoadPersonnelAsync(cancellationToken);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Kolejny znak uruchomi nowy, pojedynczy odczyt.
+        }
+    }
+
+    private void OnViewUnloaded(object sender, RoutedEventArgs e)
+    {
+        _searchCancellation?.Cancel();
+        _searchCancellation?.Dispose();
+        _searchCancellation = null;
     }
 
     private void OnClearSearchClick(object sender, RoutedEventArgs e)

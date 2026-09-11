@@ -1,6 +1,8 @@
 using ClosedXML.Excel;
 using BOBER.Core.Constants;
+using BOBER.Core.Enums;
 using BOBER.Core.Models;
+using BOBER.Core.Oznaczenia;
 using BOBER.Core.Rules;
 using System.Linq;
 
@@ -226,6 +228,9 @@ public sealed class ExportService
 
                 var typ = wpis.TypWpisu;
                 var bazowy = GrafikWpisTypy.BazowyKod(typ);
+                var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(bazowy);
+                if (ozn is not null && !ozn.EksportDoExcela)
+                    continue;
 
                 // IsAuto = urlop z planu → Uₚ; ręczny → U
                 var fromUrlopPlan = wpis.IsAuto && GrafikWpisTypy.JestUrlopem(typ);
@@ -234,7 +239,7 @@ public sealed class ExportService
                     || bazowy.Equals(GrafikWpisTypy.UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
                     || bazowy.Equals(GrafikWpisTypy.Dyzur, StringComparison.OrdinalIgnoreCase))
                 {
-                    cell.Style.Fill.BackgroundColor = nieobecnoscBg;
+                    cell.Style.Fill.BackgroundColor = ResolveExcelFill(ozn, typ, rowBg, nieobecnoscBg);
                     cell.Value = GrafikWpisTypy.TekstWyswietlany(typ, fromUrlopPlan);
                     if (lessColor)
                         cell.Style.Font.FontColor = lessColorText;
@@ -249,7 +254,7 @@ public sealed class ExportService
                 }
 
                 cell.Value = GrafikWpisTypy.TekstWyswietlany(typ, fromUrlopPlan);
-                // LessColor: tylko WS/UWS/D żółte (powyżej). Del/S — własny kolor lub żółte tylko przy zachowanym tle WS.
+                // LessColor: tylko WS/UWS/D żółte (powyżej). Del/S — własny kolor Excel lub żółte przy zachowanym tle WS.
                 cell.Style.Fill.BackgroundColor = lessColor
                     ? rowBg
                     : ResolveOptionalWpisBg(typ, bazowy, kolory, rowBg, nieobecnoscBg);
@@ -335,16 +340,37 @@ public sealed class ExportService
         AddPageFooterLegend(ws);
     }
 
-    private static readonly string LegendLine1 =
-        "Legenda: puste=praca | D=Dyżur (żółte) | żółte=WS | U=Urlop | Uₚ=z planu | Uᵣ=rodz. | U na żółtym=U z WS | Del=Delegacja | S=Szkolenie | C=Chory";
-
     private static readonly string LegendLine2 =
         "?=potrzebuje wolne | •=chętna oddać | przekreśl./—=Oddaje | D=Dowódca | N=Nurek | K=Kierowca";
 
     private static void AddPageFooterLegend(IXLWorksheet ws)
     {
         // Excel: cały footer razem z kodami &L/&C max 255 znaków — bez SetFontSize/Color.
-        ws.PageSetup.Footer.Left.AddText(LegendLine1 + "\n" + LegendLine2, XLHFOccurrence.AllPages);
+        ws.PageSetup.Footer.Left.AddText(BuildLegendLine1() + "\n" + LegendLine2, XLHFOccurrence.AllPages);
+    }
+
+    private static string BuildLegendLine1()
+    {
+        var katalog = BOBER.Core.Oznaczenia.OznaczeniaLookup.Items;
+        if (katalog.Count == 0)
+        {
+            return "Legenda: puste=praca | D=Dyżur (żółte) | żółte=WS | U=Urlop | Uₚ=z planu | Uᵣ=rodz. | U na żółtym=U z WS | Del=Delegacja | S=Szkolenie | C=Chory";
+        }
+
+        var parts = katalog
+            .Where(o => o.EksportDoExcela)
+            .OrderBy(o => o.Kolejnosc)
+            .Select(o =>
+            {
+                var symbol = string.IsNullOrWhiteSpace(o.Kod) ? "?" : o.Kod.Trim();
+                var opis = string.IsNullOrWhiteSpace(o.Nazwa) ? symbol : o.Nazwa.Trim();
+                return $"{symbol}={opis}";
+            })
+            .ToList();
+
+        var line = "Legenda: puste=praca | " + string.Join(" | ", parts);
+        const int maxLen = 200; // zapas na LegendLine2 i kody stopki Excel
+        return line.Length <= maxLen ? line : line[..(maxLen - 1)] + "…";
     }
 
     private const int TitleRow = 1;
@@ -435,15 +461,68 @@ public sealed class ExportService
 
     private static void ApplyOddajeStrikethrough(IXLCell cell, string? typWpisu)
     {
-        if (!GrafikWpisTypy.MaOddal(typWpisu))
-            return;
+        ApplyCatalogFontStyle(cell, typWpisu);
+    }
 
-        // Przy WS Oddaje w komórce zostaje „—” (bez przekreślenia).
-        var bazowy = GrafikWpisTypy.BazowyKod(typWpisu);
-        if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase))
-            return;
+    private static void ApplyCatalogFontStyle(IXLCell cell, string? typWpisu)
+    {
+        var styl = ResolveExcelStyl(typWpisu);
+        switch (styl)
+        {
+            case StylWyswietlaniaOznaczenia.Pogrubienie:
+                cell.Style.Font.Bold = true;
+                break;
+            case StylWyswietlaniaOznaczenia.Przekreslenie:
+                cell.Style.Font.Strikethrough = true;
+                break;
+            case StylWyswietlaniaOznaczenia.Kursywa:
+                cell.Style.Font.Italic = true;
+                break;
+            case StylWyswietlaniaOznaczenia.Podkreslenie:
+                cell.Style.Font.Underline = XLFontUnderlineValues.Single;
+                break;
+        }
 
-        cell.Style.Font.Strikethrough = true;
+        var fontHex = ResolveExcelFontColor(typWpisu);
+        if (fontHex is not null)
+            cell.Style.Font.FontColor = ToXl(fontHex);
+    }
+
+    private static string? ResolveExcelFontColor(string? typWpisu)
+    {
+        if (GrafikWpisTypy.MaOddal(typWpisu))
+        {
+            var centrum = OznaczeniaLookup.FindCentrumFlaga();
+            return centrum?.EffectiveKolorCzcionkiHex;
+        }
+
+        if (GrafikWpisTypy.MaKropke(typWpisu))
+            return OznaczeniaLookup.FindChceOddac()?.EffectiveKolorCzcionkiHex;
+
+        var ozn = OznaczeniaLookup.FindByKod(GrafikWpisTypy.BazowyKod(typWpisu));
+        if (ozn?.JestFlaga == true)
+            return ozn.EffectiveKolorCzcionkiHex;
+
+        return null;
+    }
+
+    private static StylWyswietlaniaOznaczenia ResolveExcelStyl(string? typWpisu)
+    {
+        if (GrafikWpisTypy.MaOddal(typWpisu))
+        {
+            var bazowy = GrafikWpisTypy.BazowyKod(typWpisu);
+            if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase))
+                return StylWyswietlaniaOznaczenia.Normalny;
+
+            var centrum = OznaczeniaLookup.FindCentrumFlaga();
+            return centrum?.StylWyswietlania ?? StylWyswietlaniaOznaczenia.Przekreslenie;
+        }
+
+        var ozn = OznaczeniaLookup.FindByKod(GrafikWpisTypy.BazowyKod(typWpisu));
+        if (ozn is null || ozn.FlagaPozycja != FlagaPozycjaOznaczenia.Nie)
+            return StylWyswietlaniaOznaczenia.Normalny;
+
+        return ozn.StylWyswietlania;
     }
 
     private static string ResolveHex(
@@ -456,6 +535,30 @@ public sealed class ExportService
         return defaults.TryGetValue(key, out var fallback) ? fallback : "#FFFFFF";
     }
 
+    private static XLColor ResolveExcelFill(
+        BOBER.Core.Models.OznaczenieGrafiku? ozn,
+        string typWpisu,
+        XLColor rowBg,
+        XLColor wsYellowBg)
+    {
+        if (ozn is not null)
+        {
+            // Flagi: kolor to czcionka, nie tło Excel.
+            if (ozn.JestFlaga)
+                return GrafikWpisTypy.MaZachowaneTloWs(typWpisu) ? wsYellowBg : rowBg;
+
+            if (ozn.MaKolorExcel)
+            {
+                var hex = ozn.EffectiveKolorExcelHex;
+                return ToXl(hex.StartsWith('#') ? hex : "#" + hex);
+            }
+
+            return GrafikWpisTypy.MaZachowaneTloWs(typWpisu) ? wsYellowBg : rowBg;
+        }
+
+        return wsYellowBg;
+    }
+
     private static XLColor ResolveOptionalWpisBg(
         string typWpisu,
         string bazowy,
@@ -463,6 +566,10 @@ public sealed class ExportService
         XLColor rowBg,
         XLColor wsYellowBg)
     {
+        var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(bazowy);
+        if (ozn is not null)
+            return ResolveExcelFill(ozn, typWpisu, rowBg, wsYellowBg);
+
         string? klucz = null;
         if (bazowy.Equals(GrafikWpisTypy.Delegacja, StringComparison.OrdinalIgnoreCase))
             klucz = RoleKeys.Delegacja;
@@ -473,7 +580,6 @@ public sealed class ExportService
             return rowBg;
 
         var hex = ResolveHex(kolory, klucz, RoleKeys.DomyslneKoloryWpisow);
-        // Brak własnego koloru: żółte tylko gdy zachowano tło WS (Del*/S*), inaczej tło wiersza.
         if (RoleKeys.IsBrakWypelnienia(hex))
             return GrafikWpisTypy.MaZachowaneTloWs(typWpisu) ? wsYellowBg : rowBg;
 

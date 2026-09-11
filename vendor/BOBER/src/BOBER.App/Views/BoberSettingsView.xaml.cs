@@ -22,6 +22,7 @@ public partial class BoberSettingsView : UserControl
     private readonly ObservableCollection<KolorRoliViewModel> _kolory = new();
     private readonly ObservableCollection<KolorRoliViewModel> _koloryZmian = new();
     private readonly ObservableCollection<KolorRoliViewModel> _koloryEksportu = new();
+    private readonly ObservableCollection<OznaczenieGrafikuViewModel> _oznaczenia = new();
     private int _loadGeneration;
 
     public event EventHandler? SettingsSaved;
@@ -64,6 +65,7 @@ public partial class BoberSettingsView : UserControl
         KoloryItemsControl.ItemsSource = _kolory;
         KoloryZmianItemsControl.ItemsSource = _koloryZmian;
         KoloryEksportuItemsControl.ItemsSource = _koloryEksportu;
+        OznaczeniaDataGrid.ItemsSource = _oznaczenia;
 
         ApplySectionLayout();
         Loaded += OnLoaded;
@@ -94,6 +96,7 @@ public partial class BoberSettingsView : UserControl
         ParametryZmianySection.Visibility = IncludesParametry ? Visibility.Visible : Visibility.Collapsed;
         KolejnoscSection.Visibility = IncludesKolejnosc ? Visibility.Visible : Visibility.Collapsed;
         KolorySection.Visibility = IncludesKolory ? Visibility.Visible : Visibility.Collapsed;
+        OznaczeniaSection.Visibility = IncludesKolory ? Visibility.Visible : Visibility.Collapsed;
         GrafikManagementSection.Visibility = IncludesZarzadzanieGrafikiem
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -119,6 +122,7 @@ public partial class BoberSettingsView : UserControl
         _kolory.Clear();
         _koloryZmian.Clear();
         _koloryEksportu.Clear();
+        _oznaczenia.Clear();
 
         try
         {
@@ -194,6 +198,17 @@ public partial class BoberSettingsView : UserControl
                 UpdateExportAlternatingColorsPanel();
                 RefreshAltColorPreview(ExportAltColorAPreview, ExportAltColorATextBox.Text);
                 RefreshAltColorPreview(ExportAltColorBPreview, ExportAltColorBTextBox.Text);
+
+                var oznaczenia = await _controller.GetOznaczeniaAsync();
+                if (generation != _loadGeneration)
+                    return;
+
+                OznaczeniaHeader.Text = $"OZNACZENIA GRAFIKU — {_controller.NazwaZmiany}";
+                OznaczeniaHintText.Text =
+                    $"Konfiguracja tylko dla {_controller.NazwaZmiany}. Zmiany 1, 2 i 3 mają osobne oznaczenia.";
+
+                foreach (var o in oznaczenia.OrderBy(x => x.Kolejnosc))
+                    _oznaczenia.Add(OznaczenieGrafikuViewModel.FromModel(o));
             }
 
             if (IncludesZarzadzanieGrafikiem)
@@ -440,6 +455,19 @@ public partial class BoberSettingsView : UserControl
                         ? GrafikRowColorSettings.DefaultColorB
                         : ExportAltColorBTextBox.Text.Trim()
                 });
+
+                var validationError = ValidateOznaczenia();
+                if (validationError is not null)
+                {
+                    BoberMessageBox.Show(GetOwnerWindow(), validationError, "BOBER");
+                    return;
+                }
+
+                short order = 0;
+                foreach (var o in _oznaczenia)
+                    o.Kolejnosc = ++order;
+
+                await _controller.SaveOznaczeniaAsync(_oznaczenia.Select(o => o.ToModel()).ToList());
             }
 
             if (!ShowCancelButton)
@@ -549,6 +577,179 @@ public partial class BoberSettingsView : UserControl
             "Zarządzanie grafikiem jest wyłączone dla użytkownika Gość.",
             "BOBER");
         return false;
+    }
+
+    private void OnAddOznaczenieClick(object sender, RoutedEventArgs e)
+    {
+        var next = (short)(_oznaczenia.Count + 1);
+        var vm = new OznaczenieGrafikuViewModel
+        {
+            Kod = "X",
+            Nazwa = "Nowe oznaczenie",
+            KolorHex = RoleKeys.BrakWypelnienia,
+            KolorExcelHex = RoleKeys.BrakWypelnienia,
+            WPracy = false,
+            EksportDoExcela = true,
+            AdnotacjaRozkazu = string.Empty,
+            Kolejnosc = next
+        };
+        _oznaczenia.Add(vm);
+        // ComboBox w DataGrid czasem gubi SelectedValue przy tworzeniu wiersza.
+        vm.EksportDoExcela = true;
+        OznaczeniaDataGrid.SelectedIndex = _oznaczenia.Count - 1;
+        OznaczeniaDataGrid.ScrollIntoView(OznaczeniaDataGrid.SelectedItem);
+    }
+
+    private async void OnRemoveOznaczenieClick(object sender, RoutedEventArgs e)
+    {
+        if (OznaczeniaDataGrid.SelectedItem is not OznaczenieGrafikuViewModel selected)
+        {
+            BoberMessageBox.Show(GetOwnerWindow(), "Zaznacz oznaczenie do usunięcia.", "BOBER");
+            return;
+        }
+
+        try
+        {
+            var used = await _controller.CountWpisowZKodemAsync(selected.Kod);
+            if (used > 0)
+            {
+                var confirm = BoberMessageBox.Show(
+                    GetOwnerWindow(),
+                    $"Kod „{selected.Kod}” jest użyty w {used} wpisach grafiku. Usunąć mimo to?",
+                    "BOBER",
+                    BoberMessageButtons.YesNo);
+                if (confirm != MessageBoxResult.Yes)
+                    return;
+            }
+        }
+        catch
+        {
+            /* brak tabeli / błąd — pozwól usunąć */
+        }
+
+        _oznaczenia.Remove(selected);
+    }
+
+    private void OnOznaczenieClearColorClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: OznaczenieGrafikuViewModel vm })
+            vm.ClearFill();
+    }
+
+    private void OnOznaczenieClearExcelColorClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: OznaczenieGrafikuViewModel vm })
+            vm.ClearExcelFill();
+    }
+
+    private void OnOznaczenieColorPreviewClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: OznaczenieGrafikuViewModel vm })
+            return;
+
+        var chosen = PickColor(
+            vm.JestFlaga
+                ? (vm.HasFill ? vm.KolorHex : OznaczenieGrafiku.DomyslnyKolorCzcionkiFlagi)
+                : (vm.HasFill ? vm.KolorHex : "#FFFF00"));
+        if (chosen is not null)
+            vm.KolorHex = chosen;
+    }
+
+    private void OnOznaczenieExcelColorPreviewClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: OznaczenieGrafikuViewModel vm })
+            return;
+
+        var start = vm.HasExcelFill
+            ? vm.KolorExcelHex
+            : (vm.HasFill ? vm.KolorHex : "#FFFF00");
+        var chosen = PickColor(start);
+        if (chosen is not null)
+            vm.SetExcelFill(chosen);
+    }
+
+    private void OnOznaczenieSkrotKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: OznaczenieGrafikuViewModel vm })
+            return;
+
+        if (e.Key is Key.Tab or Key.Escape or Key.Enter)
+            return;
+
+        e.Handled = true;
+        if (e.Key is Key.Back or Key.Delete)
+        {
+            vm.SkrotKlawiszowy = string.Empty;
+            return;
+        }
+
+        var next = Helpers.SkrotKlawiszowyCapture.FromKey(e.Key);
+        if (string.IsNullOrEmpty(next))
+            return;
+
+        if (FindSkrotConflict(vm, next) is { } konflikt)
+        {
+            BoberMessageBox.Show(
+                GetOwnerWindow(),
+                $"Skrót „{BOBER.Core.Oznaczenia.SkrotKlawiszowyRules.FormatForDisplay(next)}” jest już użyty przez „{konflikt.Kod} — {konflikt.Nazwa}”.",
+                "BOBER");
+            return;
+        }
+
+        vm.SkrotKlawiszowy = next;
+    }
+
+    private OznaczenieGrafikuViewModel? FindSkrotConflict(OznaczenieGrafikuViewModel current, string skrot)
+    {
+        foreach (var o in _oznaczenia)
+        {
+            if (ReferenceEquals(o, current) || string.IsNullOrWhiteSpace(o.SkrotKlawiszowy))
+                continue;
+            if (BOBER.Core.Oznaczenia.SkrotKlawiszowyRules.Matches(o.SkrotKlawiszowy, skrot))
+                return o;
+        }
+
+        return null;
+    }
+
+    private string? ValidateOznaczenia()
+    {
+        var kody = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var zajeteSkroty = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var o in _oznaczenia)
+        {
+            var kod = o.Kod.Trim();
+            if (string.IsNullOrWhiteSpace(kod))
+                return "Symbol oznaczenia nie może być pusty.";
+            // Sufiksy systemowe zastrzeżone; symbol • (chce oddać) jest dozwolony.
+            if (kod.IndexOfAny(['/', '*']) >= 0
+                || (kod.Contains('.') && !OznaczeniaGrafikuSeed.IsChceOddacKod(kod)))
+                return $"Symbol „{kod}” nie może zawierać znaków /, . ani *.";
+            if (kod.Length > 20)
+                return $"Symbol „{kod}” jest za długi (max 20).";
+            if (!kody.Add(kod))
+                return $"Zduplikowany symbol oznaczenia: {kod}.";
+
+            var skrot = o.SkrotKlawiszowy.Trim();
+            if (!string.IsNullOrEmpty(skrot))
+            {
+                var aliases = BOBER.Core.Oznaczenia.SkrotKlawiszowyRules.Expand(skrot);
+                if (aliases.Any(a => zajeteSkroty.Contains(a)))
+                {
+                    var display = BOBER.Core.Oznaczenia.SkrotKlawiszowyRules.FormatForDisplay(skrot);
+                    return $"Zduplikowany skrót klawiszowy: {display} (koliduje z innym skrótem).";
+                }
+
+                foreach (var a in aliases)
+                    zajeteSkroty.Add(a);
+            }
+
+            if (!o.WPracy && o.SekcjaRozkazu is null && !o.JestFlaga)
+                return $"Oznaczenie „{kod}” (nieobecność) wymaga grupy w rozkazie.";
+        }
+
+        return null;
     }
 
     private Window? GetOwnerWindow() => Window.GetWindow(this);
