@@ -109,6 +109,22 @@
 
         <Style x:Key="GeneralPersonnelColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource ChomikDataGridColumnHeader}" />
 
+        <Style x:Key="WstepienieColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GeneralPersonnelColumnHeader}">
+            <Setter Property="ToolTip" Value="Data wstąpienia do służby" />
+        </Style>
+        <Style x:Key="UprawnieniaAlertColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GeneralPersonnelColumnHeader}">
+            <Setter Property="ToolTip" Value="Ostrzeżenia o kończących się uprawnieniach" />
+        </Style>
+        <Style x:Key="BadaniaColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GeneralPersonnelColumnHeader}">
+            <Setter Property="ToolTip" Value="Ważność badań okresowych" />
+        </Style>
+        <Style x:Key="KomoraColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GeneralPersonnelColumnHeader}">
+            <Setter Property="ToolTip" Value="Ważność komory dymowej" />
+        </Style>
+        <Style x:Key="KppColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GeneralPersonnelColumnHeader}">
+            <Setter Property="ToolTip" Value="Ważność certyfikatu Kwalifikowanej Pomocy Przedmedycznej" />
+        </Style>
+
         <x:Array x:Key="ZmianaNumbers" Type="sys:Int32">
             <sys:Int32>1</sys:Int32>
             <sys:Int32>2</sys:Int32>
@@ -553,6 +569,7 @@
                         </DataGridTextColumn>
                         <DataGridTemplateColumn x:Name="UprawnieniaAlertColumn"
                                                 Header="Uwaga"
+                                                HeaderStyle="{StaticResource UprawnieniaAlertColumnHeader}"
                                                 Width="44"
                                                 MinWidth="40"
                                                 CellTemplate="{StaticResource UprawnieniaAlertCellTemplate}" />
@@ -578,6 +595,7 @@
                         </DataGridTextColumn>
                         <DataGridTextColumn x:Name="WstepienieColumn"
                                             Header="Wstąpienie do sł."
+                                            HeaderStyle="{StaticResource WstepienieColumnHeader}"
                                             Binding="{Binding DataWstepieniaDoSluzby, StringFormat=dd.MM.yyyy}"
                                             Width="1*"
                                             MinWidth="96"
@@ -588,16 +606,19 @@
                         </DataGridTextColumn>
                         <DataGridTemplateColumn x:Name="BadaniaColumn"
                                                 Header="Badania do"
+                                                HeaderStyle="{StaticResource BadaniaColumnHeader}"
                                                 Width="1*"
                                                 MinWidth="92"
                                                 CellTemplate="{StaticResource BadaniaDateCellTemplate}" />
                         <DataGridTemplateColumn x:Name="KomoraColumn"
                                                 Header="Komora do"
+                                                HeaderStyle="{StaticResource KomoraColumnHeader}"
                                                 Width="1*"
                                                 MinWidth="92"
                                                 CellTemplate="{StaticResource KomoraDateCellTemplate}" />
                         <DataGridTemplateColumn x:Name="KppColumn"
                                                 Header="KPP do"
+                                                HeaderStyle="{StaticResource KppColumnHeader}"
                                                 Width="1*"
                                                 MinWidth="92"
                                                 CellTemplate="{StaticResource KppDateCellTemplate}" />
