@@ -24,6 +24,7 @@ public partial class KalendarzView : UserControl
     private int? _shiftNumber;
     private bool _isLoading;
     private IReadOnlyDictionary<int, string> _kolory = new Dictionary<int, string>();
+    private IReadOnlySet<int> _koloryAktywne = new HashSet<int> { 1, 2, 3 };
     private IReadOnlyDictionary<int, int> _workingShifts = new Dictionary<int, int>();
     private List<KalendarzWpis> _wpisy = [];
 
@@ -141,6 +142,12 @@ public partial class KalendarzView : UserControl
 
             await _controller.ApplyAutoDeleteAsync(_shiftNumber, _canEdit);
             _kolory = await _controller.GetKoloryZmianAsync();
+            var wszystkie = await _controller.GetKoloryStanowiskAsync();
+            _koloryAktywne = Enumerable.Range(1, 3)
+                .Where(zmiana => KoloryLookup.IsAktywny(
+                    KoloryLookup.Index(wszystkie),
+                    RoleKeys.KalendarzKluczForZmiana(zmiana)))
+                .ToHashSet();
             _workingShifts = await _controller.GetWorkingShiftsForMonthAsync(_year, _month);
 
             var wpisy = await _controller.GetMonthAsync(
@@ -166,9 +173,9 @@ public partial class KalendarzView : UserControl
 
     private void ApplyLegend()
     {
-        Legend1.Background = BrushFromHex(_kolory.GetValueOrDefault(1, RoleKeys.GetDefaultKolorHex(RoleKeys.KalendarzZmiana1)));
-        Legend2.Background = BrushFromHex(_kolory.GetValueOrDefault(2, RoleKeys.GetDefaultKolorHex(RoleKeys.KalendarzZmiana2)));
-        Legend3.Background = BrushFromHex(_kolory.GetValueOrDefault(3, RoleKeys.GetDefaultKolorHex(RoleKeys.KalendarzZmiana3)));
+        Legend1.Background = BrushForZmiana(1);
+        Legend2.Background = BrushForZmiana(2);
+        Legend3.Background = BrushForZmiana(3);
     }
 
     private void BuildCalendarGrid()
@@ -221,9 +228,6 @@ public partial class KalendarzView : UserControl
     private Border CreateDayCell(DateOnly date)
     {
         var workingShift = _workingShifts.GetValueOrDefault(date.Day, 1);
-        var colorHex = _kolory.GetValueOrDefault(
-            workingShift,
-            RoleKeys.GetDefaultKolorHex(RoleKeys.KalendarzKluczForZmiana(workingShift)));
 
         var dayWpisy = _wpisy.Where(w => w.Data == date).ToList();
         var hasNote = dayWpisy.Count > 0;
@@ -232,7 +236,7 @@ public partial class KalendarzView : UserControl
 
         var border = new Border
         {
-            Background = BrushFromHex(colorHex),
+            Background = BrushForZmiana(workingShift),
             BorderBrush = (Brush)FindResource("BorderBrush"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(4),
@@ -810,6 +814,17 @@ public partial class KalendarzView : UserControl
         3 => "III",
         _ => zmianaId.ToString()
     };
+
+    private Brush BrushForZmiana(int zmiana)
+    {
+        if (!_koloryAktywne.Contains(zmiana))
+            return (Brush)FindResource("SurfaceBrush");
+
+        var hex = _kolory.GetValueOrDefault(
+            zmiana,
+            RoleKeys.GetDefaultKolorHex(RoleKeys.KalendarzKluczForZmiana(zmiana)));
+        return BrushFromHex(hex);
+    }
 
     private static Brush BrushFromHex(string hex)
     {

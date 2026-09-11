@@ -194,10 +194,12 @@ public sealed class KalendarzService(
                 continue;
 
             var klucz = RoleKeys.KalendarzKluczForZmiana(zmianaId);
+            var aktywny = !byKey.TryGetValue(klucz, out var existingKolor) || existingKolor.Aktywny;
             byKey[klucz] = new KolorStanowiska
             {
                 KluczRoli = klucz,
-                KolorHex = NormalizeHex(hex)
+                KolorHex = NormalizeHex(hex),
+                Aktywny = aktywny
             };
         }
 

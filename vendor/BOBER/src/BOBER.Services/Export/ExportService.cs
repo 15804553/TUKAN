@@ -26,12 +26,14 @@ public sealed class ExportService
         string? alternatingColorA = null,
         string? alternatingColorB = null,
         string? nazwaZmiany = null,
-        int zmianaId = 1)
+        int zmianaId = 1,
+        IReadOnlySet<string>? wylaczoneKolory = null)
     {
         using var workbook = new XLWorkbook();
         AddMonthWorksheet(
             workbook, rok, miesiac, funkcjonariusze, wpisy, stanZmiany, stanMinimalny, kolory, workDays,
-            lessColor, alternatingRows, alternatingColorA, alternatingColorB, nazwaZmiany, zmianaId);
+            lessColor, alternatingRows, alternatingColorA, alternatingColorB, nazwaZmiany, zmianaId,
+            wylaczoneKolory);
         workbook.SaveAs(filePath);
     }
 
@@ -50,7 +52,8 @@ public sealed class ExportService
         string? alternatingColorA = null,
         string? alternatingColorB = null,
         string? nazwaZmiany = null,
-        int zmianaId = 1)
+        int zmianaId = 1,
+        IReadOnlySet<string>? wylaczoneKolory = null)
     {
         using var workbook = new XLWorkbook();
         for (var miesiac = 1; miesiac <= 12; miesiac++)
@@ -70,7 +73,8 @@ public sealed class ExportService
                 alternatingColorA,
                 alternatingColorB,
                 nazwaZmiany,
-                zmianaId);
+                zmianaId,
+                wylaczoneKolory);
         }
 
         workbook.SaveAs(filePath);
@@ -91,19 +95,24 @@ public sealed class ExportService
         string? alternatingColorA,
         string? alternatingColorB,
         string? nazwaZmiany,
-        int zmianaId)
+        int zmianaId,
+        IReadOnlySet<string>? wylaczoneKolory)
     {
         var ws = workbook.Worksheets.Add(GetMonthName(miesiac));
         var altA = ResolveAlternatingHex(alternatingColorA, GrafikRowColorSettings.DefaultColorA);
         var altB = ResolveAlternatingHex(alternatingColorB, GrafikRowColorSettings.DefaultColorB);
+        var wylaczone = wylaczoneKolory ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var stosujWs = lessColor || !wylaczone.Contains(RoleKeys.WolnaSluzba);
 
         var nieobecnoscBg = ToXl(ResolveHex(kolory, RoleKeys.WolnaSluzba, RoleKeys.DomyslneKoloryWpisow));
         var appText = ToXl(AppColors.ForegroundHex);
-        var bandBg = ToXl(ResolveHex(kolory, RoleKeys.EksportNaglowekStopkaTlo, RoleKeys.DomyslneKoloryEksportu));
+        var bandBg = ToXl(ResolveHex(
+            kolory, RoleKeys.EksportNaglowekStopkaTlo, RoleKeys.DomyslneKoloryEksportu, wylaczone));
         var lessColorText = ToXl("#000000");
         var bandFg = lessColor
             ? lessColorText
-            : ToXl(ResolveHex(kolory, RoleKeys.EksportNaglowekStopkaCzcionka, RoleKeys.DomyslneKoloryEksportu));
+            : ToXl(ResolveHex(
+                kolory, RoleKeys.EksportNaglowekStopkaCzcionka, RoleKeys.DomyslneKoloryEksportu, wylaczone));
 
         var daysInMonth = DateTime.DaysInMonth(rok, miesiac);
         var workDaysList = (workDays is { Count: > 0 }
@@ -192,9 +201,11 @@ public sealed class ExportService
             else
             {
                 var role = RoleClassifier.DetermineBackgroundRole(f);
-                rowBgHex = ResolveHex(kolory, role, RoleKeys.DomyslneKolory);
+                rowBgHex = !lessColor && wylaczone.Contains(role)
+                    ? "#FFFFFF"
+                    : ResolveHex(kolory, role, RoleKeys.DomyslneKolory);
                 rowBg = ToXl(rowBgHex);
-                nameText = RoleClassifier.IsNurek(f)
+                nameText = RoleClassifier.IsNurek(f) && !wylaczone.Contains(RoleKeys.NurekCzcionka)
                     ? ToXl(ResolveHex(kolory, RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow))
                     : ToXl(AppColors.ContrastTextHex(rowBgHex));
             }
@@ -239,7 +250,9 @@ public sealed class ExportService
                     || bazowy.Equals(GrafikWpisTypy.UrlopZWolnaSluzba, StringComparison.OrdinalIgnoreCase)
                     || bazowy.Equals(GrafikWpisTypy.Dyzur, StringComparison.OrdinalIgnoreCase))
                 {
-                    cell.Style.Fill.BackgroundColor = ResolveExcelFill(ozn, typ, rowBg, nieobecnoscBg);
+                    cell.Style.Fill.BackgroundColor = stosujWs
+                        ? ResolveExcelFill(ozn, typ, rowBg, nieobecnoscBg)
+                        : ResolveExcelFill(ozn, typ, rowBg, rowBg);
                     cell.Value = GrafikWpisTypy.TekstWyswietlany(typ, fromUrlopPlan);
                     if (lessColor)
                         cell.Style.Font.FontColor = lessColorText;
@@ -257,7 +270,7 @@ public sealed class ExportService
                 // LessColor: tylko WS/UWS/D żółte (powyżej). Del/S — własny kolor Excel lub żółte przy zachowanym tle WS.
                 cell.Style.Fill.BackgroundColor = lessColor
                     ? rowBg
-                    : ResolveOptionalWpisBg(typ, bazowy, kolory, rowBg, nieobecnoscBg);
+                    : ResolveOptionalWpisBg(typ, bazowy, kolory, rowBg, nieobecnoscBg, wylaczone, stosujWs);
                 cell.Style.Font.FontColor = lessColor ? lessColorText : appText;
                 ApplyOddajeStrikethrough(cell, typ);
             }
@@ -528,8 +541,12 @@ public sealed class ExportService
     private static string ResolveHex(
         IReadOnlyDictionary<string, string> kolory,
         string key,
-        IReadOnlyDictionary<string, string> defaults)
+        IReadOnlyDictionary<string, string> defaults,
+        IReadOnlySet<string>? wylaczone = null)
     {
+        if (wylaczone is not null && wylaczone.Contains(key))
+            return defaults.TryGetValue(key, out var disabledFallback) ? disabledFallback : "#FFFFFF";
+
         if (kolory.TryGetValue(key, out var hex) && !string.IsNullOrWhiteSpace(hex))
             return hex;
         return defaults.TryGetValue(key, out var fallback) ? fallback : "#FFFFFF";
@@ -564,7 +581,9 @@ public sealed class ExportService
         string bazowy,
         IReadOnlyDictionary<string, string> kolory,
         XLColor rowBg,
-        XLColor wsYellowBg)
+        XLColor wsYellowBg,
+        IReadOnlySet<string> wylaczone,
+        bool stosujWs)
     {
         var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(bazowy);
         if (ozn is not null)
@@ -579,9 +598,12 @@ public sealed class ExportService
         if (klucz is null)
             return rowBg;
 
+        if (wylaczone.Contains(klucz))
+            return GrafikWpisTypy.MaZachowaneTloWs(typWpisu) && stosujWs ? wsYellowBg : rowBg;
+
         var hex = ResolveHex(kolory, klucz, RoleKeys.DomyslneKoloryWpisow);
         if (RoleKeys.IsBrakWypelnienia(hex))
-            return GrafikWpisTypy.MaZachowaneTloWs(typWpisu) ? wsYellowBg : rowBg;
+            return GrafikWpisTypy.MaZachowaneTloWs(typWpisu) && stosujWs ? wsYellowBg : rowBg;
 
         return ToXl(hex);
     }

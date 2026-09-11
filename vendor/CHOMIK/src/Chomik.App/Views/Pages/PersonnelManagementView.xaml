@@ -52,11 +52,15 @@
                       Background="Transparent"
                       CanUserAddRows="False"
                       ScrollViewer.CanContentScroll="False"
+                      RowBackground="Transparent"
+                      AlternatingRowBackground="Transparent"
+                      LoadingRow="OnPersonnelGridLoadingRow"
                       PreviewMouseDoubleClick="OnPersonnelGridPreviewMouseDoubleClick">
                 <DataGrid.RowStyle>
                     <Style TargetType="DataGridRow">
                         <Setter Property="MinHeight" Value="32" />
                         <Setter Property="Height" Value="NaN" />
+                        <Setter Property="Background" Value="{Binding RowBackground}" />
                     </Style>
                 </DataGrid.RowStyle>
                 <DataGrid.Columns>
@@ -72,14 +76,22 @@
                             <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Imię i nazwisko"
-                                        Binding="{Binding PelneImieNazwisko}"
-                                        SortMemberPath="Nazwisko"
-                                        Width="180">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                    <DataGridTemplateColumn Header="Imię i nazwisko"
+                                            SortMemberPath="Nazwisko"
+                                            Width="180">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{Binding NameBorderBrush}"
+                                        BorderThickness="2"
+                                        CornerRadius="2"
+                                        Padding="2,0"
+                                        Background="Transparent">
+                                    <TextBlock Text="{Binding PelneImieNazwisko}"
+                                               Style="{StaticResource PersonnelGridTextColumnStyle}" />
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Stanowisko" Binding="{Binding Stanowisko}" Width="120">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource PersonnelGridTextColumnStyle}" />

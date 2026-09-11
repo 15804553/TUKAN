@@ -8,11 +8,25 @@ namespace BOBER.App.ViewModels;
 public sealed class KolorRoliViewModel : INotifyPropertyChanged
 {
     private string _kolorHex = "#2D2D2D";
+    private bool _aktywny = true;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public string KluczRoli { get; init; } = string.Empty;
     public string Etykieta { get; init; } = string.Empty;
+
+    /// <summary>Czy kolor jest stosowany w grafiku miesięcznym.</summary>
+    public bool Aktywny
+    {
+        get => _aktywny;
+        set
+        {
+            if (_aktywny == value)
+                return;
+            _aktywny = value;
+            OnPropertyChanged();
+        }
+    }
 
     /// <summary>Czy dozwolony brak wypełnienia (pusty hex / None) — Del, S.</summary>
     public bool AllowEmpty { get; init; }

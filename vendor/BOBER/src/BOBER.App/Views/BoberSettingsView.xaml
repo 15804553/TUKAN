@@ -130,21 +130,27 @@
         <DataTemplate x:Key="KolorRoliRowTemplate">
             <Grid Margin="0,4">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="280" />
-                    <ColumnDefinition Width="110" />
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="KolorCheck" />
+                    <ColumnDefinition Width="260" SharedSizeGroup="KolorLabel" />
+                    <ColumnDefinition Width="110" SharedSizeGroup="KolorHex" />
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="KolorBrak" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="{Binding Etykieta}"
+                <CheckBox IsChecked="{Binding Aktywny, Mode=TwoWay}"
+                          VerticalAlignment="Center"
+                          Margin="0,0,8,0"
+                          ToolTip="Zastosuj ten kolor w grafiku miesięcznym" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Etykieta}"
                            Foreground="{StaticResource ForegroundBrush}"
                            VerticalAlignment="Center"
                            FontSize="12"
                            TextWrapping="Wrap" />
-                <TextBox Grid.Column="1"
+                <TextBox Grid.Column="2"
                          Text="{Binding DisplayHex, UpdateSourceTrigger=PropertyChanged}"
                          Style="{StaticResource DarkTextBox}"
                          Margin="8,0,4,0" />
-                <Button Grid.Column="2"
+                <Button Grid.Column="3"
                         Content="Brak"
                         Padding="8,2"
                         Margin="0,0,8,0"
@@ -163,7 +169,7 @@
                         </Style>
                     </Button.Style>
                 </Button>
-                <Border Grid.Column="3"
+                <Border Grid.Column="4"
                         CornerRadius="4"
                         Height="22"
                         Cursor="Hand"
@@ -347,176 +353,191 @@
                 </StackPanel>
 
                 <StackPanel x:Name="KolorySection">
-                <Expander x:Name="EksportGrafikuExpander"
-                          Header="Exportowanie grafiku do excel"
-                          Style="{StaticResource BoberSettingsExpander}">
-                    <GroupBox Style="{StaticResource BoberSettingsGroupBox}">
-                        <StackPanel>
-                            <CheckBox x:Name="LessColorCheckBox"
-                                      Content="LessColor — eksport grafiku bez kolorów ról (białe wiersze, czarna czcionka, żółte WS i D)"
-                                      Foreground="{StaticResource ForegroundBrush}"
-                                      IsChecked="True"
-                                      Margin="0,0,0,12" />
-                            <CheckBox x:Name="ExportAlternatingColorsCheckBox"
-                                      Content="Kolorowanie naprzemienne w eksporcie Excel"
-                                      Foreground="{StaticResource ForegroundBrush}"
-                                      Checked="OnExportAlternatingColorsChanged"
-                                      Unchecked="OnExportAlternatingColorsChanged"
-                                      Margin="0,0,0,8" />
-                            <StackPanel x:Name="ExportAlternatingColorsPanel"
-                                        IsEnabled="False"
-                                        Margin="0,0,0,12">
-                                <Grid Margin="0,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
-                                        <ColumnDefinition Width="130" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Kolor A (wiersze nieparzyste)"
-                                               Foreground="{StaticResource ForegroundBrush}"
-                                               VerticalAlignment="Center"
-                                               FontSize="12" />
-                                    <TextBox x:Name="ExportAltColorATextBox"
-                                             Grid.Column="1"
-                                             Style="{StaticResource DarkTextBox}"
-                                             Margin="8,0,8,0"
-                                             TextChanged="OnAltColorTextChanged" />
-                                    <Border x:Name="ExportAltColorAPreview"
-                                            Grid.Column="2"
-                                            CornerRadius="4"
-                                            Height="22"
-                                            Cursor="Hand"
-                                            ToolTip="Kliknij, aby wybrać kolor"
-                                            MouseLeftButtonDown="OnAltColorPreviewClick"
-                                            Tag="ExportA" />
-                                </Grid>
-                                <Grid Margin="0,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
-                                        <ColumnDefinition Width="130" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Kolor B (wiersze parzyste)"
-                                               Foreground="{StaticResource ForegroundBrush}"
-                                               VerticalAlignment="Center"
-                                               FontSize="12" />
-                                    <TextBox x:Name="ExportAltColorBTextBox"
-                                             Grid.Column="1"
-                                             Style="{StaticResource DarkTextBox}"
-                                             Margin="8,0,8,0"
-                                             TextChanged="OnAltColorTextChanged" />
-                                    <Border x:Name="ExportAltColorBPreview"
-                                            Grid.Column="2"
-                                            CornerRadius="4"
-                                            Height="22"
-                                            Cursor="Hand"
-                                            ToolTip="Kliknij, aby wybrać kolor"
-                                            MouseLeftButtonDown="OnAltColorPreviewClick"
-                                            Tag="ExportB" />
-                                </Grid>
-                            </StackPanel>
-                            <ItemsControl x:Name="KoloryEksportuItemsControl"
-                                          ItemTemplate="{StaticResource KolorRoliRowTemplate}" />
-                        </StackPanel>
-                    </GroupBox>
-                </Expander>
-
-                <Expander x:Name="KolorowanieGrafikowExpander"
-                          Header="Kolorowanie grafików"
-                          Style="{StaticResource BoberSettingsExpander}">
-                    <StackPanel>
-                        <GroupBox Style="{StaticResource BoberSettingsSectionGroupBox}">
-                            <GroupBox.Header>
-                                <RadioButton x:Name="RoleColorsRadio"
-                                             Content="Kolorowanie wg stanowisk i uprawnień"
-                                             GroupName="GrafikColorMode"
-                                             FontWeight="SemiBold"
-                                             Foreground="{StaticResource ForegroundBrush}"
-                                             IsChecked="True"
-                                             Checked="OnGrafikColorModeChanged" />
-                            </GroupBox.Header>
-                            <ItemsControl x:Name="KoloryItemsControl"
-                                          ItemTemplate="{StaticResource KolorRoliRowTemplate}" />
-                        </GroupBox>
-
-                        <GroupBox Style="{StaticResource BoberSettingsSectionGroupBox}"
-                                  Margin="0">
-                            <GroupBox.Header>
-                                <RadioButton x:Name="AlternatingColorsRadio"
-                                             Content="Kolorowanie naprzemienne"
-                                             GroupName="GrafikColorMode"
-                                             FontWeight="SemiBold"
-                                             Foreground="{StaticResource ForegroundBrush}"
-                                             Checked="OnGrafikColorModeChanged" />
-                            </GroupBox.Header>
-                            <StackPanel x:Name="AlternatingColorsPanel"
-                                        IsEnabled="False">
-                                <TextBlock Text="Dwa kolory zamiast kolorów ról (tylko widok, nie eksport; WS bez zmian)."
-                                           Foreground="{StaticResource ForegroundMutedBrush}"
-                                           FontSize="11"
-                                           TextWrapping="Wrap"
-                                           Margin="0,0,0,8" />
-                                <Grid Margin="0,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
-                                        <ColumnDefinition Width="130" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Kolor A (wiersze nieparzyste)"
-                                               Foreground="{StaticResource ForegroundBrush}"
-                                               VerticalAlignment="Center"
-                                               FontSize="12" />
-                                    <TextBox x:Name="AltColorATextBox"
-                                             Grid.Column="1"
-                                             Style="{StaticResource DarkTextBox}"
-                                             Margin="8,0,8,0"
-                                             TextChanged="OnAltColorTextChanged" />
-                                    <Border x:Name="AltColorAPreview"
-                                            Grid.Column="2"
-                                            CornerRadius="4"
-                                            Height="22"
-                                            Cursor="Hand"
-                                            ToolTip="Kliknij, aby wybrać kolor"
-                                            MouseLeftButtonDown="OnAltColorPreviewClick"
-                                            Tag="A" />
-                                </Grid>
-                                <Grid Margin="0,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
-                                        <ColumnDefinition Width="130" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Kolor B (wiersze parzyste)"
-                                               Foreground="{StaticResource ForegroundBrush}"
-                                               VerticalAlignment="Center"
-                                               FontSize="12" />
-                                    <TextBox x:Name="AltColorBTextBox"
-                                             Grid.Column="1"
-                                             Style="{StaticResource DarkTextBox}"
-                                             Margin="8,0,8,0"
-                                             TextChanged="OnAltColorTextChanged" />
-                                    <Border x:Name="AltColorBPreview"
-                                            Grid.Column="2"
-                                            CornerRadius="4"
-                                            Height="22"
-                                            Cursor="Hand"
-                                            ToolTip="Kliknij, aby wybrać kolor"
-                                            MouseLeftButtonDown="OnAltColorPreviewClick"
-                                            Tag="B" />
-                                </Grid>
-                            </StackPanel>
-                        </GroupBox>
+                <GroupBox Style="{StaticResource BoberSettingsSectionGroupBox}">
+                    <GroupBox.Header>
+                        <RadioButton x:Name="AlternatingColorsRadio"
+                                     Content="Kolorowanie naprzemienne"
+                                     GroupName="GrafikColorMode"
+                                     FontWeight="SemiBold"
+                                     Foreground="{StaticResource ForegroundBrush}"
+                                     Checked="OnGrafikColorModeChanged" />
+                    </GroupBox.Header>
+                    <StackPanel x:Name="AlternatingColorsPanel"
+                                IsEnabled="False">
+                        <TextBlock Text="Dwa kolory zamiast kolorów stanowisk (tylko widok grafiku; komórki D/WS bez zmian)."
+                                   Foreground="{StaticResource ForegroundMutedBrush}"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,0,8" />
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="200" />
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Kolor A (wiersze nieparzyste)"
+                                       Foreground="{StaticResource ForegroundBrush}"
+                                       VerticalAlignment="Center"
+                                       FontSize="12" />
+                            <TextBox x:Name="AltColorATextBox"
+                                     Grid.Column="1"
+                                     Style="{StaticResource DarkTextBox}"
+                                     Margin="8,0,8,0"
+                                     TextChanged="OnAltColorTextChanged" />
+                            <Border x:Name="AltColorAPreview"
+                                    Grid.Column="2"
+                                    CornerRadius="4"
+                                    Height="22"
+                                    Cursor="Hand"
+                                    ToolTip="Kliknij, aby wybrać kolor"
+                                    MouseLeftButtonDown="OnAltColorPreviewClick"
+                                    Tag="A" />
+                        </Grid>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="200" />
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Kolor B (wiersze parzyste)"
+                                       Foreground="{StaticResource ForegroundBrush}"
+                                       VerticalAlignment="Center"
+                                       FontSize="12" />
+                            <TextBox x:Name="AltColorBTextBox"
+                                     Grid.Column="1"
+                                     Style="{StaticResource DarkTextBox}"
+                                     Margin="8,0,8,0"
+                                     TextChanged="OnAltColorTextChanged" />
+                            <Border x:Name="AltColorBPreview"
+                                    Grid.Column="2"
+                                    CornerRadius="4"
+                                    Height="22"
+                                    Cursor="Hand"
+                                    ToolTip="Kliknij, aby wybrać kolor"
+                                    MouseLeftButtonDown="OnAltColorPreviewClick"
+                                    Tag="B" />
+                        </Grid>
                     </StackPanel>
-                </Expander>
+                </GroupBox>
 
-                <Expander x:Name="KoloryZmianExpander"
-                          Header="Kolory zmian"
-                          Style="{StaticResource BoberSettingsExpander}">
-                    <GroupBox Style="{StaticResource BoberSettingsGroupBox}">
-                        <ItemsControl x:Name="KoloryZmianItemsControl"
+                <GroupBox Style="{StaticResource BoberSettingsSectionGroupBox}"
+                          Margin="0,0,0,10">
+                    <GroupBox.Header>
+                        <RadioButton x:Name="RoleColorsRadio"
+                                     Content="Pełne kolorowanie"
+                                     GroupName="GrafikColorMode"
+                                     FontWeight="SemiBold"
+                                     Foreground="{StaticResource ForegroundBrush}"
+                                     IsChecked="True"
+                                     Checked="OnGrafikColorModeChanged" />
+                    </GroupBox.Header>
+                    <StackPanel x:Name="PelneKolorowaniePanel">
+                        <TextBlock Text="Kolory stanowisk i obramowanie nurka (checkbox = użycie w grafiku)."
+                                   Foreground="{StaticResource ForegroundMutedBrush}"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,0,8" />
+                        <ItemsControl x:Name="KoloryPelneItemsControl"
                                       ItemTemplate="{StaticResource KolorRoliRowTemplate}" />
-                    </GroupBox>
-                </Expander>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Kolory zmian"
+                          Style="{StaticResource BoberSettingsSectionGroupBox}">
+                    <ItemsControl x:Name="KoloryZmianItemsControl"
+                                  ItemTemplate="{StaticResource KolorRoliRowTemplate}" />
+                </GroupBox>
+
+                <GroupBox Header="Eksport do Excel"
+                          Style="{StaticResource BoberSettingsSectionGroupBox}">
+                    <StackPanel Grid.IsSharedSizeScope="True">
+                        <CheckBox x:Name="LessColorCheckBox"
+                                  Content="Excel tylko dwukolorowy"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  ToolTip="Eksport grafiku bez kolorów ról (białe wiersze, czarna czcionka, żółte WS i D)"
+                                  IsChecked="True"
+                                  Margin="0,0,0,12" />
+                        <ItemsControl x:Name="KoloryEksportuItemsControl"
+                                      ItemTemplate="{StaticResource KolorRoliRowTemplate}" />
+                        <CheckBox x:Name="ExportAlternatingColorsCheckBox"
+                                  Content="Kolorowanie naprzemienne w eksporcie Excel"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  Checked="OnExportAlternatingColorsChanged"
+                                  Unchecked="OnExportAlternatingColorsChanged"
+                                  Margin="0,12,0,8" />
+                        <StackPanel x:Name="ExportAlternatingColorsPanel"
+                                    IsEnabled="False"
+                                    Margin="0,0,0,4">
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="KolorCheck" />
+                                    <ColumnDefinition Width="260" SharedSizeGroup="KolorLabel" />
+                                    <ColumnDefinition Width="110" SharedSizeGroup="KolorHex" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="KolorBrak" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="1"
+                                           Text="Kolor A (wiersze nieparzyste)"
+                                           Foreground="{StaticResource ForegroundBrush}"
+                                           VerticalAlignment="Center"
+                                           FontSize="12" />
+                                <TextBox x:Name="ExportAltColorATextBox"
+                                         Grid.Column="2"
+                                         Style="{StaticResource DarkTextBox}"
+                                         Margin="8,0,4,0"
+                                         TextChanged="OnAltColorTextChanged" />
+                                <Border x:Name="ExportAltColorAPreview"
+                                        Grid.Column="4"
+                                        CornerRadius="4"
+                                        Height="22"
+                                        Cursor="Hand"
+                                        ToolTip="Kliknij, aby wybrać kolor"
+                                        MouseLeftButtonDown="OnAltColorPreviewClick"
+                                        Tag="ExportA" />
+                            </Grid>
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="KolorCheck" />
+                                    <ColumnDefinition Width="260" SharedSizeGroup="KolorLabel" />
+                                    <ColumnDefinition Width="110" SharedSizeGroup="KolorHex" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="KolorBrak" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="1"
+                                           Text="Kolor B (wiersze parzyste)"
+                                           Foreground="{StaticResource ForegroundBrush}"
+                                           VerticalAlignment="Center"
+                                           FontSize="12" />
+                                <TextBox x:Name="ExportAltColorBTextBox"
+                                         Grid.Column="2"
+                                         Style="{StaticResource DarkTextBox}"
+                                         Margin="8,0,4,0"
+                                         TextChanged="OnAltColorTextChanged" />
+                                <Border x:Name="ExportAltColorBPreview"
+                                        Grid.Column="4"
+                                        CornerRadius="4"
+                                        Height="22"
+                                        Cursor="Hand"
+                                        ToolTip="Kliknij, aby wybrać kolor"
+                                        MouseLeftButtonDown="OnAltColorPreviewClick"
+                                        Tag="ExportB" />
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Kolory komórek i Edycja personelu"
+                          Style="{StaticResource BoberSettingsSectionGroupBox}"
+                          Margin="0,0,0,16">
+                    <StackPanel>
+                        <CheckBox x:Name="KolorowanieEdycjaPersoneluCheckBox"
+                                  Content="Zastosuj kolorowanie w Edycji personelu"
+                                  Foreground="{StaticResource ForegroundBrush}"
+                                  Margin="0,0,0,12" />
+                        <ItemsControl x:Name="KoloryKomorekItemsControl"
+                                      ItemTemplate="{StaticResource KolorRoliRowTemplate}" />
+                    </StackPanel>
+                </GroupBox>
                 </StackPanel>
 
                 <StackPanel x:Name="OznaczeniaSection">

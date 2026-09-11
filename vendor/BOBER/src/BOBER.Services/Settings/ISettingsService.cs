@@ -43,6 +43,13 @@ public interface ISettingsService
     Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Kolorowanie wierszy listy w Edycji personelu (tło roli + ramka nurka).
+    /// Domyślnie wyłączone.
+    /// </summary>
+    Task<bool> GetKolorowanieEdycjaPersoneluAsync(CancellationToken cancellationToken = default);
+    Task SetKolorowanieEdycjaPersoneluAsync(bool enabled, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Kolorowanie wierszy grafiku służb w UI (role vs dwa kolory naprzemiennie).
     /// Nie wpływa na eksport Excel. Dotyczy wszystkich zmian.
     /// </summary>

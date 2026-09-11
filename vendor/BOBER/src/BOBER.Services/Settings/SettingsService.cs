@@ -106,6 +106,15 @@ public sealed class SettingsService(IUstawieniaRepository ustawieniaRepository) 
     public Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default) =>
         ustawieniaRepository.SetAsync("LessColor", enabled ? "True" : "False", cancellationToken);
 
+    public Task<bool> GetKolorowanieEdycjaPersoneluAsync(CancellationToken cancellationToken = default) =>
+        GetBoolSettingAsync("KolorowanieEdycjaPersonelu", defaultValue: false, cancellationToken);
+
+    public Task SetKolorowanieEdycjaPersoneluAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        ustawieniaRepository.SetAsync(
+            "KolorowanieEdycjaPersonelu",
+            enabled ? "True" : "False",
+            cancellationToken);
+
     public async Task<GrafikRowColorSettings> GetGrafikRowColorSettingsAsync(
         CancellationToken cancellationToken = default)
     {

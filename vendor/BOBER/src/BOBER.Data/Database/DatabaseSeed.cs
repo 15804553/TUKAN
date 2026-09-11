@@ -57,44 +57,31 @@ internal static class DatabaseSeed
             return;
 
         foreach (var (klucz, kolor) in RoleKeys.DomyslneKolory)
-        {
-            await using var cmd = new OleDbCommand(
-                "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
-                connection);
-            cmd.Parameters.AddWithValue("@p1", klucz);
-            cmd.Parameters.AddWithValue("@p2", kolor);
-            await cmd.ExecuteNonQueryAsync(cancellationToken);
-        }
+            await InsertKolorAsync(connection, klucz, kolor, cancellationToken);
 
         foreach (var (klucz, kolor) in RoleKeys.DomyslneKoloryWpisow)
-        {
-            await using var cmd = new OleDbCommand(
-                "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
-                connection);
-            cmd.Parameters.AddWithValue("@p1", klucz);
-            cmd.Parameters.AddWithValue("@p2", kolor);
-            await cmd.ExecuteNonQueryAsync(cancellationToken);
-        }
+            await InsertKolorAsync(connection, klucz, kolor, cancellationToken);
 
         foreach (var (klucz, kolor) in RoleKeys.DomyslneKoloryEksportu)
-        {
-            await using var cmd = new OleDbCommand(
-                "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
-                connection);
-            cmd.Parameters.AddWithValue("@p1", klucz);
-            cmd.Parameters.AddWithValue("@p2", kolor);
-            await cmd.ExecuteNonQueryAsync(cancellationToken);
-        }
+            await InsertKolorAsync(connection, klucz, kolor, cancellationToken);
 
         foreach (var (klucz, kolor) in RoleKeys.DomyslneKoloryKalendarza)
-        {
-            await using var cmd = new OleDbCommand(
-                "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
-                connection);
-            cmd.Parameters.AddWithValue("@p1", klucz);
-            cmd.Parameters.AddWithValue("@p2", kolor);
-            await cmd.ExecuteNonQueryAsync(cancellationToken);
-        }
+            await InsertKolorAsync(connection, klucz, kolor, cancellationToken);
+    }
+
+    private static async Task InsertKolorAsync(
+        OleDbConnection connection,
+        string klucz,
+        string kolor,
+        CancellationToken cancellationToken)
+    {
+        await using var cmd = new OleDbCommand(
+            "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex, Aktywny) VALUES (?, ?, ?)",
+            connection);
+        cmd.Parameters.AddWithValue("@p1", klucz);
+        cmd.Parameters.AddWithValue("@p2", kolor);
+        cmd.Parameters.Add("@p3", OleDbType.Boolean).Value = true;
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task EnsureUstawieniaAsync(

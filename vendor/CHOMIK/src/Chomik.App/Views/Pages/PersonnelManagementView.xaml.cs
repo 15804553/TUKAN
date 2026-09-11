@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Chomik.App.Controllers;
+using Chomik.App.Helpers;
 using Chomik.App.Views;
 using Chomik.App.Views.Chrome;
 using Chomik.Core;
@@ -16,6 +17,8 @@ public partial class PersonnelManagementView : UserControl
     private readonly PersonnelManagementController _controller;
     private PersonnelDictionaries? _dictionaries;
     private bool _hasCompletedInitialLoad;
+
+    public IPersonnelListColoring? RowColoring { get; set; }
 
     public event EventHandler? PersonnelChanged;
 
@@ -35,15 +38,47 @@ public partial class PersonnelManagementView : UserControl
     {
         try
         {
+            if (RowColoring is not null)
+                await RowColoring.RefreshAsync();
+
             _dictionaries = await _controller.GetDictionariesAsync();
             var list = await _controller.LoadPersonnelAsync();
-            PersonnelGrid.ItemsSource = list.Select(f => new PersonnelGridRow(f)).ToList();
+            PersonnelGrid.ItemsSource = list.Select(f => CreateRow(f)).ToList();
             _hasCompletedInitialLoad = true;
         }
         catch (Exception ex)
         {
             ChomikMessageBox.Show(OwnerWindow, ex.Message, "Chomik");
         }
+    }
+
+    private PersonnelGridRow CreateRow(Funkcjonariusz f)
+    {
+        var row = new PersonnelGridRow(f);
+        ApplyColoring(row);
+        return row;
+    }
+
+    private void ApplyColoring(PersonnelGridRow row)
+    {
+        if (RowColoring is null
+            || !RowColoring.TryGetAppearance(row.Entity, out var background, out var nameBorder))
+        {
+            row.RowBackground = Brushes.Transparent;
+            row.NameBorderBrush = Brushes.Transparent;
+            return;
+        }
+
+        row.RowBackground = background;
+        row.NameBorderBrush = nameBorder;
+    }
+
+    private void OnPersonnelGridLoadingRow(object? sender, DataGridRowEventArgs e)
+    {
+        if (e.Row.Item is not PersonnelGridRow row)
+            return;
+
+        e.Row.Background = row.RowBackground;
     }
 
     public Task ReloadAsync() => LoadAsync();
@@ -192,5 +227,8 @@ public partial class PersonnelManagementView : UserControl
 
         public string OdznaczeniaSkrot => string.Join(", ", Entity.Odznaczenia.Select(o =>
             $"{o.Nazwa} ({DateDisplayFormat.Format(o.DataNadania)})"));
+
+        public Brush RowBackground { get; set; } = Brushes.Transparent;
+        public Brush NameBorderBrush { get; set; } = Brushes.Transparent;
     }
 }

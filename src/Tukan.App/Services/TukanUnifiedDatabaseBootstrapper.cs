@@ -17,7 +17,7 @@ public static class TukanUnifiedDatabaseBootstrapper
     /// <summary>
     /// Podbij przy każdej zmianie schematu CHOMIK/BOBER/SKRYBEK, która wymaga EnsureReady.
     /// </summary>
-    public const string SchemaVersion = "20260911-flaga-kolor-czcionki";
+    public const string SchemaVersion = "20260911-kolor-aktywny";
 
     private const string SchemaVersionKey = "TukanSchemaVersion";
 

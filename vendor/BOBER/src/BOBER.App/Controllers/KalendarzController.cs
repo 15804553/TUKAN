@@ -63,6 +63,10 @@ public sealed class KalendarzController(AppServices services)
         CancellationToken cancellationToken = default) =>
         services.Kalendarz.GetKoloryZmianAsync(cancellationToken);
 
+    public Task<IReadOnlyList<KolorStanowiska>> GetKoloryStanowiskAsync(
+        CancellationToken cancellationToken = default) =>
+        services.Kolory.GetAllAsync(cancellationToken);
+
     public Task SaveKoloryZmianAsync(
         IReadOnlyDictionary<int, string> kolory,
         CancellationToken cancellationToken = default) =>

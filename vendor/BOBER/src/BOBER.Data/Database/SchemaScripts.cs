@@ -35,7 +35,8 @@ internal static class SchemaScripts
         """
         CREATE TABLE KoloryStanowisk (
             KluczRoli TEXT(50) NOT NULL,
-            KolorHex TEXT(10) NOT NULL
+            KolorHex TEXT(10) NOT NULL,
+            Aktywny YESNO NOT NULL
         )
         """,
         """

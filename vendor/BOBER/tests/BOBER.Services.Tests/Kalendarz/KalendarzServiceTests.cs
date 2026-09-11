@@ -209,6 +209,28 @@ public sealed class KalendarzServiceTests
         Assert.Contains(koloryRepo.Items, k => k.KluczRoli == RoleKeys.KalendarzZmiana3 && k.KolorHex == "#778899");
     }
 
+    [Fact]
+    public async Task SaveKoloryZmianAsync_PreservesAktywnyFlag()
+    {
+        var koloryRepo = new FakeKoloryRepository();
+        koloryRepo.Items.Add(new KolorStanowiska
+        {
+            KluczRoli = RoleKeys.KalendarzZmiana1,
+            KolorHex = "#111111",
+            Aktywny = false
+        });
+        var service = CreateService(new FakeKalendarzRepository(), koloryRepo);
+
+        await service.SaveKoloryZmianAsync(new Dictionary<int, string>
+        {
+            [1] = "#ABCDEF"
+        });
+
+        var saved = Assert.Single(koloryRepo.Items, k => k.KluczRoli == RoleKeys.KalendarzZmiana1);
+        Assert.Equal("#ABCDEF", saved.KolorHex);
+        Assert.False(saved.Aktywny);
+    }
+
     private static KalendarzService CreateService(
         IKalendarzRepository repository,
         IKoloryRepository koloryRepository,
@@ -424,6 +446,10 @@ public sealed class KalendarzServiceTests
             Task.CompletedTask;
         public Task<bool> GetLessColorAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task SetLessColorAsync(bool enabled, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<bool> GetKolorowanieEdycjaPersoneluAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+        public Task SetKolorowanieEdycjaPersoneluAsync(bool enabled, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
         public Task<GrafikRowColorSettings> GetGrafikRowColorSettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new GrafikRowColorSettings());
         public Task SetGrafikRowColorSettingsAsync(GrafikRowColorSettings settings, CancellationToken cancellationToken = default) =>

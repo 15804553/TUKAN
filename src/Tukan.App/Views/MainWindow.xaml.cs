@@ -311,7 +311,10 @@ public partial class MainWindow : Window
     private void OnPersonnelEditClick(object sender, RoutedEventArgs e)
     {
         var personnelController = new PersonnelManagementController(_tukanServices.Chomik);
-        _personnelView ??= new PersonnelManagementView(personnelController);
+        _personnelView ??= new PersonnelManagementView(personnelController)
+        {
+            RowColoring = new PersonnelListColoring(_tukanServices.Bober)
+        };
         _personnelView.PersonnelChanged -= OnPersonnelChanged;
         _personnelView.PersonnelChanged += OnPersonnelChanged;
         NavigateTo(_personnelView, $"Edycja personelu — zmiana {personnelController.ShiftNumber}", PersonnelEditButton);
@@ -558,6 +561,18 @@ public partial class MainWindow : Window
         }
 
         await RefreshKalendarzUnreadBadgeAsync();
+
+        if (_personnelView is not null && MainContentHost.Content == _personnelView)
+        {
+            try
+            {
+                await _personnelView.ReloadAsync();
+            }
+            catch (Exception ex)
+            {
+                TukanMessageBox.Show(this, $"Nie udało się odświeżyć edycji personelu po zapisie ustawień:\n\n{ex.Message}", "TUKAN");
+            }
+        }
     }
 
     private async void OnCreatePersonnelListClick(object sender, RoutedEventArgs e)

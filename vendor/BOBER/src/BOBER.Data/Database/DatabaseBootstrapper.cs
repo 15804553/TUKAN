@@ -50,6 +50,7 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
             await ExecuteDdlAsync(connection, ddl, cancellationToken);
 
         await MigrateUstawieniaTabelaAsync(connection, cancellationToken);
+        await MigrateKolorAktywnyColumnAsync(connection, cancellationToken);
         await MigrateUsersTableFromSkrybekAsync(connection, cancellationToken);
         await MigrateReferenceDate2026Async(connection, cancellationToken);
         await MigrateDefaultRoleColorsAsync(connection, cancellationToken);
@@ -104,6 +105,64 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
             cancellationToken);
     }
 
+    /// <summary>
+    /// Dodaje kolumnę Aktywny do KoloryStanowisk — istniejące kolory pozostają włączone.
+    /// </summary>
+    private static async Task MigrateKolorAktywnyColumnAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        const string migrationKey = "MigratedKolorAktywny20260909";
+
+        try
+        {
+            await using var checkCmd = new OleDbCommand(
+                "SELECT COUNT(*) FROM Ustawienia WHERE Klucz = ? AND Wartosc = '1'",
+                connection);
+            checkCmd.Parameters.AddWithValue("@p1", migrationKey);
+            if (Convert.ToInt32(await checkCmd.ExecuteScalarAsync(cancellationToken)) > 0)
+                return;
+
+            await TryAlterTableAsync(
+                connection,
+                "ALTER TABLE KoloryStanowisk ADD COLUMN Aktywny YESNO",
+                cancellationToken);
+
+            await using (var updateCmd = new OleDbCommand(
+                "UPDATE KoloryStanowisk SET Aktywny = True",
+                connection))
+            {
+                await updateCmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await using var flagCmd = new OleDbCommand(
+                "INSERT INTO Ustawienia (Klucz, Wartosc) VALUES (?, ?)",
+                connection);
+            flagCmd.Parameters.AddWithValue("@p1", migrationKey);
+            flagCmd.Parameters.AddWithValue("@p2", "1");
+            await flagCmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch (OleDbException)
+        {
+            // Tabela może jeszcze nie istnieć przy pierwszym starcie — pomijamy.
+        }
+    }
+
+    private static async Task InsertKolorStanowiskaAsync(
+        OleDbConnection connection,
+        string klucz,
+        string hex,
+        CancellationToken cancellationToken)
+    {
+        await using var insertCmd = new OleDbCommand(
+            "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex, Aktywny) VALUES (?, ?, ?)",
+            connection);
+        insertCmd.Parameters.AddWithValue("@p1", klucz);
+        insertCmd.Parameters.AddWithValue("@p2", hex);
+        insertCmd.Parameters.Add("@p3", OleDbType.Boolean).Value = true;
+        await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private static async Task MigrateKalendarzKoloryAsync(
         OleDbConnection connection,
         CancellationToken cancellationToken)
@@ -128,12 +187,7 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                 if (Convert.ToInt32(await existsCmd.ExecuteScalarAsync(cancellationToken)) > 0)
                     continue;
 
-                await using var insertCmd = new OleDbCommand(
-                    "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
-                    connection);
-                insertCmd.Parameters.AddWithValue("@p1", klucz);
-                insertCmd.Parameters.AddWithValue("@p2", kolor);
-                await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+                await InsertKolorStanowiskaAsync(connection, klucz, kolor, cancellationToken);
             }
 
             await using var flagCmd = new OleDbCommand(
@@ -289,12 +343,11 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                 existsCmd.Parameters.AddWithValue("@p1", RoleKeys.DzienSluzby);
                 if (Convert.ToInt32(await existsCmd.ExecuteScalarAsync(cancellationToken)) == 0)
                 {
-                    await using var insertCmd = new OleDbCommand(
-                        "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
-                        connection);
-                    insertCmd.Parameters.AddWithValue("@p1", RoleKeys.DzienSluzby);
-                    insertCmd.Parameters.AddWithValue("@p2", RoleKeys.DomyslneKoloryWpisow[RoleKeys.DzienSluzby]);
-                    await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+                    await InsertKolorStanowiskaAsync(
+                        connection,
+                        RoleKeys.DzienSluzby,
+                        RoleKeys.DomyslneKoloryWpisow[RoleKeys.DzienSluzby],
+                        cancellationToken);
                 }
             }
 
@@ -411,14 +464,7 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
             await deleteCmd.ExecuteNonQueryAsync(cancellationToken);
 
             foreach (var (klucz, kolor) in RoleKeys.DomyslneKolory)
-            {
-                await using var insertCmd = new OleDbCommand(
-                    "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
-                    connection);
-                insertCmd.Parameters.AddWithValue("@p1", klucz);
-                insertCmd.Parameters.AddWithValue("@p2", kolor);
-                await insertCmd.ExecuteNonQueryAsync(cancellationToken);
-            }
+                await InsertKolorStanowiskaAsync(connection, klucz, kolor, cancellationToken);
 
             await using var flagCmd = new OleDbCommand(
                 "INSERT INTO Ustawienia (Klucz, Wartosc) VALUES (?, ?)",
@@ -464,14 +510,8 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                 await deleteNew.ExecuteNonQueryAsync(cancellationToken);
             }
 
-            await using (var insertCmd = new OleDbCommand(
-                "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
-                connection))
-            {
-                insertCmd.Parameters.AddWithValue("@p1", RoleKeys.Kierowca);
-                insertCmd.Parameters.AddWithValue("@p2", kierowcaColor);
-                await insertCmd.ExecuteNonQueryAsync(cancellationToken);
-            }
+            await InsertKolorStanowiskaAsync(
+                connection, RoleKeys.Kierowca, kierowcaColor, cancellationToken);
 
             await using var flagCmd = new OleDbCommand(
                 "INSERT INTO Ustawienia (Klucz, Wartosc) VALUES (?, ?)",
@@ -508,12 +548,11 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                 existsCmd.Parameters.AddWithValue("@p1", RoleKeys.WolnaSluzba);
                 if (Convert.ToInt32(await existsCmd.ExecuteScalarAsync(cancellationToken)) == 0)
                 {
-                    await using var insertCmd = new OleDbCommand(
-                        "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
-                        connection);
-                    insertCmd.Parameters.AddWithValue("@p1", RoleKeys.WolnaSluzba);
-                    insertCmd.Parameters.AddWithValue("@p2", RoleKeys.DomyslneKoloryWpisow[RoleKeys.WolnaSluzba]);
-                    await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+                    await InsertKolorStanowiskaAsync(
+                        connection,
+                        RoleKeys.WolnaSluzba,
+                        RoleKeys.DomyslneKoloryWpisow[RoleKeys.WolnaSluzba],
+                        cancellationToken);
                 }
             }
 
@@ -560,12 +599,11 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                 existsCmd.Parameters.AddWithValue("@p1", RoleKeys.NurekCzcionka);
                 if (Convert.ToInt32(await existsCmd.ExecuteScalarAsync(cancellationToken)) == 0)
                 {
-                    await using var insertCmd = new OleDbCommand(
-                        "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
-                        connection);
-                    insertCmd.Parameters.AddWithValue("@p1", RoleKeys.NurekCzcionka);
-                    insertCmd.Parameters.AddWithValue("@p2", RoleKeys.DomyslneKoloryWpisow[RoleKeys.NurekCzcionka]);
-                    await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+                    await InsertKolorStanowiskaAsync(
+                        connection,
+                        RoleKeys.NurekCzcionka,
+                        RoleKeys.DomyslneKoloryWpisow[RoleKeys.NurekCzcionka],
+                        cancellationToken);
                 }
             }
 
@@ -642,12 +680,7 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                 if (Convert.ToInt32(await existsCmd.ExecuteScalarAsync(cancellationToken)) > 0)
                     continue;
 
-                await using var insertCmd = new OleDbCommand(
-                    "INSERT INTO KoloryStanowisk (KluczRoli, KolorHex) VALUES (?, ?)",
-                    connection);
-                insertCmd.Parameters.AddWithValue("@p1", klucz);
-                insertCmd.Parameters.AddWithValue("@p2", kolor);
-                await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+                await InsertKolorStanowiskaAsync(connection, klucz, kolor, cancellationToken);
             }
 
             await using var flagCmd = new OleDbCommand(

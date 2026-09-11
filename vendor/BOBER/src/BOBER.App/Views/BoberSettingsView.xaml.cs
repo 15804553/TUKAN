@@ -19,11 +19,15 @@ public partial class BoberSettingsView : UserControl
     private readonly SettingsController _controller;
     private readonly BoberSettingsSection _section;
     private readonly ObservableCollection<FunkcjonariuszListItem> _kolejnoscLista = new();
-    private readonly ObservableCollection<KolorRoliViewModel> _kolory = new();
+    private readonly ObservableCollection<KolorRoliViewModel> _koloryPelne = new();
     private readonly ObservableCollection<KolorRoliViewModel> _koloryZmian = new();
     private readonly ObservableCollection<KolorRoliViewModel> _koloryEksportu = new();
+    private readonly ObservableCollection<KolorRoliViewModel> _koloryKomorek = new();
     private readonly ObservableCollection<OznaczenieGrafikuViewModel> _oznaczenia = new();
     private int _loadGeneration;
+
+    private IEnumerable<KolorRoliViewModel> WszystkieKoloryVm =>
+        _koloryPelne.Concat(_koloryZmian).Concat(_koloryEksportu).Concat(_koloryKomorek);
 
     public event EventHandler? SettingsSaved;
     public event EventHandler? CancelRequested;
@@ -36,9 +40,7 @@ public partial class BoberSettingsView : UserControl
 
     public void CollapseExpanders()
     {
-        EksportGrafikuExpander.IsExpanded = false;
-        KolorowanieGrafikowExpander.IsExpanded = false;
-        KoloryZmianExpander.IsExpanded = false;
+        // Brak expanderów na karcie Kolorowanie.
     }
 
     private bool IncludesParametry =>
@@ -62,9 +64,10 @@ public partial class BoberSettingsView : UserControl
         _section = section;
 
         FunkcjonariuszeListBox.ItemsSource = _kolejnoscLista;
-        KoloryItemsControl.ItemsSource = _kolory;
+        KoloryPelneItemsControl.ItemsSource = _koloryPelne;
         KoloryZmianItemsControl.ItemsSource = _koloryZmian;
         KoloryEksportuItemsControl.ItemsSource = _koloryEksportu;
+        KoloryKomorekItemsControl.ItemsSource = _koloryKomorek;
         OznaczeniaDataGrid.ItemsSource = _oznaczenia;
 
         ApplySectionLayout();
@@ -79,13 +82,28 @@ public partial class BoberSettingsView : UserControl
         _ => etykieta
     };
 
-    private ObservableCollection<KolorRoliViewModel> ListaKoloru(string klucz)
+    private static ObservableCollection<KolorRoliViewModel> KolekcjaDlaKlucza(
+        string klucz,
+        ObservableCollection<KolorRoliViewModel> pelne,
+        ObservableCollection<KolorRoliViewModel> zmian,
+        ObservableCollection<KolorRoliViewModel> eksportu,
+        ObservableCollection<KolorRoliViewModel> komorek)
     {
         if (RoleKeys.KalendarzKolory.Contains(klucz))
-            return _koloryZmian;
+            return zmian;
         if (RoleKeys.KoloryEksportu.Contains(klucz))
-            return _koloryEksportu;
-        return _kolory;
+            return eksportu;
+        if (klucz is RoleKeys.WolnaSluzba or RoleKeys.Delegacja or RoleKeys.Szkolenie)
+            return komorek;
+        return pelne;
+    }
+
+    private void ClearKoloryCollections()
+    {
+        _koloryPelne.Clear();
+        _koloryZmian.Clear();
+        _koloryEksportu.Clear();
+        _koloryKomorek.Clear();
     }
 
     private void ApplySectionLayout()
@@ -119,9 +137,7 @@ public partial class BoberSettingsView : UserControl
     {
         var generation = ++_loadGeneration;
         _kolejnoscLista.Clear();
-        _kolory.Clear();
-        _koloryZmian.Clear();
-        _koloryEksportu.Clear();
+        ClearKoloryCollections();
         _oznaczenia.Clear();
 
         try
@@ -152,22 +168,25 @@ public partial class BoberSettingsView : UserControl
 
                 var koloryDict = kolory
                     .GroupBy(k => k.KluczRoli)
-                    .ToDictionary(g => g.Key, g => g.First().KolorHex);
+                    .ToDictionary(g => g.Key, g => g.First());
                 foreach (var (klucz, etykieta) in _controller.GetKolorKeys())
                 {
-                    var lista = ListaKoloru(klucz);
-                    if (lista.Any(k => k.KluczRoli == klucz))
+                    if (WszystkieKoloryVm.Any(k => k.KluczRoli == klucz))
                         continue;
 
                     var domyslny = RoleKeys.GetDefaultKolorHex(klucz);
-                    var zapisanyHex = koloryDict.TryGetValue(klucz, out var zapisany) ? zapisany : domyslny;
+                    koloryDict.TryGetValue(klucz, out var zapisany);
+                    var zapisanyHex = zapisany?.KolorHex ?? domyslny;
                     var allowEmpty = RoleKeys.KoloryOpcjonalneWypelnienia.Contains(klucz);
+                    var target = KolekcjaDlaKlucza(
+                        klucz, _koloryPelne, _koloryZmian, _koloryEksportu, _koloryKomorek);
 
-                    lista.Add(new KolorRoliViewModel
+                    target.Add(new KolorRoliViewModel
                     {
                         KluczRoli = klucz,
                         Etykieta = EtykietaKoloruZmiany(klucz, etykieta),
                         AllowEmpty = allowEmpty,
+                        Aktywny = zapisany?.Aktywny ?? true,
                         KolorHex = allowEmpty
                             ? RoleKeys.NormalizeKolorHex(zapisanyHex, klucz)
                             : (RoleKeys.IsBrakWypelnienia(zapisanyHex) ? domyslny : zapisanyHex)
@@ -175,13 +194,17 @@ public partial class BoberSettingsView : UserControl
                 }
 
                 LessColorCheckBox.IsChecked = await _controller.GetLessColorAsync();
+                KolorowanieEdycjaPersoneluCheckBox.IsChecked =
+                    await _controller.GetKolorowanieEdycjaPersoneluAsync();
 
                 var rowColors = await _controller.GetGrafikRowColorSettingsAsync();
                 if (generation != _loadGeneration)
                     return;
 
-                RoleColorsRadio.IsChecked = rowColors.Mode != GrafikRowColorMode.Alternating;
-                AlternatingColorsRadio.IsChecked = rowColors.Mode == GrafikRowColorMode.Alternating;
+                if (rowColors.Mode == GrafikRowColorMode.Alternating)
+                    AlternatingColorsRadio.IsChecked = true;
+                else
+                    RoleColorsRadio.IsChecked = true;
                 AltColorATextBox.Text = rowColors.ColorA;
                 AltColorBTextBox.Text = rowColors.ColorB;
                 UpdateGrafikColorModePanels();
@@ -244,12 +267,12 @@ public partial class BoberSettingsView : UserControl
 
     private void UpdateGrafikColorModePanels()
     {
-        if (AlternatingColorsPanel is null || KoloryItemsControl is null)
+        if (AlternatingColorsPanel is null || PelneKolorowaniePanel is null)
             return;
 
         var alternating = AlternatingColorsRadio.IsChecked == true;
         AlternatingColorsPanel.IsEnabled = alternating;
-        KoloryItemsControl.IsEnabled = !alternating;
+        PelneKolorowaniePanel.IsEnabled = !alternating;
     }
 
     private void OnExportAlternatingColorsChanged(object sender, RoutedEventArgs e) =>
@@ -426,13 +449,16 @@ public partial class BoberSettingsView : UserControl
 
             if (IncludesKolory)
             {
-                var kolory = _kolory.Concat(_koloryZmian).Concat(_koloryEksportu).Select(k => new KolorStanowiska
+                var kolory = WszystkieKoloryVm.Select(k => new KolorStanowiska
                 {
                     KluczRoli = k.KluczRoli,
-                    KolorHex = RoleKeys.NormalizeKolorHex(k.KolorHex, k.KluczRoli)
+                    KolorHex = RoleKeys.NormalizeKolorHex(k.KolorHex, k.KluczRoli),
+                    Aktywny = k.Aktywny
                 }).ToList();
                 await _controller.SaveKoloryAsync(kolory);
                 await _controller.SetLessColorAsync(LessColorCheckBox.IsChecked == true);
+                await _controller.SetKolorowanieEdycjaPersoneluAsync(
+                    KolorowanieEdycjaPersoneluCheckBox.IsChecked == true);
                 await _controller.SetGrafikRowColorSettingsAsync(new GrafikRowColorSettings
                 {
                     Mode = AlternatingColorsRadio.IsChecked == true

@@ -26,7 +26,7 @@ public sealed class UrlopPlanController(AppServices services, int zmianaId, stri
 
     private IReadOnlyList<Funkcjonariusz>? _funkcjonariusze;
 
-    private Dictionary<string, string>? _kolory;
+    private IReadOnlyDictionary<string, KolorStanowiska>? _koloryMap;
     private readonly Dictionary<int, IReadOnlyDictionary<int, HashSet<int>>> _workDaysByYear = new();
 
     public int MaxUrlopowNaSluzbie { get; private set; } = UrlopPlanInstructions.DefaultMaxUrlopowNaSluzbie;
@@ -36,7 +36,7 @@ public sealed class UrlopPlanController(AppServices services, int zmianaId, stri
         _workDaysByYear.Clear();
         _funkcjonariusze = await services.Funkcjonariusze.GetByZmianaAsync(ZmianaId, cancellationToken);
         var kolory = await services.Kolory.GetAllAsync(cancellationToken);
-        _kolory = kolory.ToDictionary(k => k.KluczRoli, k => k.KolorHex, StringComparer.OrdinalIgnoreCase);
+        _koloryMap = KoloryLookup.Index(kolory);
         MaxUrlopowNaSluzbie = await services.Settings.GetMaxUrlopowNaSluzbieAsync(ZmianaId, cancellationToken);
     }
 
@@ -76,6 +76,9 @@ public sealed class UrlopPlanController(AppServices services, int zmianaId, stri
     public SolidColorBrush GetDzienSluzbyBrush()
     {
         var klucz = RoleKeys.KalendarzKluczForZmiana(ZmianaId);
+        if (!KoloryLookup.IsAktywny(_koloryMap, klucz))
+            return new SolidColorBrush(Colors.Transparent);
+
         var defaultHex = RoleKeys.GetDefaultKolorHex(klucz);
         var hex = GetKolorHex(klucz, RoleKeys.DomyslneKoloryKalendarza);
         var fallback = ParseColor(defaultHex, Color.FromRgb(0xFF, 0xFF, 0x00));
@@ -166,9 +169,10 @@ public sealed class UrlopPlanController(AppServices services, int zmianaId, stri
 
     {
 
-        if (_kolory is not null && _kolory.TryGetValue(klucz, out var hex))
+        if (_koloryMap is not null && _koloryMap.TryGetValue(klucz, out var kolor)
+            && !string.IsNullOrWhiteSpace(kolor.KolorHex))
 
-            return hex;
+            return kolor.KolorHex;
 
         return domyslne.TryGetValue(klucz, out var defaultHex) ? defaultHex : RoleKeys.GetDefaultKolorHex(klucz);
 

@@ -26,7 +26,7 @@ public sealed class MainController(AppServices services)
     public SettingsController CreateSettingsController() => new(services);
 
     private IReadOnlyList<Funkcjonariusz>? _funkcjonariusze;
-    private IReadOnlyDictionary<string, string>? _kolory;
+    private IReadOnlyDictionary<string, KolorStanowiska>? _koloryMap;
     private int _stanZmiany = 10;
     private int _stanMinimalny = 6;
     private readonly Dictionary<int, IReadOnlyDictionary<int, HashSet<int>>> _workDaysByYear = new();
@@ -43,7 +43,7 @@ public sealed class MainController(AppServices services)
         _workDaysByYear.Clear();
         _funkcjonariusze = await services.Funkcjonariusze.GetByZmianaAsync(ZmianaId, cancellationToken);
         var kolory = await services.Kolory.GetAllAsync(cancellationToken);
-        _kolory = kolory.ToDictionary(k => k.KluczRoli, k => k.KolorHex, StringComparer.OrdinalIgnoreCase);
+        _koloryMap = KoloryLookup.Index(kolory);
         _stanZmiany = await services.Settings.GetStanZmianyAsync(ZmianaId, cancellationToken);
         _stanMinimalny = await services.Settings.GetStanMinimalnyAsync(ZmianaId, cancellationToken);
         await ReloadOznaczeniaAsync(cancellationToken);
@@ -200,6 +200,18 @@ public sealed class MainController(AppServices services)
 
     public GrafikCellColors GetCellColors()
     {
+        var transparent = new SolidColorBrush(Colors.Transparent);
+        if (!KoloryLookup.IsAktywny(_koloryMap, RoleKeys.WolnaSluzba))
+        {
+            return new GrafikCellColors
+            {
+                DyzurTlo = transparent,
+                WsTlo = transparent,
+                DelTlo = TryParseOptionalFillBrush(RoleKeys.Delegacja),
+                STlo = TryParseOptionalFillBrush(RoleKeys.Szkolenie)
+            };
+        }
+
         var wsHex = BOBER.Core.Oznaczenia.OznaczeniaLookup.KolorWsHex();
         if (string.IsNullOrWhiteSpace(wsHex) || RoleKeys.IsBrakWypelnienia(wsHex))
             wsHex = GetKolorHex(RoleKeys.WolnaSluzba, RoleKeys.DomyslneKoloryWpisow);
@@ -216,6 +228,8 @@ public sealed class MainController(AppServices services)
 
     private SolidColorBrush? TryParseOptionalFillBrush(string klucz)
     {
+        if (!KoloryLookup.IsAktywny(_koloryMap, klucz))
+            return null;
         var hex = GetKolorHex(klucz, RoleKeys.DomyslneKoloryWpisow);
         if (RoleKeys.IsBrakWypelnienia(hex))
             return null;
@@ -339,27 +353,32 @@ public sealed class MainController(AppServices services)
         int miesiac,
         CancellationToken cancellationToken = default)
     {
-        if (_kolory is null)
+        if (_koloryMap is null)
             await LoadAsync(cancellationToken);
 
         var wpisy = await services.Grafik.GetMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
         var workDays = await GetWorkDaysForMonthAsync(rok, miesiac, cancellationToken);
         var lessColor = await services.Settings.GetLessColorAsync(cancellationToken);
         var exportAlt = await services.Settings.GetGrafikExportAlternatingSettingsAsync(cancellationToken);
-        services.Export.ExportMonth(
+        var koloryHex = KoloryHex();
+        var wylaczone = KoloryLookup.NieaktywneKlucze(_koloryMap?.Values ?? []);
+
+        // Generowanie pliku Excel jest synchroniczne i długie — poza wątkiem UI okno nie zamarza.
+        await Task.Run(() => services.Export.ExportMonth(
             filePath, rok, miesiac,
             _funkcjonariusze ?? [],
             wpisy,
             _stanZmiany,
             _stanMinimalny,
-            _kolory ?? new Dictionary<string, string>(),
+            koloryHex,
             workDays,
             lessColor,
             exportAlt.Enabled,
             exportAlt.ColorA,
             exportAlt.ColorB,
             NazwaZmiany,
-            ZmianaId);
+            ZmianaId,
+            wylaczone), cancellationToken);
     }
 
     public async Task ExportYearAsync(
@@ -367,7 +386,7 @@ public sealed class MainController(AppServices services)
         int rok,
         CancellationToken cancellationToken = default)
     {
-        if (_kolory is null || _funkcjonariusze is null)
+        if (_koloryMap is null || _funkcjonariusze is null)
             await LoadAsync(cancellationToken);
 
         var wpisyByMonth = new Dictionary<int, IReadOnlyList<GrafikWpis>>();
@@ -385,20 +404,25 @@ public sealed class MainController(AppServices services)
 
         var lessColor = await services.Settings.GetLessColorAsync(cancellationToken);
         var exportAlt = await services.Settings.GetGrafikExportAlternatingSettingsAsync(cancellationToken);
-        services.Export.ExportYear(
+        var koloryHex = KoloryHex();
+        var wylaczone = KoloryLookup.NieaktywneKlucze(_koloryMap?.Values ?? []);
+
+        // Generowanie pliku Excel jest synchroniczne i długie — poza wątkiem UI okno nie zamarza.
+        await Task.Run(() => services.Export.ExportYear(
             filePath, rok,
             _funkcjonariusze ?? [],
             wpisyByMonth,
             workDaysByMonth,
             _stanZmiany,
             _stanMinimalny,
-            _kolory ?? new Dictionary<string, string>(),
+            koloryHex,
             lessColor,
             exportAlt.Enabled,
             exportAlt.ColorA,
             exportAlt.ColorB,
             NazwaZmiany,
-            ZmianaId);
+            ZmianaId,
+            wylaczone), cancellationToken);
     }
 
     public Task<string> GetExportPathGrafikSluzbAsync(CancellationToken cancellationToken = default) =>
@@ -419,11 +443,15 @@ public sealed class MainController(AppServices services)
     private SolidColorBrush GetRoleBrush(Funkcjonariusz f)
     {
         var role = RoleClassifier.DetermineBackgroundRole(f);
-        if (_kolory is not null && _kolory.TryGetValue(role, out var hex))
+        if (!KoloryLookup.IsAktywny(_koloryMap, role))
+            return new SolidColorBrush(Colors.White);
+
+        if (_koloryMap is not null && _koloryMap.TryGetValue(role, out var kolor)
+            && !string.IsNullOrWhiteSpace(kolor.KolorHex))
         {
             try
             {
-                var color = (Color)ColorConverter.ConvertFromString(hex);
+                var color = (Color)ColorConverter.ConvertFromString(kolor.KolorHex);
                 return new SolidColorBrush(color);
             }
             catch { }
@@ -447,7 +475,7 @@ public sealed class MainController(AppServices services)
 
     private Brush GetNurekBorderBrush(Funkcjonariusz f)
     {
-        if (!RoleClassifier.IsNurek(f))
+        if (!RoleClassifier.IsNurek(f) || !KoloryLookup.IsAktywny(_koloryMap, RoleKeys.NurekCzcionka))
             return Brushes.Transparent;
 
         return ParseBrush(GetKolorHex(RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow));
@@ -522,10 +550,16 @@ public sealed class MainController(AppServices services)
         return (stan, kierowcy, nurkowie, dowodcy, poziom);
     }
 
+    private IReadOnlyDictionary<string, string> KoloryHex() =>
+        _koloryMap is null
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : KoloryLookup.ToHexDictionary(_koloryMap.Values);
+
     private string GetKolorHex(string klucz, IReadOnlyDictionary<string, string> domyslne)
     {
-        if (_kolory is not null && _kolory.TryGetValue(klucz, out var hex))
+        if (_koloryMap is not null && _koloryMap.TryGetValue(klucz, out var kolor))
         {
+            var hex = kolor.KolorHex;
             if (RoleKeys.KoloryOpcjonalneWypelnienia.Contains(klucz) && RoleKeys.IsBrakWypelnienia(hex))
                 return RoleKeys.BrakWypelnienia;
             if (!string.IsNullOrWhiteSpace(hex))
