@@ -58,6 +58,7 @@
                             Padding="12,6"
                             Margin="0,0,8,0"
                             Visibility="Collapsed"
+                            ToolTip="Zatwierdza i blokuje możliwość dalszej zmiany grafiku dla użytkowników"
                             Click="OnApproveClick" />
                     <Button x:Name="UnlockButton"
                             Content="Cofnij zatwierdzenie"

@@ -410,6 +410,12 @@ public sealed class MainController(AppServices services)
         CancellationToken cancellationToken = default) =>
         services.GrafikNurkowy.GenerateOrUpdateAsync(ZmianaId, rok, miesiac, cancellationToken);
 
+    public Task<bool> IsGrafikNurkowyZatwierdzonyAsync(
+        int rok,
+        int miesiac,
+        CancellationToken cancellationToken = default) =>
+        services.GrafikNurkowy.IsZatwierdzonyAsync(rok, miesiac, cancellationToken);
+
     private SolidColorBrush GetRoleBrush(Funkcjonariusz f)
     {
         var role = RoleClassifier.DetermineBackgroundRole(f);

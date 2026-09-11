@@ -45,6 +45,30 @@ public sealed class KalendarzService(
         }
     }
 
+    public async Task AddDcaBroadcastAsync(
+        DateOnly data,
+        string tresc,
+        string autorLogin,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tresc);
+        ArgumentException.ThrowIfNullOrWhiteSpace(autorLogin);
+
+        foreach (var zmianaId in NormalizeZmianaIds([1, 2, 3]))
+        {
+            await repository.AddAsync(
+                new KalendarzWpis
+                {
+                    Data = data,
+                    ZmianaId = zmianaId,
+                    TypWpisu = KalendarzTypWpisu.Dca,
+                    Tresc = tresc.Trim(),
+                    AutorLogin = autorLogin.Trim()
+                },
+                cancellationToken);
+        }
+    }
+
     public async Task AddShiftNoteAsync(
         DateOnly data,
         int authorShiftId,

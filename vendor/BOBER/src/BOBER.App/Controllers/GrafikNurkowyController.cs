@@ -36,8 +36,9 @@ public sealed class GrafikNurkowyController(AppServices services)
     public Task CofnijZatwierdzenieAsync(
         int rok,
         int miesiac,
+        string odblokowanyPrzez,
         CancellationToken cancellationToken = default) =>
-        services.GrafikNurkowy.CofnijZatwierdzenieAsync(rok, miesiac, cancellationToken);
+        services.GrafikNurkowy.CofnijZatwierdzenieAsync(rok, miesiac, odblokowanyPrzez, cancellationToken);
 
     public Task<string> GetExportPathAsync(CancellationToken cancellationToken = default) =>
         services.Settings.GetExportPathGrafikNurkowyAsync(cancellationToken);

@@ -39,6 +39,19 @@ public sealed class GrafikNurkowyMappingTests
     }
 
     [Fact]
+    public void BuildBlokadaKalendarzTresc_LockAndUnlockContainMonthAndAuthor()
+    {
+        var lockText = GrafikNurkowyConstants.BuildBlokadaKalendarzTresc(9, 2026, zablokowany: true, "dca.jrg");
+        var unlockText = GrafikNurkowyConstants.BuildBlokadaKalendarzTresc(9, 2026, zablokowany: false, "dca.jrg");
+
+        Assert.Contains("Wrzesień 2026", lockText);
+        Assert.Contains("dca.jrg", lockText);
+        Assert.Contains("zablokował", lockText);
+        Assert.Contains("Wrzesień 2026", unlockText);
+        Assert.Contains("odblokował", unlockText);
+    }
+
+    [Fact]
     public void ResolveFunkcja_PrefersKpp()
     {
         var f = new Funkcjonariusz

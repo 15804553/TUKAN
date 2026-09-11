@@ -136,7 +136,8 @@ public partial class GrafikNurkowyView : UserControl
         var confirm = BoberMessageBox.Show(
             OwnerWindow,
             $"Zatwierdzić grafik nurkowy za {GrafikNurkowyConstants.MonthNames[_month]} {_year}?\n\n"
-            + "Po zatwierdzeniu zmiany nie będą mogły go modyfikować.",
+            + "Po zatwierdzeniu zmiany nie będą mogły go modyfikować.\n"
+            + "Informacja zostanie wysłana kalendarzem do wszystkich zmian.",
             "Zatwierdzenie grafiku nurkowego",
             BoberMessageButtons.YesNo);
         if (confirm != MessageBoxResult.Yes)
@@ -146,10 +147,15 @@ public partial class GrafikNurkowyView : UserControl
         {
             await _controller.ZatwierdzAsync(_year, _month, _approverLogin);
             await ReloadAsync();
-            BoberMessageBox.Show(OwnerWindow, "Grafik nurkowy został zatwierdzony i zablokowany.", "Informacja");
+            BoberMessageBox.Show(
+                OwnerWindow,
+                "Grafik nurkowy został zatwierdzony i zablokowany.\n"
+                + "Informacja została wysłana kalendarzem do wszystkich zmian.",
+                "Informacja");
         }
         catch (Exception ex)
         {
+            try { await ReloadAsync(); } catch { /* stan UI odświeżamy w miarę możliwości */ }
             BoberMessageBox.Show(OwnerWindow, ex.Message, "Błąd");
         }
     }
@@ -162,7 +168,8 @@ public partial class GrafikNurkowyView : UserControl
         var confirm = BoberMessageBox.Show(
             OwnerWindow,
             $"Cofnąć zatwierdzenie grafiku za {GrafikNurkowyConstants.MonthNames[_month]} {_year}?\n\n"
-            + "Zmiany będą mogły ponownie aktualizować dokument.",
+            + "Zmiany będą mogły ponownie aktualizować dokument.\n"
+            + "Informacja zostanie wysłana kalendarzem do wszystkich zmian.",
             "Cofnięcie zatwierdzenia",
             BoberMessageButtons.YesNo);
         if (confirm != MessageBoxResult.Yes)
@@ -170,11 +177,17 @@ public partial class GrafikNurkowyView : UserControl
 
         try
         {
-            await _controller.CofnijZatwierdzenieAsync(_year, _month);
+            await _controller.CofnijZatwierdzenieAsync(_year, _month, _approverLogin);
             await ReloadAsync();
+            BoberMessageBox.Show(
+                OwnerWindow,
+                "Cofnięto zatwierdzenie grafiku nurkowego.\n"
+                + "Informacja została wysłana kalendarzem do wszystkich zmian.",
+                "Informacja");
         }
         catch (Exception ex)
         {
+            try { await ReloadAsync(); } catch { /* stan UI odświeżamy w miarę możliwości */ }
             BoberMessageBox.Show(OwnerWindow, ex.Message, "Błąd");
         }
     }

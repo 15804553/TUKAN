@@ -18,6 +18,15 @@ public interface IKalendarzService
         string autorLogin,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Dodaje nową notatkę DCA do wszystkich zmian (1–3) bez nadpisywania istniejących wpisów.
+    /// </summary>
+    Task AddDcaBroadcastAsync(
+        DateOnly data,
+        string tresc,
+        string autorLogin,
+        CancellationToken cancellationToken = default);
+
     Task DeleteAsync(
         DateOnly data,
         IReadOnlyList<int> zmianaIds,

@@ -31,6 +31,7 @@ public interface IGrafikNurkowyService
     Task CofnijZatwierdzenieAsync(
         int rok,
         int miesiac,
+        string odblokowanyPrzez,
         CancellationToken cancellationToken = default);
 
     Task<bool> IsZatwierdzonyAsync(

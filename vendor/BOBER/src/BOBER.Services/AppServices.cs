@@ -63,14 +63,15 @@ public sealed class AppServices
             Settings,
             new UrlopPlanValidator(),
             new UrlopPlanExcelService());
+        Kalendarz = new KalendarzService(kalendarzRepository, koloryRepository, calendarEngine, Settings);
         GrafikNurkowy = new GrafikNurkowyService(
             grafikRepository,
             grafikNurkowyRepository,
             calendarEngine,
             Funkcjonariusze,
             Settings,
-            new GrafikNurkowyExcelService());
-        Kalendarz = new KalendarzService(kalendarzRepository, koloryRepository, calendarEngine, Settings);
+            new GrafikNurkowyExcelService(),
+            Kalendarz);
         Database = new DatabaseService(bootstrapper, ChomikOptions);
     }
 

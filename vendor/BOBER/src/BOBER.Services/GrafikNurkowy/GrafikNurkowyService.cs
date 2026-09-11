@@ -2,6 +2,7 @@ using BOBER.Core.Constants;
 using BOBER.Core.Models;
 using BOBER.Data.Repositories;
 using BOBER.Services.Grafik;
+using BOBER.Services.Kalendarz;
 using BOBER.Services.Personnel;
 using BOBER.Services.Settings;
 using BOBER.Services.Urlop;
@@ -14,7 +15,8 @@ public sealed class GrafikNurkowyService(
     ShiftCalendarEngine calendar,
     IFunkcjonariuszService funkcjonariusze,
     ISettingsService settings,
-    GrafikNurkowyExcelService excel) : IGrafikNurkowyService
+    GrafikNurkowyExcelService excel,
+    IKalendarzService kalendarz) : IGrafikNurkowyService
 {
     public async Task<string> ResolveFilePathAsync(
         int rok,
@@ -155,13 +157,18 @@ public sealed class GrafikNurkowyService(
 
         await zatwierdzeniaRepository.SetZatwierdzenieAsync(
             rok, miesiac, true, zatwierdzonyPrzez, cancellationToken);
+        await PowiadomKalendarzOBlokadzieAsync(rok, miesiac, zablokowany: true, zatwierdzonyPrzez, cancellationToken);
     }
 
-    public Task CofnijZatwierdzenieAsync(
+    public async Task CofnijZatwierdzenieAsync(
         int rok,
         int miesiac,
-        CancellationToken cancellationToken = default) =>
-        zatwierdzeniaRepository.SetZatwierdzenieAsync(rok, miesiac, false, null, cancellationToken);
+        string odblokowanyPrzez,
+        CancellationToken cancellationToken = default)
+    {
+        await zatwierdzeniaRepository.SetZatwierdzenieAsync(rok, miesiac, false, null, cancellationToken);
+        await PowiadomKalendarzOBlokadzieAsync(rok, miesiac, zablokowany: false, odblokowanyPrzez, cancellationToken);
+    }
 
     public async Task<bool> IsZatwierdzonyAsync(
         int rok,
@@ -170,6 +177,21 @@ public sealed class GrafikNurkowyService(
     {
         var status = await zatwierdzeniaRepository.GetAsync(rok, miesiac, cancellationToken);
         return status?.Zatwierdzony == true;
+    }
+
+    private Task PowiadomKalendarzOBlokadzieAsync(
+        int rok,
+        int miesiac,
+        bool zablokowany,
+        string autorLogin,
+        CancellationToken cancellationToken)
+    {
+        var login = string.IsNullOrWhiteSpace(autorLogin) ? "DCA JRG" : autorLogin.Trim();
+        return kalendarz.AddDcaBroadcastAsync(
+            DateOnly.FromDateTime(DateTime.Today),
+            GrafikNurkowyConstants.BuildBlokadaKalendarzTresc(miesiac, rok, zablokowany, login),
+            login,
+            cancellationToken);
     }
 
     private async Task<IReadOnlyList<Funkcjonariusz>> GetNurkowieZmianyAsync(

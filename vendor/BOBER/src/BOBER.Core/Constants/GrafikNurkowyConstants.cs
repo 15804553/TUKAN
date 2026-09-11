@@ -51,6 +51,18 @@ public static class GrafikNurkowyConstants
     public static string BuildTitle(int miesiac, int rok) =>
         $"Grafik dyżuru nurków SGRW-N Kraków na miesiąc {MonthNames[miesiac]} {rok}";
 
+    /// <summary>Treść notatki kalendarza po zablokowaniu lub odblokowaniu grafiku przez DCA JRG.</summary>
+    public static string BuildBlokadaKalendarzTresc(int miesiac, int rok, bool zablokowany, string? autorLogin)
+    {
+        var okres = $"{MonthNames[miesiac]} {rok}";
+        var autor = string.IsNullOrWhiteSpace(autorLogin) ? "DCA JRG" : autorLogin.Trim();
+        return zablokowany
+            ? $"DCA JRG ({autor}) zablokował grafik nurkowy za {okres}. "
+              + "Generowanie i aktualizacja dokumentu są niedostępne."
+            : $"DCA JRG ({autor}) odblokował grafik nurkowy za {okres}. "
+              + "Zmiany mogą ponownie generować i aktualizować dokument.";
+    }
+
     /// <summary>Kolor nagłówka dnia wg zmiany pełniącej służbę tego dnia.</summary>
     public static string ColorForDayHeader(int zmianaId) => ColorForZmiana(zmianaId);
 

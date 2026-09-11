@@ -329,24 +329,24 @@ public partial class KalendarzView : UserControl
 
         var dayWpisy = _wpisy.Where(w => w.Data == date).ToList();
         var replies = dayWpisy.Where(w => w.TypWpisu == KalendarzTypWpisu.OdpowiedzDca).ToList();
-        if (replies.Count > 0)
+        var dcaNotesForDay = dayWpisy.Where(w => w.TypWpisu == KalendarzTypWpisu.Dca).ToList();
+        if (replies.Count > 0 || dcaNotesForDay.Count > 3)
         {
             await ShowDcaDayDialogAsync(date, dayWpisy);
             return;
         }
 
         var workingShift = _workingShifts.GetValueOrDefault(date.Day, await _controller.GetWorkingShiftAsync(date));
-        var dcaNotes = dayWpisy.Where(w => w.TypWpisu == KalendarzTypWpisu.Dca).ToList();
-        var existingForShift = dcaNotes.FirstOrDefault(w => w.ZmianaId == workingShift);
-        var status = BuildDcaStatusText(dcaNotes);
+        var existingForShift = dcaNotesForDay.FirstOrDefault(w => w.ZmianaId == workingShift);
+        var status = BuildDcaStatusText(dcaNotesForDay);
 
         var dialog = new KalendarzNotatkaDialog { Owner = OwnerWindow };
         dialog.ConfigureForEdit(
             date,
             workingShift,
-            existingForShift?.Tresc ?? dcaNotes.FirstOrDefault()?.Tresc,
+            existingForShift?.Tresc ?? dcaNotesForDay.FirstOrDefault()?.Tresc,
             status,
-            canDelete: dcaNotes.Count > 0);
+            canDelete: dcaNotesForDay.Count > 0);
 
         if (dialog.ShowDialog() != true)
             return;

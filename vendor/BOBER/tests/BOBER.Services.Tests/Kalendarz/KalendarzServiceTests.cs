@@ -36,6 +36,28 @@ public sealed class KalendarzServiceTests
     }
 
     [Fact]
+    public async Task AddDcaBroadcastAsync_CreatesNotesForAllShifts_WithoutOverwritingExisting()
+    {
+        var repo = new FakeKalendarzRepository();
+        var service = CreateService(repo, new FakeKoloryRepository());
+        var data = new DateOnly(2026, 9, 11);
+
+        await service.UpsertAsync(data, [2], "Istniejąca notatka", "dca");
+        await service.AddDcaBroadcastAsync(data, "Blokada grafiku nurkowego", "dca.jrg");
+
+        Assert.Equal(4, repo.Wpisy.Count);
+        Assert.Contains(repo.Wpisy, w => w.ZmianaId == 2 && w.Tresc == "Istniejąca notatka");
+        Assert.Equal(3, repo.Wpisy.Count(w => w.Tresc == "Blokada grafiku nurkowego"));
+        Assert.Equal(new[] { 1, 2, 3 }, repo.Wpisy
+            .Where(w => w.Tresc == "Blokada grafiku nurkowego")
+            .Select(w => w.ZmianaId)
+            .OrderBy(x => x));
+        Assert.True(await service.HasUnreadForRecipientAsync(1));
+        Assert.True(await service.HasUnreadForRecipientAsync(2));
+        Assert.True(await service.HasUnreadForRecipientAsync(3));
+    }
+
+    [Fact]
     public async Task GetMonthAsync_FiltersByZmiana()
     {
         var repo = new FakeKalendarzRepository();

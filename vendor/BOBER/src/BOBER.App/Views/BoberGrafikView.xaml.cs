@@ -251,16 +251,19 @@ public partial class BoberGrafikView : UserControl
         {
             var nurkowyBtn = new Button
             {
+                Name = $"GrafikNurkowyButton_{month}",
                 Content = $"Generuj / aktualizuj grafik nurkowy — {MonthNames[month]}",
                 Style = (Style)FindResource("UrlopPlanSecondaryButton"),
                 Margin = new Thickness(0, 0, 6, 0),
                 Padding = compactButtonPadding,
                 FontSize = 12,
                 MinHeight = 28,
-                Tag = month
+                Tag = month,
+                ToolTip = "Generuje lub aktualizuje plik Excel grafiku nurkowego na podstawie grafiku służb."
             };
             nurkowyBtn.Click += OnGenerateGrafikNurkowyClick;
             btnPanel.Children.Add(nurkowyBtn);
+            _ = ApplyGrafikNurkowyButtonStateAsync(nurkowyBtn, month);
         }
 
         Grid.SetRow(btnPanel, 0);
@@ -338,6 +341,7 @@ public partial class BoberGrafikView : UserControl
             var rows = await _controller.BuildRowsAsync(_year, month);
             dataGrid.ItemsSource = rows;
             _monthLoaded[month] = true;
+            await ApplyGrafikNurkowyButtonStateAsync(FindGrafikNurkowyButton(month), month);
         }
         catch (Exception ex)
         {
@@ -1579,6 +1583,16 @@ public partial class BoberGrafikView : UserControl
         var month = (int)btn.Tag;
         try
         {
+            if (await _controller.IsGrafikNurkowyZatwierdzonyAsync(_year, month))
+            {
+                await ApplyGrafikNurkowyButtonStateAsync(btn, month);
+                BoberMessageBox.Show(
+                    OwnerWindow,
+                    $"Grafik nurkowy za {MonthNames[month]} {_year} jest zablokowany przez DCA JRG.",
+                    "Grafik nurkowy");
+                return;
+            }
+
             var result = await _controller.GenerateGrafikNurkowyAsync(_year, month);
             BoberMessageBox.Show(
                 OwnerWindow,
@@ -1587,8 +1601,45 @@ public partial class BoberGrafikView : UserControl
         }
         catch (Exception ex)
         {
+            await ApplyGrafikNurkowyButtonStateAsync(btn, month);
             UiErrorReporter.Show(OwnerWindow, ex, "Błąd generowania grafiku nurkowego");
         }
+    }
+
+    private async Task ApplyGrafikNurkowyButtonStateAsync(Button? button, int month)
+    {
+        if (button is null || _controller is null)
+            return;
+
+        var locked = await _controller.IsGrafikNurkowyZatwierdzonyAsync(_year, month);
+        button.IsEnabled = !locked;
+        button.ToolTip = locked
+            ? $"Grafik nurkowy za {MonthNames[month]} {_year} jest zablokowany przez DCA JRG."
+            : "Generuje lub aktualizuje plik Excel grafiku nurkowego na podstawie grafiku służb.";
+    }
+
+    private Button? FindGrafikNurkowyButton(int month)
+    {
+        if (MonthTabControl.Items.Count < month)
+            return null;
+
+        var tab = (TabItem)MonthTabControl.Items[month - 1];
+        if (tab.Content is not Grid outerGrid)
+            return null;
+
+        foreach (var child in outerGrid.Children)
+        {
+            if (child is not StackPanel panel)
+                continue;
+
+            foreach (var item in panel.Children)
+            {
+                if (item is Button btn && btn.Name == $"GrafikNurkowyButton_{month}")
+                    return btn;
+            }
+        }
+
+        return null;
     }
 
     private async void OnExportYearClick(object sender, RoutedEventArgs e)
