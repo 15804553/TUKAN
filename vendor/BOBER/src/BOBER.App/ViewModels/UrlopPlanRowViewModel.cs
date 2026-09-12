@@ -50,12 +50,15 @@ public sealed class UrlopPlanRowViewModel : INotifyPropertyChanged
         set { _rodzicielskiCount = value; OnPropertyChanged(); }
     }
 
+    /// <summary>Indekser dla kolumn dni DataGrid — binding: {Binding [1]}, {Binding [15]}, itd.</summary>
     public string this[int day]
     {
         get => _cells.TryGetValue(day, out var v) ? v : string.Empty;
         set
         {
             _cells[day] = value ?? string.Empty;
+            // WPF: bindowanie Path=[n] odświeża się po "Item[]" (nie po "Item[n]").
+            OnPropertyChanged("Item[]");
             OnPropertyChanged($"Item[{day}]");
             OnPropertyChanged($"[{day}]");
         }
