@@ -89,6 +89,9 @@
         <TabItem x:Name="GrafikTab" Header="Kolorowanie">
             <ContentControl x:Name="BoberSettingsHost" />
         </TabItem>
+        <TabItem x:Name="OznaczeniaTab" Header="Oznaczenia w grafiku">
+            <ContentControl x:Name="OznaczeniaSettingsHost" />
+        </TabItem>
         <TabItem x:Name="PojazdyTab" Header="Pojazdy" Visibility="Collapsed">
             <ContentControl x:Name="SkrybekPojazdyHost" />
         </TabItem>

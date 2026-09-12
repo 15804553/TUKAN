@@ -8,6 +8,7 @@ public enum BoberSettingsSection
 {
     All,
     Grafik,
+    Oznaczenia,
     ParametryZmiany,
     Kolejnosc,
     ZarzadzanieGrafikiem

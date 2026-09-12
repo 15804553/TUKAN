@@ -526,7 +526,7 @@
                     </StackPanel>
                 </GroupBox>
 
-                <GroupBox Header="Kolory komórek i Edycja personelu"
+                <GroupBox Header="Edycja personelu"
                           Style="{StaticResource BoberSettingsSectionGroupBox}"
                           Margin="0,0,0,16">
                     <StackPanel>

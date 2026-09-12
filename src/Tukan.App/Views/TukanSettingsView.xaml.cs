@@ -65,6 +65,7 @@ public partial class TukanSettingsView : UserControl
         ChomikTab.Visibility = Visibility.Collapsed;
         UzytkoweTab.Visibility = Visibility.Collapsed;
         GrafikTab.Visibility = Visibility.Collapsed;
+        OznaczeniaTab.Visibility = Visibility.Collapsed;
         RozkazyTab.Visibility = Visibility.Collapsed;
         PojazdyTab.Visibility = Visibility.Collapsed;
         KalendarzTab.Visibility = Visibility.Collapsed;
@@ -298,6 +299,8 @@ public partial class TukanSettingsView : UserControl
         var controller = new MainController(_tukanServices.Bober).CreateSettingsController();
         BoberSettingsHost.Content = CreateBoberSection(
             controller, BoberSettingsSection.Grafik, "Ustawienia grafiku");
+        OznaczeniaSettingsHost.Content = CreateBoberSection(
+            controller, BoberSettingsSection.Oznaczenia, "Oznaczenia w grafiku");
 
         ParametryZmianHost.Content = CreateBoberSection(
             controller, BoberSettingsSection.ParametryZmiany, "Parametry zmian");

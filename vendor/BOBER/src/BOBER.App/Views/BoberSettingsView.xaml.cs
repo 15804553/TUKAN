@@ -52,6 +52,9 @@ public partial class BoberSettingsView : UserControl
     private bool IncludesKolory =>
         _section is BoberSettingsSection.All or BoberSettingsSection.Grafik;
 
+    private bool IncludesOznaczenia =>
+        _section is BoberSettingsSection.All or BoberSettingsSection.Oznaczenia;
+
     private bool IncludesZarzadzanieGrafikiem =>
         _section is BoberSettingsSection.All or BoberSettingsSection.ZarzadzanieGrafikiem;
 
@@ -93,7 +96,7 @@ public partial class BoberSettingsView : UserControl
             return zmian;
         if (RoleKeys.KoloryEksportu.Contains(klucz))
             return eksportu;
-        if (klucz is RoleKeys.WolnaSluzba or RoleKeys.Delegacja or RoleKeys.Szkolenie)
+        if (klucz is RoleKeys.Delegacja or RoleKeys.Szkolenie)
             return komorek;
         return pelne;
     }
@@ -114,18 +117,20 @@ public partial class BoberSettingsView : UserControl
         ParametryZmianySection.Visibility = IncludesParametry ? Visibility.Visible : Visibility.Collapsed;
         KolejnoscSection.Visibility = IncludesKolejnosc ? Visibility.Visible : Visibility.Collapsed;
         KolorySection.Visibility = IncludesKolory ? Visibility.Visible : Visibility.Collapsed;
-        OznaczeniaSection.Visibility = IncludesKolory ? Visibility.Visible : Visibility.Collapsed;
+        OznaczeniaSection.Visibility = IncludesOznaczenia ? Visibility.Visible : Visibility.Collapsed;
         GrafikManagementSection.Visibility = IncludesZarzadzanieGrafikiem
             ? Visibility.Visible
             : Visibility.Collapsed;
 
         if (_section is BoberSettingsSection.ParametryZmiany
             or BoberSettingsSection.Kolejnosc
-            or BoberSettingsSection.ZarzadzanieGrafikiem)
+            or BoberSettingsSection.ZarzadzanieGrafikiem
+            or BoberSettingsSection.Oznaczenia)
         {
             ParametryZmianyHeader.Visibility = Visibility.Collapsed;
             KolejnoscHeader.Visibility = Visibility.Collapsed;
             GrafikManagementHeader.Visibility = Visibility.Collapsed;
+            OznaczeniaHeader.Visibility = Visibility.Collapsed;
             SaveBar.Visibility = _section is BoberSettingsSection.ZarzadzanieGrafikiem
                 ? Visibility.Collapsed
                 : Visibility.Visible;
@@ -171,6 +176,10 @@ public partial class BoberSettingsView : UserControl
                     .ToDictionary(g => g.Key, g => g.First());
                 foreach (var (klucz, etykieta) in _controller.GetKolorKeys())
                 {
+                    // D/WS konfiguruje się w oznaczeniach grafiku — nie pokazujemy go na liście kolorów.
+                    if (klucz == RoleKeys.WolnaSluzba)
+                        continue;
+
                     if (WszystkieKoloryVm.Any(k => k.KluczRoli == klucz))
                         continue;
 
@@ -221,7 +230,10 @@ public partial class BoberSettingsView : UserControl
                 UpdateExportAlternatingColorsPanel();
                 RefreshAltColorPreview(ExportAltColorAPreview, ExportAltColorATextBox.Text);
                 RefreshAltColorPreview(ExportAltColorBPreview, ExportAltColorBTextBox.Text);
+            }
 
+            if (IncludesOznaczenia)
+            {
                 var oznaczenia = await _controller.GetOznaczeniaAsync();
                 if (generation != _loadGeneration)
                     return;
@@ -449,12 +461,20 @@ public partial class BoberSettingsView : UserControl
 
             if (IncludesKolory)
             {
+                var istniejace = await _controller.GetKoloryAsync();
                 var kolory = WszystkieKoloryVm.Select(k => new KolorStanowiska
                 {
                     KluczRoli = k.KluczRoli,
                     KolorHex = RoleKeys.NormalizeKolorHex(k.KolorHex, k.KluczRoli),
                     Aktywny = k.Aktywny
                 }).ToList();
+
+                // D/WS nie jest edytowane tutaj — zachowaj dotychczasowy rekord przy zapisie pełnej tabeli.
+                var wolnaSluzba = istniejace.FirstOrDefault(k =>
+                    k.KluczRoli.Equals(RoleKeys.WolnaSluzba, StringComparison.OrdinalIgnoreCase));
+                if (wolnaSluzba is not null)
+                    kolory.Add(wolnaSluzba);
+
                 await _controller.SaveKoloryAsync(kolory);
                 await _controller.SetLessColorAsync(LessColorCheckBox.IsChecked == true);
                 await _controller.SetKolorowanieEdycjaPersoneluAsync(
@@ -481,7 +501,10 @@ public partial class BoberSettingsView : UserControl
                         ? GrafikRowColorSettings.DefaultColorB
                         : ExportAltColorBTextBox.Text.Trim()
                 });
+            }
 
+            if (IncludesOznaczenia)
+            {
                 var validationError = ValidateOznaczenia();
                 if (validationError is not null)
                 {
