@@ -17,11 +17,6 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
     private SekcjaRozkazuGrafiku? _sekcjaRozkazu;
     private string _skrotKlawiszowy = string.Empty;
     private string? _tekstWyswietlany;
-    private bool _moznaOddac;
-    private bool _moznaKropke;
-    private bool _zachowajTloWsPrzyBraku;
-    private SekcjaRozkazuGrafiku? _dodatkowaSekcja;
-    private RolaNalozaniaOznaczenia _rolaNalozania;
     private short _kolejnosc;
     private bool _eksportDoExcela = true;
     private string _adnotacjaRozkazu = string.Empty;
@@ -31,14 +26,12 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>Symbol w grafiku.</summary>
     public string Kod
     {
         get => _kod;
         set { _kod = value ?? string.Empty; OnPropertyChanged(); }
     }
 
-    /// <summary>Opis (legenda / menu).</summary>
     public string Nazwa
     {
         get => _nazwa;
@@ -80,7 +73,6 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
 
     public bool HasFill => !RoleKeys.IsBrakWypelnienia(KolorHex);
     public bool HasExcelFill => !RoleKeys.IsBrakWypelnienia(KolorExcelHex);
-
     public Brush PreviewBrush => ToBrush(KolorHex);
     public Brush ExcelPreviewBrush => ToBrush(KolorExcelHex);
 
@@ -117,7 +109,6 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>Etykieta grupy w rozkazie do ComboBoxa (SelectedItem).</summary>
     public string GrupaRozkazu
     {
         get => SekcjaRozkazu switch
@@ -155,36 +146,6 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
         set { _tekstWyswietlany = value; OnPropertyChanged(); }
     }
 
-    public bool MoznaOddac
-    {
-        get => _moznaOddac;
-        set { _moznaOddac = value; OnPropertyChanged(); }
-    }
-
-    public bool MoznaKropke
-    {
-        get => _moznaKropke;
-        set { _moznaKropke = value; OnPropertyChanged(); }
-    }
-
-    public bool ZachowajTloWsPrzyBraku
-    {
-        get => _zachowajTloWsPrzyBraku;
-        set { _zachowajTloWsPrzyBraku = value; OnPropertyChanged(); }
-    }
-
-    public SekcjaRozkazuGrafiku? DodatkowaSekcjaRozkazu
-    {
-        get => _dodatkowaSekcja;
-        set { _dodatkowaSekcja = value; OnPropertyChanged(); }
-    }
-
-    public RolaNalozaniaOznaczenia RolaNalozania
-    {
-        get => _rolaNalozania;
-        set { _rolaNalozania = value; OnPropertyChanged(); }
-    }
-
     public short Kolejnosc
     {
         get => _kolejnosc;
@@ -208,7 +169,6 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
         set => EksportDoExcela = string.Equals(value, "Tak", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Dopisek w grupie rozkazu (np. -odb).</summary>
     public string AdnotacjaRozkazu
     {
         get => _adnotacjaRozkazu;
@@ -258,7 +218,6 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(JestFlaga));
             OnPropertyChanged(nameof(KolorToolTip));
 
-            // Flaga → kolor czcionki (domyślnie czarny); powrót do NIE → brak tła.
             if (value != FlagaPozycjaOznaczenia.Nie && poprzednia == FlagaPozycjaOznaczenia.Nie)
             {
                 KolorHex = OznaczenieGrafiku.DomyslnyKolorCzcionkiFlagi;
@@ -274,8 +233,8 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
     public bool JestFlaga => FlagaPozycja != FlagaPozycjaOznaczenia.Nie;
 
     public string KolorToolTip => JestFlaga
-        ? "Kolor czcionki znaczka (flaga)"
-        : "Kolor tła w grafiku";
+        ? "Kolor czcionki flagi (nie tła komórki)"
+        : "Kolor tła w grafiku (Brak = nie zmienia aktualnego tła komórki)";
 
     public string FlagaLabel
     {
@@ -295,12 +254,10 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
         };
     }
 
-    public void ClearFill()
-    {
+    public void ClearFill() =>
         KolorHex = JestFlaga
             ? OznaczenieGrafiku.DomyslnyKolorCzcionkiFlagi
             : RoleKeys.BrakWypelnienia;
-    }
 
     public void ClearExcelFill()
     {
@@ -319,7 +276,6 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
     public static OznaczenieGrafikuViewModel FromModel(OznaczenieGrafiku m)
     {
         var vm = new OznaczenieGrafikuViewModel { _syncExcelFromUi = false };
-        // Flaga przed kolorem — setter flagi nie może nadpisać zapisanego koloru czcionki.
         vm._flagaPozycja = m.FlagaPozycja;
         vm.Kod = m.Kod;
         vm.Nazwa = m.Nazwa;
@@ -331,11 +287,6 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
         vm.SekcjaRozkazu = m.SekcjaRozkazu;
         vm.SkrotKlawiszowy = m.SkrotKlawiszowy;
         vm.TekstWyswietlany = m.TekstWyswietlany;
-        vm.MoznaOddac = m.MoznaOddac;
-        vm.MoznaKropke = m.MoznaKropke;
-        vm.ZachowajTloWsPrzyBraku = m.ZachowajTloWsPrzyBraku;
-        vm.DodatkowaSekcjaRozkazu = m.DodatkowaSekcjaRozkazu;
-        vm.RolaNalozania = m.RolaNalozania;
         vm.Kolejnosc = m.Kolejnosc;
         vm.EksportDoExcela = m.EksportDoExcela;
         vm.AdnotacjaRozkazu = m.AdnotacjaRozkazu;
@@ -357,11 +308,6 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
             SekcjaRozkazu = WPracy ? null : SekcjaRozkazu,
             SkrotKlawiszowy = SkrotKlawiszowy.Trim(),
             TekstWyswietlany = string.IsNullOrWhiteSpace(TekstWyswietlany) ? null : TekstWyswietlany,
-            MoznaOddac = MoznaOddac,
-            MoznaKropke = MoznaKropke,
-            ZachowajTloWsPrzyBraku = ZachowajTloWsPrzyBraku,
-            DodatkowaSekcjaRozkazu = DodatkowaSekcjaRozkazu,
-            RolaNalozania = RolaNalozania,
             Kolejnosc = Kolejnosc,
             EksportDoExcela = EksportDoExcela,
             AdnotacjaRozkazu = AdnotacjaRozkazu.Trim(),

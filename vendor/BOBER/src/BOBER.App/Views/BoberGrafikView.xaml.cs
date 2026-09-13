@@ -651,81 +651,23 @@ public partial class BoberGrafikView : UserControl
             return;
 
         var ch = token[0];
+        string? skrotHint = null;
         if (ch is '.' or ',')
-        {
-            e.Handled = true;
-            await ApplyKropkaToCellsAsync(grid, targets);
-            return;
-        }
-
-        if (ch is '/' or '?')
-        {
-            e.Handled = true;
-            await ApplyPytajnikToCellsAsync(grid, targets);
-            return;
-        }
-
-        if (!char.IsLetterOrDigit(ch))
-            return;
-
-        var keyName = char.ToUpperInvariant(ch).ToString();
-        var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindBySkrot(keyName)
-            ?? BOBER.Core.Oznaczenia.OznaczeniaLookup.FindBySkrot(token);
-
-        string? typWpisu = null;
-        if (ozn is not null)
-        {
-            if (ozn.Kod == GrafikWpisTypy.PotrzebujeWolne || (ozn.WPracy && ozn.Kod == "?"))
-            {
-                e.Handled = true;
-                await ApplyPytajnikToCellsAsync(grid, targets);
-                return;
-            }
-
-            if (ozn.FlagaPozycja == BOBER.Core.Enums.FlagaPozycjaOznaczenia.Centrum
-                || ozn.Kod.Equals(OznaczeniaGrafikuSeed.KodOddaje, StringComparison.OrdinalIgnoreCase))
-            {
-                e.Handled = true;
-                await ApplyOddalToCellsAsync(grid, targets);
-                return;
-            }
-
-            if (OznaczeniaGrafikuSeed.IsChceOddacKod(ozn.Kod))
-            {
-                e.Handled = true;
-                await ApplyKropkaToCellsAsync(grid, targets);
-                return;
-            }
-
-            typWpisu = ozn.Kod;
-        }
+            skrotHint = ".";
+        else if (ch is '/' or '?')
+            skrotHint = "/";
+        else if (char.IsLetterOrDigit(ch))
+            skrotHint = char.ToUpperInvariant(ch).ToString();
         else
-        {
-            typWpisu = keyName switch
-            {
-                "D" => GrafikWpisTypy.Dyzur,
-                "W" => GrafikWpisTypy.WolnaSluzba,
-                "U" => GrafikWpisTypy.Urlop,
-                "E" => GrafikWpisTypy.Delegacja,
-                "S" => GrafikWpisTypy.Szkolenie,
-                "C" => GrafikWpisTypy.Chory,
-                "O" => null, // Oddaje obsługuje KeyDown
-                _ => null
-            };
+            return;
 
-            if (keyName == "O")
-            {
-                e.Handled = true;
-                await ApplyOddalToCellsAsync(grid, targets);
-                return;
-            }
-        }
-
-        if (typWpisu is null)
+        var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindBySkrot(skrotHint)
+            ?? BOBER.Core.Oznaczenia.OznaczeniaLookup.FindBySkrot(token);
+        if (ozn is null)
             return;
 
         e.Handled = true;
-        await ApplyWpisToCellsAsync(grid, targets, typWpisu);
+        await ApplyOznaczenieFromCatalogAsync(grid, targets, ozn);
     }
 
     private static bool IsDescendantOf(DependencyObject root, DependencyObject? node)
@@ -865,20 +807,6 @@ public partial class BoberGrafikView : UserControl
         if (targets.Count == 0)
             return;
 
-        if (key == Key.O && Keyboard.Modifiers == ModifierKeys.None)
-        {
-            e.Handled = true;
-            await ApplyOddalToCellsAsync(dataGrid, targets);
-            return;
-        }
-
-        if (key is Key.OemPeriod or Key.Decimal)
-        {
-            e.Handled = true;
-            await ApplyKropkaToCellsAsync(dataGrid, targets);
-            return;
-        }
-
         if (key == Key.Space)
         {
             e.Handled = true;
@@ -893,49 +821,105 @@ public partial class BoberGrafikView : UserControl
         var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindBySkrot(keyName);
         if (ozn is null && key is Key.OemQuestion or Key.Divide or Key.Oem2)
             ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindBySkrot("/");
+        if (ozn is null && key is Key.OemPeriod or Key.Decimal)
+            ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindBySkrot(".");
 
         if (ozn is null)
-        {
-            var typWpisu = key switch
-            {
-                Key.D => GrafikWpisTypy.Dyzur,
-                Key.W => GrafikWpisTypy.WolnaSluzba,
-                Key.U => GrafikWpisTypy.Urlop,
-                Key.E => GrafikWpisTypy.Delegacja,
-                Key.S => GrafikWpisTypy.Szkolenie,
-                Key.C => GrafikWpisTypy.Chory,
-                Key.Oem2 or Key.OemQuestion or Key.Divide => GrafikWpisTypy.PotrzebujeWolne,
-                _ => null
-            };
-            if (typWpisu is null)
-                return;
-
-            e.Handled = true;
-            if (typWpisu == GrafikWpisTypy.PotrzebujeWolne)
-                await ApplyPytajnikToCellsAsync(dataGrid, targets);
-            else
-                await ApplyWpisToCellsAsync(dataGrid, targets, typWpisu);
             return;
-        }
 
         e.Handled = true;
-        if (ozn.FlagaPozycja == BOBER.Core.Enums.FlagaPozycjaOznaczenia.Centrum
-            || ozn.Kod.Equals(OznaczeniaGrafikuSeed.KodOddaje, StringComparison.OrdinalIgnoreCase))
+        await ApplyOznaczenieFromCatalogAsync(dataGrid, targets, ozn);
+    }
+
+    /// <summary>Wstawia oznaczenie: NIE = baza; flaga = sufiks/overlay bez zmiany treści głównej.</summary>
+    private async Task ApplyOznaczenieFromCatalogAsync(
+        DataGrid dataGrid,
+        IReadOnlyList<(GrafikRowViewModel Vm, int Month, int Day)> targets,
+        BOBER.Core.Models.OznaczenieGrafiku ozn)
+    {
+        if (ozn.JestFlaga)
         {
-            await ApplyOddalToCellsAsync(dataGrid, targets);
+            await ApplyFlagaToCellsAsync(dataGrid, targets, ozn);
             return;
         }
 
-        if (OznaczeniaGrafikuSeed.IsChceOddacKod(ozn.Kod))
-        {
-            await ApplyKropkaToCellsAsync(dataGrid, targets);
-            return;
-        }
+        await ApplyWpisToCellsAsync(dataGrid, targets, ozn.Kod);
+    }
 
-        if (ozn.Kod == GrafikWpisTypy.PotrzebujeWolne || (ozn.WPracy && ozn.Kod == "?"))
-            await ApplyPytajnikToCellsAsync(dataGrid, targets);
-        else
-            await ApplyWpisToCellsAsync(dataGrid, targets, ozn.Kod);
+    private async Task ApplyFlagaToCellsAsync(
+        DataGrid dataGrid,
+        IReadOnlyList<(GrafikRowViewModel Vm, int Month, int Day)> cells,
+        BOBER.Core.Models.OznaczenieGrafiku flaga)
+    {
+        if (_controller is null || cells.Count == 0)
+            return;
+
+        try
+        {
+            var undoCells = new List<GrafikUndoCell>();
+            var pendingChanges = new List<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)>();
+
+            foreach (var (vm, month, day) in cells)
+            {
+                if (!vm.FunkcjonariuszId.HasValue)
+                    continue;
+
+                var nowy = GrafikWpisTypy.PrzelaczFlage(vm.GetCell(day), flaga);
+                if (nowy is null)
+                    continue;
+
+                undoCells.Add(CaptureUndoCell(vm, month, day));
+                pendingChanges.Add((vm, month, day, nowy));
+            }
+
+            if (pendingChanges.Count == 0)
+                return;
+
+            await ApplyWpisySilentAsync(pendingChanges);
+            CommitUndoEntry(undoCells);
+            await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
+        }
+        catch (Exception ex)
+        {
+            UiErrorReporter.Show(OwnerWindow, ex, "Błąd zapisu wpisu grafiku");
+        }
+    }
+
+    private async Task ApplyWpisToCellsAsync(
+        DataGrid dataGrid,
+        IReadOnlyList<(GrafikRowViewModel Vm, int Month, int Day)> cells,
+        string typWpisu)
+    {
+        if (_controller is null || cells.Count == 0)
+            return;
+
+        try
+        {
+            var undoCells = new List<GrafikUndoCell>();
+            var pendingChanges = new List<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)>();
+
+            foreach (var (vm, month, day) in cells)
+            {
+                if (!vm.FunkcjonariuszId.HasValue)
+                    continue;
+
+                // Zwykłe oznaczenie: nowa baza, flagi (LEWA/PRAWA/CENTRUM) zostają.
+                var nowy = string.IsNullOrEmpty(typWpisu)
+                    ? string.Empty
+                    : GrafikWpisTypy.UstawBazowy(vm.GetCell(day), typWpisu);
+
+                undoCells.Add(CaptureUndoCell(vm, month, day));
+                pendingChanges.Add((vm, month, day, nowy));
+            }
+
+            await ApplyWpisySilentAsync(pendingChanges);
+            CommitUndoEntry(undoCells);
+            await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
+        }
+        catch (Exception ex)
+        {
+            UiErrorReporter.Show(OwnerWindow, ex, "Błąd zapisu wpisu grafiku");
+        }
     }
 
     private void OnDataGridLoadingRow(object? sender, DataGridRowEventArgs e)
@@ -1057,34 +1041,15 @@ public partial class BoberGrafikView : UserControl
     {
         var parts = new List<string> { "Skróty: Spacja — w pracy" };
         var katalog = BOBER.Core.Oznaczenia.OznaczeniaLookup.Items;
-        if (katalog.Count > 0)
+        foreach (var o in katalog.OrderBy(x => x.Kolejnosc))
         {
-            foreach (var o in katalog.OrderBy(x => x.Kolejnosc))
-            {
-                if (string.IsNullOrWhiteSpace(o.SkrotKlawiszowy))
-                    continue;
-                var gesture = BOBER.Core.Oznaczenia.SkrotKlawiszowyRules.FormatForDisplay(o.SkrotKlawiszowy);
-                var opis = string.IsNullOrWhiteSpace(o.Nazwa) ? o.Kod : o.Nazwa;
-                parts.Add($"{gesture} — {opis}");
-            }
-        }
-        else
-        {
-            parts.AddRange(
-            [
-                "D — Dyżur",
-                "W — Wolna służba",
-                "U — Urlop",
-                "E — Delegacja",
-                "S — Szkolenie",
-                "C — Chory",
-                "/ — potrzebuje wolne (?)"
-            ]);
+            if (string.IsNullOrWhiteSpace(o.SkrotKlawiszowy))
+                continue;
+            var gesture = BOBER.Core.Oznaczenia.SkrotKlawiszowyRules.FormatForDisplay(o.SkrotKlawiszowy);
+            var opis = string.IsNullOrWhiteSpace(o.Nazwa) ? o.Kod : o.Nazwa;
+            parts.Add($"{gesture} — {opis}");
         }
 
-        parts.Add("O — Oddaje");
-        var chce = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindChceOddac();
-        parts.Add($". — {chce?.Nazwa ?? "Chce oddać"}");
         parts.Add("Ctrl+Z — Cofnij");
         ShortcutsLegendTextBlock.Text = string.Join(" | ", parts);
     }
@@ -1108,41 +1073,15 @@ public partial class BoberGrafikView : UserControl
 
         var menuItems = new List<(string Label, string Akcja, string Gesture)>();
         var katalog = BOBER.Core.Oznaczenia.OznaczeniaLookup.Items;
-        if (katalog.Count > 0)
+        foreach (var o in katalog.OrderBy(x => x.Kolejnosc))
         {
-            foreach (var o in katalog.OrderBy(x => x.Kolejnosc))
-            {
-                // Nakładki systemowe (Oddaje / Chce oddać) — osobne pozycje menu.
-                if (o.FlagaPozycja == BOBER.Core.Enums.FlagaPozycjaOznaczenia.Centrum
-                    || OznaczeniaGrafikuSeed.IsChceOddacKod(o.Kod)
-                    || o.Kod.Equals(OznaczeniaGrafikuSeed.KodOddaje, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                var gesture = string.IsNullOrWhiteSpace(o.SkrotKlawiszowy)
-                    ? ""
-                    : BOBER.Core.Oznaczenia.SkrotKlawiszowyRules.FormatForDisplay(o.SkrotKlawiszowy);
-                menuItems.Add(($" {o.Kod} — {o.Nazwa}{labelSuffix}".TrimStart(), o.Kod, gesture));
-            }
-        }
-        else
-        {
-            menuItems.AddRange(
-            [
-                ($"D — Dyżur{labelSuffix}", GrafikWpisTypy.Dyzur, "D"),
-                ($"WS — Wolna służba{labelSuffix}", GrafikWpisTypy.WolnaSluzba, "W"),
-                ($"U — Urlop{labelSuffix}", GrafikWpisTypy.Urlop, "U"),
-                ($"Del — Delegacja{labelSuffix}", GrafikWpisTypy.Delegacja, "E"),
-                ($"S — Szkolenie{labelSuffix}", GrafikWpisTypy.Szkolenie, "S"),
-                ($"C — Chory{labelSuffix}", GrafikWpisTypy.Chory, "C"),
-            ]);
+            var gesture = string.IsNullOrWhiteSpace(o.SkrotKlawiszowy)
+                ? ""
+                : BOBER.Core.Oznaczenia.SkrotKlawiszowyRules.FormatForDisplay(o.SkrotKlawiszowy);
+            var symbol = string.IsNullOrWhiteSpace(o.Kod) ? gesture : o.Kod;
+            menuItems.Add(($" {symbol} — {o.Nazwa}{labelSuffix}".TrimStart(), o.Kod, gesture));
         }
 
-        menuItems.Add(($"O — Oddaje{labelSuffix}", "ODDAJE", "O"));
-        var chceOddac = katalog.FirstOrDefault(o => OznaczeniaGrafikuSeed.IsChceOddacKod(o.Kod));
-        var chceLabel = chceOddac?.Nazwa ?? "Chce oddać";
-        menuItems.Add(($". — {chceLabel}{labelSuffix}", "KROPKA", "."));
-        if (katalog.All(o => o.Kod != GrafikWpisTypy.PotrzebujeWolne))
-            menuItems.Add(($"? — Osoba potrzebuje wolne{labelSuffix}", "PYTAJNIK", "/"));
         menuItems.Add(($"— Wyczyść{labelSuffix}", "", "Spacja"));
         menuItems.Add(("Notatka", "NOTATKA", ""));
         menuItems.Add(("Uwagi", "UWAGI", ""));
@@ -1192,24 +1131,24 @@ public partial class BoberGrafikView : UserControl
 
         switch (akcja)
         {
-            case "ODDAJE":
-                await ApplyOddalToCellsAsync(dataGrid, targets);
-                return;
-            case "KROPKA":
-                await ApplyKropkaToCellsAsync(dataGrid, targets);
-                return;
-            case "PYTAJNIK":
-                await ApplyPytajnikToCellsAsync(dataGrid, targets);
-                return;
             case "NOTATKA":
                 await EditNotatkaAsync(dataGrid, month, day);
                 return;
             case "UWAGI":
                 await EditUwagaMiesiecznaAsync(dataGrid, primaryVm, month);
                 return;
-            default:
-                await ApplyWpisToCellsAsync(dataGrid, targets, akcja);
+            case "":
+                await ApplyWpisToCellsAsync(dataGrid, targets, "");
                 return;
+            default:
+            {
+                var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(akcja);
+                if (ozn is not null)
+                    await ApplyOznaczenieFromCatalogAsync(dataGrid, targets, ozn);
+                else
+                    await ApplyWpisToCellsAsync(dataGrid, targets, akcja);
+                return;
+            }
         }
     }
 
@@ -1271,205 +1210,6 @@ public partial class BoberGrafikView : UserControl
         }
     }
 
-    private async Task ApplyOddalToCellsAsync(
-        DataGrid dataGrid,
-        IReadOnlyList<(GrafikRowViewModel Vm, int Month, int Day)> cells)
-    {
-        if (_controller is null || cells.Count == 0)
-            return;
-
-        try
-        {
-            var hasForbidden = false;
-            var applied = false;
-            var undoCells = new List<GrafikUndoCell>();
-            var pendingChanges = new List<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)>();
-
-            foreach (var (vm, month, day) in cells)
-            {
-                if (!vm.FunkcjonariuszId.HasValue)
-                    continue;
-
-                var biezacy = vm.GetCell(day);
-                if (GrafikWpisTypy.NieMoznaOddacBoZakazanyTyp(biezacy))
-                {
-                    hasForbidden = true;
-                    continue;
-                }
-
-                var nowy = GrafikWpisTypy.PrzelaczOddal(biezacy);
-                if (nowy is null)
-                    continue;
-
-                undoCells.Add(CaptureUndoCell(vm, month, day));
-                pendingChanges.Add((vm, month, day, nowy));
-                applied = true;
-            }
-
-            if (hasForbidden && !applied)
-            {
-                BoberMessageBox.Show(
-                    OwnerWindow,
-                    "Tej służby nie można oddać.\nOznaczenia S (szkolenie), C (chory) i Del (delegacja) nie podlegają oddaniu.",
-                    "Oddaje");
-                return;
-            }
-
-            if (applied)
-            {
-                await ApplyWpisySilentAsync(pendingChanges);
-                CommitUndoEntry(undoCells);
-                await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
-            }
-        }
-        catch (Exception ex)
-        {
-            UiErrorReporter.Show(OwnerWindow, ex, "Błąd zapisu wpisu grafiku");
-        }
-    }
-
-    private async Task ApplyKropkaToCellsAsync(
-        DataGrid dataGrid,
-        IReadOnlyList<(GrafikRowViewModel Vm, int Month, int Day)> cells)
-    {
-        if (_controller is null || cells.Count == 0)
-            return;
-
-        try
-        {
-            var applied = false;
-            var anyInvalid = false;
-            var undoCells = new List<GrafikUndoCell>();
-            var pendingChanges = new List<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)>();
-
-            foreach (var (vm, month, day) in cells)
-            {
-                if (!vm.FunkcjonariuszId.HasValue)
-                    continue;
-
-                var nowy = GrafikWpisTypy.PrzelaczKropke(vm.GetCell(day));
-                if (nowy is null)
-                {
-                    anyInvalid = true;
-                    continue;
-                }
-
-                undoCells.Add(CaptureUndoCell(vm, month, day));
-                pendingChanges.Add((vm, month, day, nowy));
-                applied = true;
-            }
-
-            if (!applied && anyInvalid)
-            {
-                BoberMessageBox.Show(
-                    OwnerWindow,
-                    "Znak „.” (osoba chętna oddać) można ustawić tylko przy oznaczeniu D (dyżur), U (urlop), U+WS lub WS (wolna służba).",
-                    "Grafik");
-                return;
-            }
-
-            if (applied)
-            {
-                await ApplyWpisySilentAsync(pendingChanges);
-                CommitUndoEntry(undoCells);
-                await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
-            }
-        }
-        catch (Exception ex)
-        {
-            UiErrorReporter.Show(OwnerWindow, ex, "Błąd zapisu wpisu grafiku");
-        }
-    }
-
-    private async Task ApplyPytajnikToCellsAsync(
-        DataGrid dataGrid,
-        IReadOnlyList<(GrafikRowViewModel Vm, int Month, int Day)> cells)
-    {
-        if (_controller is null || cells.Count == 0)
-            return;
-
-        try
-        {
-            var applied = false;
-            var anyInvalid = false;
-            var undoCells = new List<GrafikUndoCell>();
-            var pendingChanges = new List<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)>();
-
-            foreach (var (vm, month, day) in cells)
-            {
-                if (!vm.FunkcjonariuszId.HasValue)
-                    continue;
-
-                var nowy = GrafikWpisTypy.PrzelaczPytajnik(vm.GetCell(day));
-                if (nowy is null)
-                {
-                    anyInvalid = true;
-                    continue;
-                }
-
-                undoCells.Add(CaptureUndoCell(vm, month, day));
-                pendingChanges.Add((vm, month, day, nowy));
-                applied = true;
-            }
-
-            if (!applied && anyInvalid)
-            {
-                BoberMessageBox.Show(
-                    OwnerWindow,
-                    "Znak „?” (osoba potrzebuje wolne) można ustawić tylko gdy osoba jest w pracy (pusta komórka).",
-                    "Grafik");
-                return;
-            }
-
-            if (applied)
-            {
-                await ApplyWpisySilentAsync(pendingChanges);
-                CommitUndoEntry(undoCells);
-                await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
-            }
-        }
-        catch (Exception ex)
-        {
-            UiErrorReporter.Show(OwnerWindow, ex, "Błąd zapisu wpisu grafiku");
-        }
-    }
-
-    private async Task ApplyWpisToCellsAsync(
-        DataGrid dataGrid,
-        IReadOnlyList<(GrafikRowViewModel Vm, int Month, int Day)> cells,
-        string typWpisu)
-    {
-        if (_controller is null || cells.Count == 0)
-            return;
-
-        try
-        {
-            var undoCells = new List<GrafikUndoCell>();
-            var pendingChanges = new List<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)>();
-
-            foreach (var (vm, month, day) in cells)
-            {
-                if (!vm.FunkcjonariuszId.HasValue)
-                    continue;
-
-                var resolved = string.IsNullOrEmpty(typWpisu)
-                    ? typWpisu
-                    : GrafikWpisTypy.ResolvePoNalozeniu(vm.GetCell(day), typWpisu);
-
-                undoCells.Add(CaptureUndoCell(vm, month, day));
-                pendingChanges.Add((vm, month, day, resolved));
-            }
-
-            await ApplyWpisySilentAsync(pendingChanges);
-            CommitUndoEntry(undoCells);
-            await RefreshSummaryRowAsync(dataGrid, cells[0].Month);
-        }
-        catch (Exception ex)
-        {
-            UiErrorReporter.Show(OwnerWindow, ex, "Błąd zapisu wpisu grafiku");
-        }
-    }
-
     private async Task ApplyWpisySilentAsync(
         IReadOnlyList<(GrafikRowViewModel Vm, int Month, int Day, string NewTyp)> pendingChanges)
     {
@@ -1485,9 +1225,7 @@ public partial class BoberGrafikView : UserControl
                 continue;
 
             var previousTyp = change.Vm.GetCell(change.Day);
-            var newTyp = string.IsNullOrEmpty(change.NewTyp)
-                ? string.Empty
-                : GrafikWpisTypy.ResolveDelSDlaZapisu(previousTyp, change.NewTyp);
+            var newTyp = change.NewTyp;
 
             changes.Add(new GrafikCellChange(
                 change.Vm.FunkcjonariuszId.Value,

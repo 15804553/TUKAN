@@ -16,8 +16,7 @@ public sealed class OznaczeniaGrafikuRepository(BoberConnectionFactory connectio
         await using var command = new OleDbCommand(
             """
             SELECT Id, ZmianaId, Kod, Nazwa, KolorHex, WPracy, SekcjaRozkazu, SkrotKlawiszowy,
-                   TekstWyswietlany, MoznaOddac, MoznaKropke, ZachowajTloWsPrzyBraku,
-                   DodatkowaSekcjaRozkazu, RolaNalozania, Kolejnosc,
+                   TekstWyswietlany, Kolejnosc,
                    EksportDoExcela, KolorExcelHex, AdnotacjaRozkazu,
                    StylWyswietlania, FlagaPozycja
             FROM OznaczeniaGrafiku
@@ -52,6 +51,7 @@ public sealed class OznaczeniaGrafikuRepository(BoberConnectionFactory connectio
 
         foreach (var item in items)
         {
+            // Kolumny legacy (MoznaOddac…RolaNalozania) nadal w Access — zapisujemy stałe zera.
             await using var insertCmd = new OleDbCommand(
                 """
                 INSERT INTO OznaczeniaGrafiku
@@ -76,13 +76,11 @@ public sealed class OznaczeniaGrafikuRepository(BoberConnectionFactory connectio
                 string.IsNullOrWhiteSpace(item.TekstWyswietlany)
                     ? DBNull.Value
                     : item.TekstWyswietlany);
-            insertCmd.Parameters.AddWithValue("@p8", item.MoznaOddac);
-            insertCmd.Parameters.AddWithValue("@p9", item.MoznaKropke);
-            insertCmd.Parameters.AddWithValue("@p10", item.ZachowajTloWsPrzyBraku);
-            AddNullableShort(
-                insertCmd,
-                item.DodatkowaSekcjaRozkazu is null ? null : (short?)item.DodatkowaSekcjaRozkazu.Value);
-            insertCmd.Parameters.AddWithValue("@p12", (short)item.RolaNalozania);
+            insertCmd.Parameters.AddWithValue("@p8", false);
+            insertCmd.Parameters.AddWithValue("@p9", false);
+            insertCmd.Parameters.AddWithValue("@p10", false);
+            AddNullableShort(insertCmd, null);
+            insertCmd.Parameters.AddWithValue("@p12", (short)0);
             insertCmd.Parameters.AddWithValue("@p13", item.Kolejnosc);
             insertCmd.Parameters.AddWithValue("@p14", item.EksportDoExcela);
             insertCmd.Parameters.AddWithValue(
@@ -104,12 +102,11 @@ public sealed class OznaczeniaGrafikuRepository(BoberConnectionFactory connectio
         await using var command = new OleDbCommand(
             """
             SELECT COUNT(*) FROM GrafikWpisy
-            WHERE ZmianaId = ? AND (TypWpisu = ? OR TypWpisu LIKE ?)
+            WHERE ZmianaId = ? AND TypWpisu = ?
             """,
             connection);
         command.Parameters.AddWithValue("@p0", (short)zmianaId);
         command.Parameters.AddWithValue("@p1", kod);
-        command.Parameters.AddWithValue("@p2", kod + "%");
         return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
     }
 
@@ -154,11 +151,6 @@ public sealed class OznaczeniaGrafikuRepository(BoberConnectionFactory connectio
             SekcjaRozkazu = ReadSekcja(reader["SekcjaRozkazu"]),
             SkrotKlawiszowy = reader["SkrotKlawiszowy"]?.ToString() ?? string.Empty,
             TekstWyswietlany = string.IsNullOrWhiteSpace(tekstRaw) ? null : tekstRaw,
-            MoznaOddac = Convert.ToBoolean(reader["MoznaOddac"]),
-            MoznaKropke = Convert.ToBoolean(reader["MoznaKropke"]),
-            ZachowajTloWsPrzyBraku = Convert.ToBoolean(reader["ZachowajTloWsPrzyBraku"]),
-            DodatkowaSekcjaRozkazu = ReadSekcja(reader["DodatkowaSekcjaRozkazu"]),
-            RolaNalozania = (RolaNalozaniaOznaczenia)Convert.ToInt16(reader["RolaNalozania"]),
             Kolejnosc = Convert.ToInt16(reader["Kolejnosc"]),
             EksportDoExcela = eksport,
             KolorExcelHex = string.IsNullOrWhiteSpace(excelRaw) ? kolor : excelRaw,

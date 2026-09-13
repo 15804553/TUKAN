@@ -254,5 +254,9 @@ public sealed class GrafikNurkowyBlokadaTests
             Task.FromResult(KalendarzAutoDeleteMode.Nigdy);
         public Task SetKalendarzAutoDeleteModeAsync(int? shiftNumber, KalendarzAutoDeleteMode mode, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+        public Task<bool> GetKolorowanieEdycjaPersoneluAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+        public Task SetKolorowanieEdycjaPersoneluAsync(bool enabled, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

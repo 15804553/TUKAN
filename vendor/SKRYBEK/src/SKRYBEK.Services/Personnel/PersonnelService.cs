@@ -92,55 +92,7 @@ public sealed class PersonnelService
             });
         }
 
-        var uzupelniony = UzupelnijDyzuryOWolnaSluzbe(wynik);
-        SkrybekLog.Info($"BOBER — nieobecni na {data:yyyy-MM-dd}: {uzupelniony.Count} osób");
-        return uzupelniony;
-    }
-
-    /// <summary>
-    /// Osoby z dyżuru domowego muszą być też wpisane jako wolna służba (w dwóch sekcjach).
-    /// </summary>
-    public static List<NieobecnyWSluzbie> UzupelnijDyzuryOWolnaSluzbe(IEnumerable<NieobecnyWSluzbie> nieobecni)
-    {
-        var wynik = nieobecni.ToList();
-        var wolnaPoId = wynik
-            .Where(n => n.TypNieobecnosci == TypNieobecnosci.CzasWolny && n.FunkcjonariuszId.HasValue)
-            .Select(n => n.FunkcjonariuszId!.Value)
-            .ToHashSet();
-        var wolnaPoNazwisku = wynik
-            .Where(n => n.TypNieobecnosci == TypNieobecnosci.CzasWolny && !string.IsNullOrWhiteSpace(n.Nazwisko))
-            .Select(n => n.Nazwisko.Trim())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var dyzur in wynik
-                     .Where(n => n.TypNieobecnosci == TypNieobecnosci.DyzurDomowy)
-                     .ToList())
-        {
-            if (dyzur.FunkcjonariuszId is int fid && wolnaPoId.Contains(fid))
-                continue;
-
-            var nazwisko = dyzur.Nazwisko?.Trim() ?? string.Empty;
-            if (dyzur.FunkcjonariuszId is null &&
-                !string.IsNullOrWhiteSpace(nazwisko) &&
-                wolnaPoNazwisku.Contains(nazwisko))
-                continue;
-
-            if (string.IsNullOrWhiteSpace(nazwisko) && dyzur.FunkcjonariuszId is null)
-                continue;
-
-            wynik.Add(new NieobecnyWSluzbie
-            {
-                FunkcjonariuszId = dyzur.FunkcjonariuszId,
-                Nazwisko = nazwisko,
-                TypNieobecnosci = TypNieobecnosci.CzasWolny
-            });
-
-            if (dyzur.FunkcjonariuszId is int noweId)
-                wolnaPoId.Add(noweId);
-            if (!string.IsNullOrWhiteSpace(nazwisko))
-                wolnaPoNazwisku.Add(nazwisko);
-        }
-
+        SkrybekLog.Info($"BOBER — nieobecni na {data:yyyy-MM-dd}: {wynik.Count} osób");
         return wynik;
     }
 

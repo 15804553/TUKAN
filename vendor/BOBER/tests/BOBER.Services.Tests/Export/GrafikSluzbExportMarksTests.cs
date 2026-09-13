@@ -13,14 +13,9 @@ public sealed class GrafikSluzbExportMarksTests
     [InlineData("Del", "Del")]
     [InlineData("D", "D")]
     [InlineData("U", "U")]
-    [InlineData("U/", "U")]
-    [InlineData("D/", "D")]
-    [InlineData("WS/", "WS")]
     [InlineData("WS", "WS")]
-    [InlineData("U.", "U•")]
-    [InlineData("WS.", "WS•")]
     [InlineData("?", "?")]
-    public void TekstWyswietlany_NoweZnaczkiDoEksportu(string kod, string expected)
+    public void TekstWyswietlany_PodstawoweKody(string kod, string expected)
     {
         Assert.Equal(expected, GrafikWpisTypy.TekstWyswietlany(kod));
     }
@@ -28,8 +23,6 @@ public sealed class GrafikSluzbExportMarksTests
     [Theory]
     [InlineData("U", "U\u209A")]
     [InlineData("UWS", "U\u209A")]
-    [InlineData("U.", "U\u209A•")]
-    [InlineData("U/", "U\u209A")]
     public void TekstWyswietlany_UrlopZPlanu_Up(string kod, string expected)
     {
         Assert.Equal(expected, GrafikWpisTypy.TekstWyswietlany(kod, fromUrlopPlan: true));
@@ -81,7 +74,7 @@ public sealed class GrafikSluzbExportMarksTests
     }
 
     [Fact]
-    public void ExportMonth_ZapisujeWszystkieNoweZnaczkiWKomorkach()
+    public void ExportMonth_ZapisujePodstawoweKodyWKomorkach()
     {
         var funkcjonariusze = new List<Funkcjonariusz>
         {
@@ -90,20 +83,15 @@ public sealed class GrafikSluzbExportMarksTests
             new() { Id = 3, Imie = "Piotr", Nazwisko = "Wiśniewski", Stanowisko = "Strażak" },
             new() { Id = 4, Imie = "Ewa", Nazwisko = "Zielińska", Stanowisko = "Strażak" },
             new() { Id = 5, Imie = "Adam", Nazwisko = "Wójcik", Stanowisko = "Strażak" },
-            new() { Id = 6, Imie = "Olga", Nazwisko = "Kamińska", Stanowisko = "Strażak" },
-            new() { Id = 7, Imie = "Marek", Nazwisko = "Lewandowski", Stanowisko = "Strażak" },
         };
 
-        // Dzień 1 (kolumna 3): każdy funkcjonariusz ma inny kod do sprawdzenia.
         var wpisy = new List<GrafikWpis>
         {
             Wpis(1, 1, "S"),
             Wpis(2, 1, "C"),
-            Wpis(3, 1, "U/"),   // Oddaje
-            Wpis(4, 1, "U."),   // chętna oddać
-            Wpis(5, 1, "?"),    // potrzebuje wolne
-            Wpis(6, 1, "WS."),  // WS + kropka
-            Wpis(7, 1, "WS/"),  // WS + Oddaje
+            Wpis(3, 1, "U"),
+            Wpis(4, 1, "?"),
+            Wpis(5, 1, "WS"),
         };
 
         var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-export-{Guid.NewGuid():N}.xlsx");
@@ -115,7 +103,7 @@ public sealed class GrafikSluzbExportMarksTests
                 miesiac: 7,
                 funkcjonariusze,
                 wpisy,
-                stanZmiany: 7,
+                stanZmiany: 5,
                 stanMinimalny: 4,
                 kolory: DefaultKolory(),
                 workDays: [1]);
@@ -125,23 +113,11 @@ public sealed class GrafikSluzbExportMarksTests
             using var wb = new XLWorkbook(path);
             var ws = wb.Worksheet(1);
 
-            // Wiersz danych zaczyna się od 4 (tytuł + 2 wiersze nagłówka); kolumna dnia 1 = 3.
             Assert.Equal("S", CellText(ws, 4, 3));
             Assert.Equal("C", CellText(ws, 5, 3));
             Assert.Equal("U", CellText(ws, 6, 3));
-            Assert.Equal("U•", CellText(ws, 7, 3));
-            Assert.Equal("?", CellText(ws, 8, 3));
-            Assert.Equal("•", CellText(ws, 9, 3));
-            Assert.Equal("—", CellText(ws, 10, 3));
-
-            // Oddaje przy U → przekreślenie; przy WS → „—” bez przekreślenia
-            Assert.True(ws.Cell(6, 3).Style.Font.Strikethrough);
-            Assert.False(ws.Cell(10, 3).Style.Font.Strikethrough);
-            Assert.False(ws.Cell(4, 3).Style.Font.Strikethrough);
-
-            // WS ma tło nieobecności także przy kropce / Oddaje.
-            Assert.True(ws.Cell(9, 3).Style.Fill.BackgroundColor.ColorType != XLColorType.Theme);
-            Assert.True(ws.Cell(10, 3).Style.Fill.BackgroundColor.ColorType != XLColorType.Theme);
+            Assert.Equal("?", CellText(ws, 7, 3));
+            Assert.Equal("WS", CellText(ws, 8, 3));
         }
         finally
         {
@@ -151,7 +127,263 @@ public sealed class GrafikSluzbExportMarksTests
     }
 
     [Fact]
-    public void ExportMonth_Podsumowanie_NieLiczyPytajnikaAniOddajeJakoNieobecnosci()
+    public void ExportMonth_OznaczenieZKatalogu_KolorExcel_TakzePrzyLessColor()
+    {
+        BOBER.Core.Oznaczenia.OznaczeniaLookup.Set(
+        [
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "X",
+                Nazwa = "Testowe",
+                WPracy = true,
+                EksportDoExcela = true,
+                KolorHex = "#FF00AA",
+                KolorExcelHex = "#FF00AA"
+            }
+        ]);
+        try
+        {
+            var funkcjonariusze = new List<Funkcjonariusz>
+            {
+                new() { Id = 1, Imie = "Anna", Nazwisko = "Nowak", Stanowisko = "Strażak" },
+            };
+            var wpisy = new List<GrafikWpis> { Wpis(1, 1, "X") };
+            var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-kolor-kat-{Guid.NewGuid():N}.xlsx");
+
+            try
+            {
+                new ExportService().ExportMonth(
+                    path,
+                    rok: 2026,
+                    miesiac: 7,
+                    funkcjonariusze,
+                    wpisy,
+                    stanZmiany: 1,
+                    stanMinimalny: 1,
+                    kolory: DefaultKolory(),
+                    workDays: [1],
+                    lessColor: true);
+
+                using var wb = new XLWorkbook(path);
+                var fill = wb.Worksheet(1).Cell(4, 3).Style.Fill.BackgroundColor;
+                Assert.Equal(XLColor.FromHtml("#FF00AA"), fill);
+                Assert.Equal("X", wb.Worksheet(1).Cell(4, 3).GetString());
+            }
+            finally
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+        }
+        finally
+        {
+            BOBER.Core.Oznaczenia.OznaczeniaLookup.Clear();
+        }
+    }
+
+    [Fact]
+    public void ExportMonth_BrakKoloruPoWs_ZachowujeZolteTlo()
+    {
+        BOBER.Core.Oznaczenia.OznaczeniaLookup.Set(
+        [
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "U",
+                Nazwa = "Urlop",
+                WPracy = false,
+                SekcjaRozkazu = BOBER.Core.Enums.SekcjaRozkazuGrafiku.Urlop,
+                EksportDoExcela = true,
+                KolorHex = RoleKeys.BrakWypelnienia,
+                KolorExcelHex = RoleKeys.BrakWypelnienia
+            }
+        ]);
+        try
+        {
+            var funkcjonariusze = new List<Funkcjonariusz>
+            {
+                new() { Id = 1, Imie = "Anna", Nazwisko = "Nowak", Stanowisko = "Strażak" },
+            };
+            var typ = GrafikWpisTypy.UstawBazowy("WS", "U");
+            var wpisy = new List<GrafikWpis> { Wpis(1, 1, typ) };
+            var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-zachowaj-ws-{Guid.NewGuid():N}.xlsx");
+            var kolory = DefaultKolory();
+            var wsYellow = XLColor.FromHtml(kolory[RoleKeys.WolnaSluzba]);
+
+            try
+            {
+                new ExportService().ExportMonth(
+                    path,
+                    rok: 2026,
+                    miesiac: 7,
+                    funkcjonariusze,
+                    wpisy,
+                    stanZmiany: 1,
+                    stanMinimalny: 1,
+                    kolory: kolory,
+                    workDays: [1],
+                    lessColor: true);
+
+                using var wb = new XLWorkbook(path);
+                Assert.Equal("U", wb.Worksheet(1).Cell(4, 3).GetString());
+                Assert.Equal(wsYellow, wb.Worksheet(1).Cell(4, 3).Style.Fill.BackgroundColor);
+            }
+            finally
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+        }
+        finally
+        {
+            BOBER.Core.Oznaczenia.OznaczeniaLookup.Clear();
+        }
+    }
+
+    [Fact]
+    public void ExportMonth_BrakKoloruPoOznaczeniuZKolorem_ZachowujeTenKolor()
+    {
+        BOBER.Core.Oznaczenia.OznaczeniaLookup.Set(
+        [
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "X",
+                Nazwa = "Kolorowe",
+                WPracy = true,
+                EksportDoExcela = true,
+                KolorHex = "#FF00AA",
+                KolorExcelHex = "#FF00AA"
+            },
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "U",
+                Nazwa = "Urlop",
+                WPracy = false,
+                SekcjaRozkazu = BOBER.Core.Enums.SekcjaRozkazuGrafiku.Urlop,
+                EksportDoExcela = true,
+                KolorHex = RoleKeys.BrakWypelnienia,
+                KolorExcelHex = RoleKeys.BrakWypelnienia
+            }
+        ]);
+        try
+        {
+            var funkcjonariusze = new List<Funkcjonariusz>
+            {
+                new() { Id = 1, Imie = "Anna", Nazwisko = "Nowak", Stanowisko = "Strażak" },
+            };
+            var typ = GrafikWpisTypy.UstawBazowy("X", "U");
+            var wpisy = new List<GrafikWpis> { Wpis(1, 1, typ) };
+            var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-zachowaj-hex-{Guid.NewGuid():N}.xlsx");
+
+            try
+            {
+                new ExportService().ExportMonth(
+                    path,
+                    rok: 2026,
+                    miesiac: 7,
+                    funkcjonariusze,
+                    wpisy,
+                    stanZmiany: 1,
+                    stanMinimalny: 1,
+                    kolory: DefaultKolory(),
+                    workDays: [1],
+                    lessColor: true);
+
+                using var wb = new XLWorkbook(path);
+                Assert.Equal("U", wb.Worksheet(1).Cell(4, 3).GetString());
+                Assert.Equal(XLColor.FromHtml("#FF00AA"), wb.Worksheet(1).Cell(4, 3).Style.Fill.BackgroundColor);
+            }
+            finally
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+        }
+        finally
+        {
+            BOBER.Core.Oznaczenia.OznaczeniaLookup.Clear();
+        }
+    }
+
+    [Fact]
+    public void ExportMonth_Flagi_MaleSufiksyICentrumSkreslenie()
+    {
+        BOBER.Core.Oznaczenia.OznaczeniaLookup.Set(
+        [
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "U",
+                Nazwa = "Urlop",
+                WPracy = false,
+                SekcjaRozkazu = BOBER.Core.Enums.SekcjaRozkazuGrafiku.Urlop,
+                EksportDoExcela = true,
+                KolorHex = RoleKeys.BrakWypelnienia
+            },
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "\u2022",
+                Nazwa = "Chce oddać",
+                FlagaPozycja = BOBER.Core.Enums.FlagaPozycjaOznaczenia.Prawa,
+                WPracy = true,
+                KolorHex = "#000000",
+                EksportDoExcela = true
+            },
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "ODDAJE",
+                Nazwa = "Oddaje",
+                FlagaPozycja = BOBER.Core.Enums.FlagaPozycjaOznaczenia.Centrum,
+                StylWyswietlania = BOBER.Core.Enums.StylWyswietlaniaOznaczenia.Przekreslenie,
+                WPracy = true,
+                KolorHex = "#000000",
+                EksportDoExcela = true
+            }
+        ]);
+        try
+        {
+            var funkcjonariusze = new List<Funkcjonariusz>
+            {
+                new() { Id = 1, Imie = "Anna", Nazwisko = "Nowak", Stanowisko = "Strażak" },
+            };
+
+            var typ = GrafikWpisTypy.Compose("U", null, "\u2022", centrum: true);
+            var wpisy = new List<GrafikWpis> { Wpis(1, 1, typ) };
+            var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-flagi-{Guid.NewGuid():N}.xlsx");
+
+            try
+            {
+                new ExportService().ExportMonth(
+                    path,
+                    rok: 2026,
+                    miesiac: 7,
+                    funkcjonariusze,
+                    wpisy,
+                    stanZmiany: 1,
+                    stanMinimalny: 1,
+                    kolory: DefaultKolory(),
+                    workDays: [1]);
+
+                using var wb = new XLWorkbook(path);
+                var cell = wb.Worksheet(1).Cell(4, 3);
+                Assert.Equal("U\u2022", cell.GetString());
+
+                var rich = cell.GetRichText().ToList();
+                Assert.Contains(rich, r => r.Text == "U" && r.Strikethrough);
+                Assert.Contains(rich, r => r.Text == "\u2022" && r.FontSize == 8);
+            }
+            finally
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+        }
+        finally
+        {
+            BOBER.Core.Oznaczenia.OznaczeniaLookup.Clear();
+        }
+    }
+
+    [Fact]
+    public void ExportMonth_Podsumowanie_NieLiczyPytajnikaJakoNieobecnosci()
     {
         var funkcjonariusze = new List<Funkcjonariusz>
         {
@@ -163,7 +395,7 @@ public sealed class GrafikSluzbExportMarksTests
         var wpisy = new List<GrafikWpis>
         {
             Wpis(1, 1, "?"),
-            Wpis(2, 1, "U/"),
+            Wpis(2, 1, "U"),
             Wpis(3, 1, "S"),
         };
 
@@ -179,9 +411,8 @@ public sealed class GrafikSluzbExportMarksTests
             using var wb = new XLWorkbook(path);
             var ws = wb.Worksheet(1);
 
-            // sumBase = 3 funkcjonariuszy + 4 = 7; "Wolne miejsca" w wierszu 7, kolumna dnia 1 = 3
-            // nieobecny tylko S (1 osoba): wolne = 3 - 2 - 1 = 0
-            Assert.Equal(0, ws.Cell(7, 3).GetValue<int>());
+            // nieobecni: U + S (2 osoby): wolne = 3 - 2 - 2 = -1
+            Assert.Equal(-1, ws.Cell(7, 3).GetValue<int>());
         }
         finally
         {
@@ -547,7 +778,6 @@ public sealed class GrafikSluzbExportMarksTests
             Assert.Contains("Urlop", footer);
             Assert.Contains("Uₚ", footer);
             Assert.Contains("Uᵣ", footer);
-            Assert.Contains("Oddaje", footer);
             Assert.Contains("Nurek", footer);
             Assert.Contains("Kierowca", footer);
 

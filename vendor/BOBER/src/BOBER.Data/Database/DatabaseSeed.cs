@@ -170,13 +170,11 @@ internal static class DatabaseSeed
         AddNullableShort(cmd, item.SekcjaRozkazu is null ? null : (short?)item.SekcjaRozkazu.Value);
         cmd.Parameters.AddWithValue("@p6", item.SkrotKlawiszowy ?? string.Empty);
         cmd.Parameters.AddWithValue("@p7", (object?)item.TekstWyswietlany ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@p8", item.MoznaOddac);
-        cmd.Parameters.AddWithValue("@p9", item.MoznaKropke);
-        cmd.Parameters.AddWithValue("@p10", item.ZachowajTloWsPrzyBraku);
-        AddNullableShort(
-            cmd,
-            item.DodatkowaSekcjaRozkazu is null ? null : (short?)item.DodatkowaSekcjaRozkazu.Value);
-        cmd.Parameters.AddWithValue("@p12", (short)item.RolaNalozania);
+        cmd.Parameters.AddWithValue("@p8", false);
+        cmd.Parameters.AddWithValue("@p9", false);
+        cmd.Parameters.AddWithValue("@p10", false);
+        AddNullableShort(cmd, null);
+        cmd.Parameters.AddWithValue("@p12", (short)0);
         cmd.Parameters.AddWithValue("@p13", item.Kolejnosc);
         cmd.Parameters.AddWithValue("@p14", item.EksportDoExcela);
         cmd.Parameters.AddWithValue("@p15",

@@ -219,10 +219,6 @@ public sealed class PersonnelRepository
 
                 var typWpisu = typStr ?? string.Empty;
                 wynik.Add((fid, typ.Value, typWpisu));
-
-                var dodatkowa = BoberOznaczeniaBridge.MapDodatkowaSekcja?.Invoke(typWpisu);
-                if (dodatkowa is not null && dodatkowa.Value != typ.Value)
-                    wynik.Add((fid, dodatkowa.Value, typWpisu));
             }
             return wynik;
         }

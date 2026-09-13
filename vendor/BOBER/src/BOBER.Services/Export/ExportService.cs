@@ -253,26 +253,28 @@ public sealed class ExportService
                     cell.Style.Fill.BackgroundColor = stosujWs
                         ? ResolveExcelFill(ozn, typ, rowBg, nieobecnoscBg)
                         : ResolveExcelFill(ozn, typ, rowBg, rowBg);
-                    cell.Value = GrafikWpisTypy.TekstWyswietlany(typ, fromUrlopPlan);
-                    if (lessColor)
-                        cell.Style.Font.FontColor = lessColorText;
-                    ApplyOddajeStrikethrough(cell, typ);
+                    WriteWpisCellContent(cell, typ, fromUrlopPlan, lessColor ? lessColorText : appText);
                     continue;
                 }
 
-                if (bazowy == GrafikWpisTypy.PotrzebujeWolne)
+                // Kolor z katalogu / zachowane tło przy „brak koloru”.
+                if (ozn is not null && !ozn.JestFlaga)
                 {
-                    cell.Value = GrafikWpisTypy.PotrzebujeWolne;
-                    continue;
+                    cell.Style.Fill.BackgroundColor = ResolveExcelFill(
+                        ozn, typ, rowBg, stosujWs ? nieobecnoscBg : rowBg);
+                }
+                else if (lessColor)
+                {
+                    cell.Style.Fill.BackgroundColor =
+                        ResolvePreservedOrRowBg(typ, rowBg, nieobecnoscBg, stosujWs);
+                }
+                else
+                {
+                    cell.Style.Fill.BackgroundColor = ResolveOptionalWpisBg(
+                        typ, bazowy, kolory, rowBg, nieobecnoscBg, wylaczone, stosujWs);
                 }
 
-                cell.Value = GrafikWpisTypy.TekstWyswietlany(typ, fromUrlopPlan);
-                // LessColor: tylko WS/UWS/D żółte (powyżej). Del/S — własny kolor Excel lub żółte przy zachowanym tle WS.
-                cell.Style.Fill.BackgroundColor = lessColor
-                    ? rowBg
-                    : ResolveOptionalWpisBg(typ, bazowy, kolory, rowBg, nieobecnoscBg, wylaczone, stosujWs);
-                cell.Style.Font.FontColor = lessColor ? lessColorText : appText;
-                ApplyOddajeStrikethrough(cell, typ);
+                WriteWpisCellContent(cell, typ, fromUrlopPlan, lessColor ? lessColorText : appText);
             }
         }
 
@@ -354,7 +356,7 @@ public sealed class ExportService
     }
 
     private static readonly string LegendLine2 =
-        "?=potrzebuje wolne | •=chętna oddać | przekreśl./—=Oddaje | D=Dowódca | N=Nurek | K=Kierowca";
+        "?=potrzebuje wolne | D=Dowódca | N=Nurek | K=Kierowca";
 
     private static void AddPageFooterLegend(IXLWorksheet ws)
     {
@@ -472,70 +474,87 @@ public sealed class ExportService
         return trimmed.Length is 7 or 9 ? trimmed : fallback;
     }
 
-    private static void ApplyOddajeStrikethrough(IXLCell cell, string? typWpisu)
-    {
-        ApplyCatalogFontStyle(cell, typWpisu);
-    }
+    private const double WpisMainFontSize = 14;
+    private const double WpisFlagFontSize = 8;
 
-    private static void ApplyCatalogFontStyle(IXLCell cell, string? typWpisu)
+    /// <summary>
+    /// Treść komórki: baza + małe sufiksy LEWA/PRAWA; CENTRUM = przekreślenie bazy.
+    /// </summary>
+    private static void WriteWpisCellContent(
+        IXLCell cell,
+        string typWpisu,
+        bool fromUrlopPlan,
+        XLColor defaultTextColor)
     {
-        var styl = ResolveExcelStyl(typWpisu);
-        switch (styl)
+        var lewa = GrafikWpisTypy.TekstZnaczkaLewa(typWpisu);
+        var glowny = GrafikWpisTypy.TekstGlowny(typWpisu, fromUrlopPlan);
+        var prawa = GrafikWpisTypy.TekstZnaczkaPrawa(typWpisu);
+        var centrum = GrafikWpisTypy.MaCentrumOverlay(typWpisu);
+        var styl = GrafikWpisTypy.ResolveStyl(typWpisu);
+
+        var parsed = GrafikWpisTypy.Parse(typWpisu);
+        var lewaOzn = !string.IsNullOrEmpty(parsed.LewaKod)
+            ? OznaczeniaLookup.FindByKod(parsed.LewaKod)
+            : null;
+        if (lewaOzn is null && !string.IsNullOrEmpty(lewa))
         {
-            case StylWyswietlaniaOznaczenia.Pogrubienie:
-                cell.Style.Font.Bold = true;
-                break;
-            case StylWyswietlaniaOznaczenia.Przekreslenie:
-                cell.Style.Font.Strikethrough = true;
-                break;
-            case StylWyswietlaniaOznaczenia.Kursywa:
-                cell.Style.Font.Italic = true;
-                break;
-            case StylWyswietlaniaOznaczenia.Podkreslenie:
-                cell.Style.Font.Underline = XLFontUnderlineValues.Single;
-                break;
+            var asBase = OznaczeniaLookup.FindByKod(parsed.Bazowy);
+            if (asBase?.FlagaPozycja == FlagaPozycjaOznaczenia.Lewa)
+                lewaOzn = asBase;
         }
 
-        var fontHex = ResolveExcelFontColor(typWpisu);
-        if (fontHex is not null)
-            cell.Style.Font.FontColor = ToXl(fontHex);
-    }
-
-    private static string? ResolveExcelFontColor(string? typWpisu)
-    {
-        if (GrafikWpisTypy.MaOddal(typWpisu))
+        var prawaOzn = !string.IsNullOrEmpty(parsed.PrawaKod)
+            ? OznaczeniaLookup.FindByKod(parsed.PrawaKod)
+            : null;
+        if (prawaOzn is null && !string.IsNullOrEmpty(prawa))
         {
-            var centrum = OznaczeniaLookup.FindCentrumFlaga();
-            return centrum?.EffectiveKolorCzcionkiHex;
+            var asBase = OznaczeniaLookup.FindByKod(parsed.Bazowy);
+            if (asBase?.FlagaPozycja == FlagaPozycjaOznaczenia.Prawa)
+                prawaOzn = asBase;
         }
 
-        if (GrafikWpisTypy.MaKropke(typWpisu))
-            return OznaczeniaLookup.FindChceOddac()?.EffectiveKolorCzcionkiHex;
+        var centrumOzn = centrum
+            ? OznaczeniaLookup.FindByFlaga(FlagaPozycjaOznaczenia.Centrum)
+            : null;
 
-        var ozn = OznaczeniaLookup.FindByKod(GrafikWpisTypy.BazowyKod(typWpisu));
-        if (ozn?.JestFlaga == true)
-            return ozn.EffectiveKolorCzcionkiHex;
+        // Rich text: małe flagi L/P + baza (ew. skreślona).
+        cell.Clear(XLClearOptions.Contents);
+        var rich = cell.GetRichText();
 
-        return null;
-    }
-
-    private static StylWyswietlaniaOznaczenia ResolveExcelStyl(string? typWpisu)
-    {
-        if (GrafikWpisTypy.MaOddal(typWpisu))
+        if (!string.IsNullOrEmpty(lewa))
         {
-            var bazowy = GrafikWpisTypy.BazowyKod(typWpisu);
-            if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase))
-                return StylWyswietlaniaOznaczenia.Normalny;
-
-            var centrum = OznaczeniaLookup.FindCentrumFlaga();
-            return centrum?.StylWyswietlania ?? StylWyswietlaniaOznaczenia.Przekreslenie;
+            var frag = rich.AddText(lewa);
+            frag.FontSize = WpisFlagFontSize;
+            frag.Bold = true;
+            frag.FontColor = ToXl(
+                lewaOzn?.EffectiveKolorCzcionkiHex
+                ?? OznaczenieGrafiku.DomyslnyKolorCzcionkiFlagi);
         }
 
-        var ozn = OznaczeniaLookup.FindByKod(GrafikWpisTypy.BazowyKod(typWpisu));
-        if (ozn is null || ozn.FlagaPozycja != FlagaPozycjaOznaczenia.Nie)
-            return StylWyswietlaniaOznaczenia.Normalny;
+        if (!string.IsNullOrEmpty(glowny))
+        {
+            var frag = rich.AddText(glowny);
+            frag.FontSize = WpisMainFontSize;
+            frag.Bold = styl == StylWyswietlaniaOznaczenia.Pogrubienie;
+            frag.Italic = styl == StylWyswietlaniaOznaczenia.Kursywa;
+            frag.Strikethrough = centrum || styl == StylWyswietlaniaOznaczenia.Przekreslenie;
+            if (styl == StylWyswietlaniaOznaczenia.Podkreslenie)
+                frag.Underline = XLFontUnderlineValues.Single;
 
-        return ozn.StylWyswietlania;
+            frag.FontColor = centrum && centrumOzn is not null
+                ? ToXl(centrumOzn.EffectiveKolorCzcionkiHex)
+                : defaultTextColor;
+        }
+
+        if (!string.IsNullOrEmpty(prawa))
+        {
+            var frag = rich.AddText(prawa);
+            frag.FontSize = WpisFlagFontSize;
+            frag.Bold = true;
+            frag.FontColor = ToXl(
+                prawaOzn?.EffectiveKolorCzcionkiHex
+                ?? OznaczenieGrafiku.DomyslnyKolorCzcionkiFlagi);
+        }
     }
 
     private static string ResolveHex(
@@ -552,28 +571,35 @@ public sealed class ExportService
         return defaults.TryGetValue(key, out var fallback) ? fallback : "#FFFFFF";
     }
 
+    private static XLColor ResolvePreservedOrRowBg(
+        string typWpisu,
+        XLColor rowBg,
+        XLColor wsYellowBg,
+        bool stosujWs)
+    {
+        if (GrafikWpisTypy.MaTloWolnejSluzby(typWpisu) && stosujWs)
+            return wsYellowBg;
+
+        var zachowaneHex = GrafikWpisTypy.ZachowaneTloHex(typWpisu);
+        if (!string.IsNullOrWhiteSpace(zachowaneHex))
+            return ToXl(zachowaneHex.StartsWith('#') ? zachowaneHex : "#" + zachowaneHex);
+
+        return rowBg;
+    }
+
     private static XLColor ResolveExcelFill(
         BOBER.Core.Models.OznaczenieGrafiku? ozn,
         string typWpisu,
         XLColor rowBg,
         XLColor wsYellowBg)
     {
-        if (ozn is not null)
+        if (ozn is not null && !ozn.JestFlaga && ozn.MaKolorExcel)
         {
-            // Flagi: kolor to czcionka, nie tło Excel.
-            if (ozn.JestFlaga)
-                return GrafikWpisTypy.MaZachowaneTloWs(typWpisu) ? wsYellowBg : rowBg;
-
-            if (ozn.MaKolorExcel)
-            {
-                var hex = ozn.EffectiveKolorExcelHex;
-                return ToXl(hex.StartsWith('#') ? hex : "#" + hex);
-            }
-
-            return GrafikWpisTypy.MaZachowaneTloWs(typWpisu) ? wsYellowBg : rowBg;
+            var hex = ozn.EffectiveKolorExcelHex;
+            return ToXl(hex.StartsWith('#') ? hex : "#" + hex);
         }
 
-        return wsYellowBg;
+        return ResolvePreservedOrRowBg(typWpisu, rowBg, wsYellowBg, stosujWs: true);
     }
 
     private static XLColor ResolveOptionalWpisBg(
@@ -596,14 +622,14 @@ public sealed class ExportService
             klucz = RoleKeys.Szkolenie;
 
         if (klucz is null)
-            return rowBg;
+            return ResolvePreservedOrRowBg(typWpisu, rowBg, wsYellowBg, stosujWs);
 
         if (wylaczone.Contains(klucz))
-            return GrafikWpisTypy.MaZachowaneTloWs(typWpisu) && stosujWs ? wsYellowBg : rowBg;
+            return ResolvePreservedOrRowBg(typWpisu, rowBg, wsYellowBg, stosujWs);
 
         var hex = ResolveHex(kolory, klucz, RoleKeys.DomyslneKoloryWpisow);
         if (RoleKeys.IsBrakWypelnienia(hex))
-            return GrafikWpisTypy.MaZachowaneTloWs(typWpisu) && stosujWs ? wsYellowBg : rowBg;
+            return ResolvePreservedOrRowBg(typWpisu, rowBg, wsYellowBg, stosujWs);
 
         return ToXl(hex);
     }

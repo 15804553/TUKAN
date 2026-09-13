@@ -156,7 +156,7 @@
                         Margin="0,0,8,0"
                         FontSize="11"
                         Cursor="Hand"
-                        ToolTip="Brak wypełnienia tła komórki"
+                        ToolTip="Brak = nie zmienia aktualnego tła komórki w grafiku"
                         Click="OnClearColorClick">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
@@ -687,7 +687,7 @@
                                         <DataTemplate>
                                             <ComboBox SelectedItem="{Binding FlagaLabel, UpdateSourceTrigger=PropertyChanged}"
                                                       Margin="2,0" VerticalAlignment="Center"
-                                                      ToolTip="NIE = zwykłe oznaczenie; LEWA/PRAWA = znacznik w rogu; CENTRUM = nakładka jak Oddaje">
+                                                      ToolTip="NIE = treść komórki; LEWA/PRAWA = sufiks (kolor = czcionka); CENTRUM = overlay na treści">
                                                 <sys:String>NIE</sys:String>
                                                 <sys:String>LEWA</sys:String>
                                                 <sys:String>PRAWA</sys:String>

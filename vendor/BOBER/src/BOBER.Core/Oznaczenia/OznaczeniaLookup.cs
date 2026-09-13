@@ -3,10 +3,7 @@ using BOBER.Core.Models;
 
 namespace BOBER.Core.Oznaczenia;
 
-/// <summary>
-/// Cache oznaczeń grafiku (ustawiany przez BOBER.Services po załadowaniu z DB).
-/// Gdy pusty — reguły w <see cref="Constants.GrafikWpisTypy"/> używają fallbacku seed.
-/// </summary>
+/// <summary>Cache oznaczeń grafiku z ustawień (ładowany przez serwis).</summary>
 public static class OznaczeniaLookup
 {
     private static IReadOnlyList<OznaczenieGrafiku> _items = Array.Empty<OznaczenieGrafiku>();
@@ -38,22 +35,9 @@ public static class OznaczeniaLookup
             SkrotKlawiszowyRules.Matches(o.SkrotKlawiszowy, keyName));
     }
 
-    public static OznaczenieGrafiku? FindByRola(RolaNalozaniaOznaczenia rola) =>
-        _items.FirstOrDefault(o => o.RolaNalozania == rola);
+    public static OznaczenieGrafiku? FindByFlaga(FlagaPozycjaOznaczenia flaga) =>
+        _items.FirstOrDefault(o => o.FlagaPozycja == flaga);
 
-    /// <summary>Oznaczenie z flagą centrum (konfiguracja Oddaje).</summary>
-    public static OznaczenieGrafiku? FindCentrumFlaga() =>
-        _items.FirstOrDefault(o => o.FlagaPozycja == Enums.FlagaPozycjaOznaczenia.Centrum);
-
-    /// <summary>Konfiguracja znaczka „chce oddać” (kropka •).</summary>
-    public static OznaczenieGrafiku? FindChceOddac() =>
-        FindByKod(Constants.OznaczeniaGrafikuSeed.KodChceOddac)
-        ?? FindByKod(Constants.OznaczeniaGrafikuSeed.KodChceOddacLegacy);
-
-    public static string? KolorWsHex()
-    {
-        var ws = FindByRola(RolaNalozaniaOznaczenia.WolnaSluzba)
-            ?? FindByKod(Constants.GrafikWpisTypy.WolnaSluzba);
-        return ws?.KolorHex;
-    }
+    public static string? KolorWsHex() =>
+        FindByKod(Constants.GrafikWpisTypy.WolnaSluzba)?.KolorHex;
 }

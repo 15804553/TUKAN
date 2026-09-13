@@ -771,10 +771,10 @@ public partial class BoberSettingsView : UserControl
             var kod = o.Kod.Trim();
             if (string.IsNullOrWhiteSpace(kod))
                 return "Symbol oznaczenia nie może być pusty.";
-            // Sufiksy systemowe zastrzeżone; symbol • (chce oddać) jest dozwolony.
-            if (kod.IndexOfAny(['/', '*']) >= 0
-                || (kod.Contains('.') && !OznaczeniaGrafikuSeed.IsChceOddacKod(kod)))
-                return $"Symbol „{kod}” nie może zawierać znaków /, . ani *.";
+            if (kod.Contains(GrafikWpisTypy.FlagaSeparator))
+                return $"Symbol „{kod}” zawiera niedozwolony znak sterujący.";
+            if (!o.JestFlaga && kod.IndexOfAny(['*', '\u001E']) >= 0)
+                return $"Symbol „{kod}” nie może zawierać znaku *.";
             if (kod.Length > 20)
                 return $"Symbol „{kod}” jest za długi (max 20).";
             if (!kody.Add(kod))
@@ -794,7 +794,7 @@ public partial class BoberSettingsView : UserControl
                     zajeteSkroty.Add(a);
             }
 
-            if (!o.WPracy && o.SekcjaRozkazu is null && !o.JestFlaga)
+            if (!o.JestFlaga && !o.WPracy && o.SekcjaRozkazu is null)
                 return $"Oznaczenie „{kod}” (nieobecność) wymaga grupy w rozkazie.";
         }
 

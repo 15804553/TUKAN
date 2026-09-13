@@ -17,43 +17,21 @@ public sealed class OznaczeniaGrafikuCatalogTests : IDisposable
     [InlineData("U", true)]
     [InlineData("WS", true)]
     [InlineData("Del", true)]
-    [InlineData("S", true)]
-    [InlineData("C", true)]
-    [InlineData("D", true)]
     [InlineData("?", false)]
-    [InlineData("WS/", false)]
-    [InlineData("Del*", true)]
+    [InlineData("D", true)]
     public void JestNieobecnoscia_ZeSeeda(string typ, bool expected) =>
         Assert.Equal(expected, GrafikWpisTypy.JestNieobecnoscia(typ));
 
-    [Theory]
-    [InlineData("U", SekcjaRozkazuGrafiku.Urlop)]
-    [InlineData("WS", SekcjaRozkazuGrafiku.CzasWolny)]
-    [InlineData("UWS", SekcjaRozkazuGrafiku.CzasWolny)]
-    [InlineData("C", SekcjaRozkazuGrafiku.Chory)]
-    [InlineData("Del", SekcjaRozkazuGrafiku.Delegowany)]
-    [InlineData("Del*", SekcjaRozkazuGrafiku.Delegowany)]
-    [InlineData("S", SekcjaRozkazuGrafiku.Delegowany)]
-    [InlineData("D", SekcjaRozkazuGrafiku.DyzurDomowy)]
-    public void SekcjaRozkazu_ZeSeeda(string typ, SekcjaRozkazuGrafiku expected)
-    {
-        var ozn = OznaczeniaLookup.FindByKod(GrafikWpisTypy.BazowyKod(typ));
-        Assert.NotNull(ozn);
-        Assert.Equal(expected, ozn!.SekcjaRozkazu);
-    }
-
     [Fact]
-    public void D_MaDodatkowaSekcjeWolnejSluzby()
+    public void Seed_MaFlagiOddajeIChce()
     {
-        var d = OznaczeniaLookup.FindByKod("D");
-        Assert.Equal(SekcjaRozkazuGrafiku.CzasWolny, d!.DodatkowaSekcjaRozkazu);
-    }
+        var oddaje = OznaczeniaLookup.FindByFlaga(FlagaPozycjaOznaczenia.Centrum);
+        Assert.NotNull(oddaje);
+        Assert.Equal(StylWyswietlaniaOznaczenia.Przekreslenie, oddaje!.StylWyswietlania);
 
-    [Fact]
-    public void ResolvePoNalozeniu_U_plus_WS()
-    {
-        Assert.Equal("UWS", GrafikWpisTypy.ResolvePoNalozeniu("U", "WS"));
-        Assert.Equal("U", GrafikWpisTypy.ResolvePoNalozeniu("UWS", "WS"));
+        var chce = OznaczeniaLookup.FindByKod("\u2022");
+        Assert.NotNull(chce);
+        Assert.Equal(FlagaPozycjaOznaczenia.Prawa, chce!.FlagaPozycja);
     }
 
     [Fact]
@@ -62,22 +40,5 @@ public sealed class OznaczeniaGrafikuCatalogTests : IDisposable
         var ozn = OznaczeniaLookup.FindBySkrot("D");
         Assert.NotNull(ozn);
         Assert.Equal("D", ozn!.Kod);
-    }
-
-    [Fact]
-    public void ResolveDelS_ZachowujeGwiazdkeNaWs()
-    {
-        Assert.Equal("Del*", GrafikWpisTypy.ResolveDelSDlaZapisu("WS", "Del"));
-        Assert.Equal("Del", GrafikWpisTypy.ResolveDelSDlaZapisu("", "Del"));
-    }
-
-    [Fact]
-    public void Seed_MaPolaEksportuExcel()
-    {
-        var ws = OznaczeniaLookup.FindByKod("WS");
-        Assert.NotNull(ws);
-        Assert.True(ws!.EksportDoExcela);
-        Assert.False(string.IsNullOrWhiteSpace(ws.KolorExcelHex));
-        Assert.True(ws.MaKolorExcel);
     }
 }

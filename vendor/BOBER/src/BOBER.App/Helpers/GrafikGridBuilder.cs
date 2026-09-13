@@ -371,10 +371,13 @@ public static class GrafikGridBuilder
         var borderFactory = new FrameworkElementFactory(typeof(Border));
         borderFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
         borderFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Stretch);
-        borderFactory.SetBinding(Border.BackgroundProperty, new Binding($"[{day}]")
-        {
-            Converter = new WpisTloConverter(colors)
-        });
+
+        // MultiBinding: przy „brak koloru” trzeba jawnie ustawić RowBackground,
+        // bo Brushes.Transparent nie kasuje poprzedniego żółtego tła WS w WPF.
+        var tloBinding = new MultiBinding { Converter = new WpisTloConverter(colors) };
+        tloBinding.Bindings.Add(new Binding($"[{day}]"));
+        tloBinding.Bindings.Add(new Binding(nameof(GrafikRowViewModel.RowBackground)));
+        borderFactory.SetBinding(Border.BackgroundProperty, tloBinding);
 
         var contentGrid = new FrameworkElementFactory(typeof(Grid));
 
@@ -429,7 +432,7 @@ public static class GrafikGridBuilder
         textFactory.SetValue(FrameworkElement.StyleProperty, textStyle);
         contentGrid.AppendChild(textFactory);
 
-        // Znaczek LEWA.
+        // Sufiks LEWA — flaga, kolor czcionki.
         var markLeftFactory = new FrameworkElementFactory(typeof(TextBlock));
         markLeftFactory.SetBinding(TextBlock.TextProperty,
             new Binding($"[{day}]") { Converter = WpisZnaczekLewaConverter.Instance });
@@ -444,7 +447,7 @@ public static class GrafikGridBuilder
             new Binding($"[{day}]") { Converter = ZnaczekLewaVisibilityConverter.Instance });
         contentGrid.AppendChild(markLeftFactory);
 
-        // Znaczek PRAWA (• / ? / własne).
+        // Sufiks PRAWA — flaga, kolor czcionki.
         var markRightFactory = new FrameworkElementFactory(typeof(TextBlock));
         markRightFactory.SetBinding(TextBlock.TextProperty,
             new Binding($"[{day}]") { Converter = WpisZnaczekPrawaConverter.Instance });
@@ -614,58 +617,54 @@ public static class GrafikGridBuilder
             throw new NotSupportedException();
     }
 
-    private sealed class WpisTloConverter(GrafikCellColors colors) : IValueConverter
+    private sealed class WpisTloConverter(GrafikCellColors colors) : IMultiValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            var typ = value?.ToString();
+            var typ = values is { Length: > 0 } ? values[0]?.ToString() : null;
+            var rowBg = values is { Length: > 1 } && values[1] is Brush b
+                ? b
+                : Brushes.Transparent;
+
             var kod = GrafikWpisTypy.BazowyKod(typ);
             var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(kod);
 
-            if (ozn is not null)
+            // 1) Własny kolor z katalogu zawsze wygrywa.
+            if (ozn is not null && !ozn.JestFlaga && ozn.MaWlasnyKolor)
             {
-                // Flagi: KolorHex = czcionka, nie tło komórki.
-                if (ozn.JestFlaga)
-                    return GrafikWpisTypy.MaZachowaneTloWs(typ) ? colors.WsTlo : Brushes.Transparent;
-
-                if (ozn.MaWlasnyKolor)
+                try
                 {
-                    try
-                    {
-                        var color = (Color)ColorConverter.ConvertFromString(ozn.KolorHex)!;
-                        return new SolidColorBrush(color);
-                    }
-                    catch
-                    {
-                        return colors.WsTlo;
-                    }
+                    var color = (Color)ColorConverter.ConvertFromString(ozn.KolorHex)!;
+                    return new SolidColorBrush(color);
                 }
-
-                return GrafikWpisTypy.MaZachowaneTloWs(typ) ? colors.WsTlo : Brushes.Transparent;
+                catch
+                {
+                    return colors.WsTlo;
+                }
             }
 
+            // 2) Legacy Del/S z własnym kolorem w ustawieniach grafiku.
+            if (kod.Equals(GrafikWpisTypy.Delegacja, StringComparison.OrdinalIgnoreCase)
+                && colors.DelTlo is not null)
+                return colors.DelTlo;
+            if (kod.Equals(GrafikWpisTypy.Szkolenie, StringComparison.OrdinalIgnoreCase)
+                && colors.STlo is not null)
+                return colors.STlo;
+
+            // 3) Zachowane tło WS albo natywne D/WS/UWS.
             if (GrafikWpisTypy.MaTloWolnejSluzby(typ))
                 return colors.WsTlo;
 
-            // Fallback Del/S bez katalogu.
-            if (kod.Equals(GrafikWpisTypy.Delegacja, StringComparison.OrdinalIgnoreCase))
-            {
-                if (colors.DelTlo is not null)
-                    return colors.DelTlo;
-                return GrafikWpisTypy.MaZachowaneTloWs(typ) ? colors.WsTlo : Brushes.Transparent;
-            }
+            // 4) Zachowane tło z poprzedniego oznaczenia (segment F#hex).
+            var zachowaneHex = GrafikWpisTypy.ZachowaneTloHex(typ);
+            if (!string.IsNullOrWhiteSpace(zachowaneHex))
+                return BrushFromHex(zachowaneHex, rowBg);
 
-            if (kod.Equals(GrafikWpisTypy.Szkolenie, StringComparison.OrdinalIgnoreCase))
-            {
-                if (colors.STlo is not null)
-                    return colors.STlo;
-                return GrafikWpisTypy.MaZachowaneTloWs(typ) ? colors.WsTlo : Brushes.Transparent;
-            }
-
-            return Brushes.Transparent;
+            // 5) Brak koloru / flaga / pusta — tło wiersza.
+            return rowBg;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) =>
             throw new NotSupportedException();
     }
 
@@ -682,6 +681,43 @@ public static class GrafikGridBuilder
         }
 
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    private static StylWyswietlaniaOznaczenia ResolveEffectiveStyl(string? typWpisu) =>
+        GrafikWpisTypy.ResolveStyl(typWpisu);
+
+    private static Brush BrushFromHex(string? hex, Brush fallback)
+    {
+        if (string.IsNullOrWhiteSpace(hex))
+            return fallback;
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex)!;
+            return new SolidColorBrush(color);
+        }
+        catch
+        {
+            return fallback;
+        }
+    }
+
+    private sealed class WpisGlownyCzcionkaConverter : IValueConverter
+    {
+        public static readonly WpisGlownyCzcionkaConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (!GrafikWpisTypy.MaCentrumOverlay(value?.ToString()))
+                return NormalDayFg;
+
+            var centrum = OznaczeniaLookup.FindByFlaga(FlagaPozycjaOznaczenia.Centrum);
+            return centrum is null
+                ? NormalDayFg
+                : BrushFromHex(centrum.EffectiveKolorCzcionkiHex, NormalDayFg);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
             throw new NotSupportedException();
     }
 
@@ -733,61 +769,17 @@ public static class GrafikGridBuilder
             throw new NotSupportedException();
     }
 
-    private static Brush BrushFromHex(string? hex, Brush fallback)
-    {
-        if (string.IsNullOrWhiteSpace(hex))
-            return fallback;
-        try
-        {
-            var color = (Color)ColorConverter.ConvertFromString(hex)!;
-            return new SolidColorBrush(color);
-        }
-        catch
-        {
-            return fallback;
-        }
-    }
-
-    private sealed class WpisGlownyCzcionkaConverter : IValueConverter
-    {
-        public static readonly WpisGlownyCzcionkaConverter Instance = new();
-
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            var typ = value?.ToString();
-            if (GrafikWpisTypy.MaOddal(typ))
-            {
-                var centrum = OznaczeniaLookup.FindCentrumFlaga();
-                if (centrum is not null)
-                    return BrushFromHex(centrum.EffectiveKolorCzcionkiHex, NormalDayFg);
-            }
-
-            return NormalDayFg;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
-            throw new NotSupportedException();
-    }
-
     private sealed class WpisZnaczekLewaKolorConverter : IValueConverter
     {
         public static readonly WpisZnaczekLewaKolorConverter Instance = new();
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            var typ = value?.ToString();
-            if (GrafikWpisTypy.MaKropke(typ))
-            {
-                var chce = OznaczeniaLookup.FindChceOddac();
-                if (chce?.FlagaPozycja == FlagaPozycjaOznaczenia.Lewa)
-                    return BrushFromHex(chce.EffectiveKolorCzcionkiHex, NormalDayFg);
-            }
-
-            var ozn = OznaczeniaLookup.FindByKod(GrafikWpisTypy.BazowyKod(typ));
-            if (ozn?.FlagaPozycja == FlagaPozycjaOznaczenia.Lewa)
-                return BrushFromHex(ozn.EffectiveKolorCzcionkiHex, NormalDayFg);
-
-            return NormalDayFg;
+            var kod = GrafikWpisTypy.Parse(value?.ToString()).LewaKod;
+            var ozn = OznaczeniaLookup.FindByKod(kod);
+            return ozn is null
+                ? NormalDayFg
+                : BrushFromHex(ozn.EffectiveKolorCzcionkiHex, NormalDayFg);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
@@ -800,43 +792,15 @@ public static class GrafikGridBuilder
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            var typ = value?.ToString();
-            if (GrafikWpisTypy.MaKropke(typ))
-            {
-                var chce = OznaczeniaLookup.FindChceOddac();
-                if (chce is not null && chce.FlagaPozycja != FlagaPozycjaOznaczenia.Lewa)
-                    return BrushFromHex(chce.EffectiveKolorCzcionkiHex, NormalDayFg);
-            }
-
-            var ozn = OznaczeniaLookup.FindByKod(GrafikWpisTypy.BazowyKod(typ));
-            if (ozn?.FlagaPozycja == FlagaPozycjaOznaczenia.Prawa)
-                return BrushFromHex(ozn.EffectiveKolorCzcionkiHex, NormalDayFg);
-
-            return NormalDayFg;
+            var kod = GrafikWpisTypy.Parse(value?.ToString()).PrawaKod;
+            var ozn = OznaczeniaLookup.FindByKod(kod);
+            return ozn is null
+                ? NormalDayFg
+                : BrushFromHex(ozn.EffectiveKolorCzcionkiHex, NormalDayFg);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
             throw new NotSupportedException();
-    }
-
-    private static StylWyswietlaniaOznaczenia ResolveEffectiveStyl(string? typWpisu)
-    {
-        // Oddaje (sufiks /) — styl z oznaczenia z flagą CENTRUM.
-        if (GrafikWpisTypy.MaOddal(typWpisu))
-        {
-            var bazowy = GrafikWpisTypy.BazowyKod(typWpisu);
-            if (bazowy.Equals(GrafikWpisTypy.WolnaSluzba, StringComparison.OrdinalIgnoreCase))
-                return StylWyswietlaniaOznaczenia.Normalny;
-
-            var centrum = OznaczeniaLookup.FindCentrumFlaga();
-            return centrum?.StylWyswietlania ?? StylWyswietlaniaOznaczenia.Przekreslenie;
-        }
-
-        var ozn = OznaczeniaLookup.FindByKod(GrafikWpisTypy.BazowyKod(typWpisu));
-        if (ozn is null || ozn.FlagaPozycja != FlagaPozycjaOznaczenia.Nie)
-            return StylWyswietlaniaOznaczenia.Normalny;
-
-        return ozn.StylWyswietlania;
     }
 
     private sealed class WpisStylBoldConverter : IValueConverter

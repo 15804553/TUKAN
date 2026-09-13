@@ -95,24 +95,21 @@ public static class GrafikNurkowyConstants
 
     /// <summary>
     /// Mapuje wpis z grafiku służb na wartość w grafiku nurkowym.
-    /// Pusta komórka / „?” / Oddaje → „1”; urlop (także U.) → „U”;
-    /// Del / Del* → „Del”; C → „C”; pozostałe statusy → brak wartości.
+    /// Pusta komórka / „?” → „1”; urlop → „U”; Del → „Del”; C → „C”;
+    /// pozostałe statusy → brak wartości.
     /// </summary>
     public static string? MapFromGrafikWpis(string? typWpisu)
     {
         if (string.IsNullOrWhiteSpace(typWpisu))
             return WartoscWPracy;
 
-        if (GrafikWpisTypy.MaPytajnik(typWpisu))
-            return WartoscWPracy;
-
-        if (GrafikWpisTypy.MaOddal(typWpisu) && GrafikWpisTypy.MoznaOddac(typWpisu))
+        var bazowy = GrafikWpisTypy.BazowyKod(typWpisu);
+        if (bazowy.Equals(GrafikWpisTypy.PotrzebujeWolne, StringComparison.OrdinalIgnoreCase))
             return WartoscWPracy;
 
         if (GrafikWpisTypy.JestUrlopem(typWpisu))
             return WartoscUrlop;
 
-        var bazowy = GrafikWpisTypy.BazowyKod(typWpisu);
         if (bazowy.Equals(GrafikWpisTypy.Delegacja, StringComparison.OrdinalIgnoreCase)
             || bazowy.Equals("DEL", StringComparison.OrdinalIgnoreCase))
             return WartoscDelegacja;

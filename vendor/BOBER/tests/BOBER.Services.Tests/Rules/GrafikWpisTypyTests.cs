@@ -1,205 +1,198 @@
 using BOBER.Core.Constants;
+using BOBER.Core.Enums;
+using BOBER.Core.Oznaczenia;
 
 namespace BOBER.Services.Tests.Rules;
 
 public sealed class GrafikWpisTypyTests
 {
-    [Theory]
-    [InlineData(null, false)]
-    [InlineData("", false)]
-    [InlineData("?", false)]
-    [InlineData("D", true)]
-    [InlineData("WS", true)]
-    [InlineData("U", true)]
-    [InlineData("UWS", true)]
-    [InlineData("U.", true)]
-    [InlineData("UWS.", true)]
-    [InlineData("WS.", true)]
-    [InlineData("Del", true)]
-    [InlineData("S", true)]
-    [InlineData("C", true)]
-    [InlineData("D/", false)]
-    [InlineData("WS/", false)]
-    [InlineData("U/", false)]
-    [InlineData("UWS/", false)]
-    [InlineData("S/", true)]
-    public void JestNieobecnoscia_UwzgledniaFlagi(string? typ, bool expected)
+    [Fact]
+    public void Parse_Compose_Flagi()
     {
-        Assert.Equal(expected, GrafikWpisTypy.JestNieobecnoscia(typ));
-    }
-
-    [Theory]
-    [InlineData("U", "U.")]
-    [InlineData("U.", "U")]
-    [InlineData("UWS", "UWS.")]
-    [InlineData("UWS.", "UWS")]
-    [InlineData("WS", "WS.")]
-    [InlineData("WS/", "WS.")]
-    [InlineData("D", "D.")]
-    [InlineData("D.", "D")]
-    [InlineData("D/", "D.")]
-    public void PrzelaczKropke_TylkoDUorazWS(string wejscie, string oczekiwane)
-    {
-        Assert.Equal(oczekiwane, GrafikWpisTypy.PrzelaczKropke(wejscie));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("S")]
-    [InlineData("?")]
-    [InlineData("Del")]
-    public void PrzelaczKropke_Niedozwolone_ZwracaNull(string? typ)
-    {
-        Assert.Null(GrafikWpisTypy.PrzelaczKropke(typ));
-    }
-
-    [Theory]
-    [InlineData("", "?")]
-    [InlineData("?", "")]
-    public void PrzelaczPytajnik_TylkoWPracy(string wejscie, string oczekiwane)
-    {
-        Assert.Equal(oczekiwane, GrafikWpisTypy.PrzelaczPytajnik(wejscie));
-    }
-
-    [Theory]
-    [InlineData("U")]
-    [InlineData("WS")]
-    [InlineData("S")]
-    public void PrzelaczPytajnik_Niedozwolone_ZwracaNull(string? typ)
-    {
-        Assert.Null(GrafikWpisTypy.PrzelaczPytajnik(typ));
-    }
-
-    [Theory]
-    [InlineData("S", true)]
-    [InlineData("C", true)]
-    [InlineData("Del", true)]
-    [InlineData("U", false)]
-    [InlineData("WS", false)]
-    public void NieMoznaOddacBoZakazanyTyp(string? typ, bool expected)
-    {
-        Assert.Equal(expected, GrafikWpisTypy.NieMoznaOddacBoZakazanyTyp(typ));
-    }
-
-    [Theory]
-    [InlineData("U.", "U")]
-    [InlineData("WS.", "WS")]
-    [InlineData("?", "")]
-    [InlineData("U", "U")]
-    [InlineData("UWS", "U")]
-    [InlineData("UWS.", "U")]
-    [InlineData("WS", "WS")]
-    public void TekstGlowny_BezZnaczka(string? typ, string expected)
-    {
-        Assert.Equal(expected, GrafikWpisTypy.TekstGlowny(typ));
-    }
-
-    [Theory]
-    [InlineData("U", "U\u209A")]
-    [InlineData("UWS", "U\u209A")]
-    [InlineData("U.", "U\u209A")]
-    [InlineData("UWS/", "U\u209A")]
-    public void TekstGlowny_ZPlanuUrlopow_PokazujeUp(string? typ, string expected)
-    {
-        Assert.Equal(expected, GrafikWpisTypy.TekstGlowny(typ, fromUrlopPlan: true));
+        var composed = GrafikWpisTypy.Compose("D", "\u2022", "?", true);
+        var parsed = GrafikWpisTypy.Parse(composed);
+        Assert.Equal("D", parsed.Bazowy);
+        Assert.Equal("\u2022", parsed.LewaKod);
+        Assert.Equal("?", parsed.PrawaKod);
+        Assert.True(parsed.Centrum);
+        Assert.Equal("D", GrafikWpisTypy.BazowyKod(composed));
+        Assert.True(GrafikWpisTypy.MaCentrumOverlay(composed));
     }
 
     [Fact]
-    public void TekstGlowny_RecznyUrlop_ZawszeDuzeU()
+    public void PrzelaczFlage_Centrum_NieZmieniaBazy()
     {
-        Assert.Equal("U", GrafikWpisTypy.TekstGlowny("U", fromUrlopPlan: false));
-        Assert.Equal("U", GrafikWpisTypy.TekstGlowny("UWS", fromUrlopPlan: false));
+        var oddaje = new BOBER.Core.Models.OznaczenieGrafiku
+        {
+            Kod = "ODDAJE",
+            FlagaPozycja = FlagaPozycjaOznaczenia.Centrum,
+            StylWyswietlania = StylWyswietlaniaOznaczenia.Przekreslenie,
+            KolorHex = "#000000",
+            WPracy = true
+        };
+
+        var z = GrafikWpisTypy.PrzelaczFlage("D", oddaje)!;
+        Assert.Equal("D", GrafikWpisTypy.BazowyKod(z));
+        Assert.True(GrafikWpisTypy.MaCentrumOverlay(z));
+        Assert.Equal("D", GrafikWpisTypy.TekstGlowny(z));
+
+        var off = GrafikWpisTypy.PrzelaczFlage(z, oddaje)!;
+        Assert.False(GrafikWpisTypy.MaCentrumOverlay(off));
+        Assert.Equal("D", off);
     }
 
     [Fact]
-    public void TekstGlowny_UrlopRodzicielski_PokazujeUrZIndeksem()
+    public void PrzelaczFlage_Prawa_Sufiks()
     {
-        Assert.Equal(GrafikWpisTypy.UrlopRodzicielskiTekst, GrafikWpisTypy.TekstGlowny("Ur"));
-        Assert.Equal(GrafikWpisTypy.UrlopRodzicielskiTekst, GrafikWpisTypy.TekstGlowny("Ur", fromUrlopPlan: true));
-        Assert.Equal(GrafikWpisTypy.UrlopRodzicielskiTekst, GrafikWpisTypy.TekstGlowny("Ur."));
+        OznaczeniaLookup.Set(
+        [
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "\u2022",
+                Nazwa = "Chce",
+                FlagaPozycja = FlagaPozycjaOznaczenia.Prawa,
+                KolorHex = "#000000",
+                WPracy = true
+            }
+        ]);
+
+        try
+        {
+            var flaga = OznaczeniaLookup.FindByKod("\u2022")!;
+            var z = GrafikWpisTypy.PrzelaczFlage("U", flaga)!;
+            Assert.Equal("U", GrafikWpisTypy.BazowyKod(z));
+            Assert.Equal("\u2022", GrafikWpisTypy.TekstZnaczkaPrawa(z));
+            Assert.Equal("U", GrafikWpisTypy.TekstGlowny(z));
+        }
+        finally
+        {
+            OznaczeniaLookup.Clear();
+        }
     }
 
     [Fact]
-    public void JestUrlopem_IncludesRodzicielski()
+    public void UstawBazowy_ZachowujeFlagi()
     {
-        Assert.True(GrafikWpisTypy.JestUrlopem("Ur"));
-        Assert.True(GrafikWpisTypy.JestUrlopemRodzicielskim("Ur"));
-        Assert.False(GrafikWpisTypy.JestUrlopemRodzicielskim("U"));
-    }
-
-    [Theory]
-    [InlineData("U.", "\u2022")]
-    [InlineData("D.", "\u2022")]
-    [InlineData("?", "?")]
-    [InlineData("U", "")]
-    public void TekstZnaczka(string? typ, string expected)
-    {
-        Assert.Equal(expected, GrafikWpisTypy.TekstZnaczka(typ));
-    }
-
-    [Theory]
-    [InlineData("U", "WS", "UWS")]
-    [InlineData("UWS", "WS", "U")]
-    [InlineData("WS", "U", "UWS")]
-    [InlineData("", "WS", "WS")]
-    [InlineData("", "U", "U")]
-    [InlineData("D", "WS", "WS")]
-    [InlineData("U.", "WS", "UWS")]
-    public void ResolvePoNalozeniu_LaczyUrlopZWs(string? aktualny, string nowy, string oczekiwane)
-    {
-        Assert.Equal(oczekiwane, GrafikWpisTypy.ResolvePoNalozeniu(aktualny, nowy));
-    }
-
-    [Theory]
-    [InlineData("UWS", true)]
-    [InlineData("WS", true)]
-    [InlineData("D", true)]
-    [InlineData("Del", false)]
-    [InlineData("S", false)]
-    [InlineData("U", false)]
-    public void MaTloWolnejSluzby(string? typ, bool expected)
-    {
-        Assert.Equal(expected, GrafikWpisTypy.MaTloWolnejSluzby(typ));
-    }
-
-    [Theory]
-    [InlineData("Del*", true)]
-    [InlineData("S*", true)]
-    [InlineData("Del", false)]
-    [InlineData("S", false)]
-    [InlineData("WS", false)]
-    public void MaZachowaneTloWs(string? typ, bool expected)
-    {
-        Assert.Equal(expected, GrafikWpisTypy.MaZachowaneTloWs(typ));
-    }
-
-    [Theory]
-    [InlineData("Del*", "Del")]
-    [InlineData("S*", "S")]
-    [InlineData("Del", "Del")]
-    public void BazowyKod_UsuwaSufiksZachowanegoTla(string typ, string expected)
-    {
-        Assert.Equal(expected, GrafikWpisTypy.BazowyKod(typ));
-    }
-
-    [Theory]
-    [InlineData("WS", "Del", "Del*")]
-    [InlineData("D", "S", "S*")]
-    [InlineData("UWS", "Del", "Del*")]
-    [InlineData("Del*", "S", "S*")]
-    [InlineData("", "Del", "Del")]
-    [InlineData("U", "Del", "Del")]
-    [InlineData("Del", "Del", "Del")]
-    [InlineData("WS", "U", "U")]
-    public void ResolveDelSDlaZapisu(string? poprzedni, string nowy, string expected)
-    {
-        Assert.Equal(expected, GrafikWpisTypy.ResolveDelSDlaZapisu(poprzedni, nowy));
+        var withFlags = GrafikWpisTypy.Compose("D", null, "?", true);
+        var next = GrafikWpisTypy.UstawBazowy(withFlags, "WS");
+        var p = GrafikWpisTypy.Parse(next);
+        Assert.Equal("WS", p.Bazowy);
+        Assert.Equal("?", p.PrawaKod);
+        Assert.True(p.Centrum);
+        Assert.False(p.ZachowajTloWs);
     }
 
     [Fact]
-    public void TekstGlowny_DelZSufiksem_PokazujeDel()
+    public void UstawBazowy_WsNaU_BezKoloru_ZachowujeZolteTlo()
     {
-        Assert.Equal("Del", GrafikWpisTypy.TekstGlowny("Del*"));
-        Assert.Equal("S", GrafikWpisTypy.TekstGlowny("S*"));
+        OznaczeniaLookup.Set(
+        [
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "U",
+                Nazwa = "Urlop",
+                KolorHex = RoleKeys.BrakWypelnienia,
+                WPracy = false,
+                SekcjaRozkazu = SekcjaRozkazuGrafiku.Urlop
+            }
+        ]);
+
+        try
+        {
+            var next = GrafikWpisTypy.UstawBazowy("WS", "U");
+            Assert.Equal("U", GrafikWpisTypy.BazowyKod(next));
+            Assert.True(GrafikWpisTypy.MaZachowaneTloWs(next));
+            Assert.True(GrafikWpisTypy.MaTloWolnejSluzby(next));
+
+            var zPustej = GrafikWpisTypy.UstawBazowy(string.Empty, "U");
+            Assert.False(GrafikWpisTypy.MaZachowaneTloWs(zPustej));
+            Assert.False(GrafikWpisTypy.MaTloWolnejSluzby(zPustej));
+        }
+        finally
+        {
+            OznaczeniaLookup.Clear();
+        }
+    }
+
+    [Fact]
+    public void UstawBazowy_WsNaOznaczenieZKolorem_NieZachowujeTla()
+    {
+        OznaczeniaLookup.Set(
+        [
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "X",
+                Nazwa = "Test",
+                KolorHex = "#FF00AA",
+                WPracy = false
+            }
+        ]);
+
+        try
+        {
+            var next = GrafikWpisTypy.UstawBazowy("WS", "X");
+            Assert.False(GrafikWpisTypy.MaZachowaneTloWs(next));
+            Assert.Null(GrafikWpisTypy.ZachowaneTloHex(next));
+            Assert.False(GrafikWpisTypy.MaTloWolnejSluzby(next));
+        }
+        finally
+        {
+            OznaczeniaLookup.Clear();
+        }
+    }
+
+    [Fact]
+    public void UstawBazowy_OznaczenieZKoloremNaBrak_ZachowujeTenKolor()
+    {
+        OznaczeniaLookup.Set(
+        [
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "X",
+                Nazwa = "Kolorowe",
+                KolorHex = "#FF00AA",
+                WPracy = false
+            },
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "U",
+                Nazwa = "Urlop",
+                KolorHex = RoleKeys.BrakWypelnienia,
+                WPracy = false,
+                SekcjaRozkazu = SekcjaRozkazuGrafiku.Urlop
+            },
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "C",
+                Nazwa = "Chory",
+                KolorHex = RoleKeys.BrakWypelnienia,
+                WPracy = false,
+                SekcjaRozkazu = SekcjaRozkazuGrafiku.Chory
+            }
+        ]);
+
+        try
+        {
+            var poU = GrafikWpisTypy.UstawBazowy("X", "U");
+            Assert.Equal("U", GrafikWpisTypy.BazowyKod(poU));
+            Assert.False(GrafikWpisTypy.MaZachowaneTloWs(poU));
+            Assert.Equal("#FF00AA", GrafikWpisTypy.ZachowaneTloHex(poU));
+
+            // Kolejne oznaczenie z „brak” przenosi zachowane tło dalej.
+            var poC = GrafikWpisTypy.UstawBazowy(poU, "C");
+            Assert.Equal("C", GrafikWpisTypy.BazowyKod(poC));
+            Assert.Equal("#FF00AA", GrafikWpisTypy.ZachowaneTloHex(poC));
+        }
+        finally
+        {
+            OznaczeniaLookup.Clear();
+        }
+    }
+
+    [Fact]
+    public void JestNieobecnoscia_Centrum_ToWPracy()
+    {
+        var typ = GrafikWpisTypy.Compose("U", null, null, true);
+        Assert.False(GrafikWpisTypy.JestNieobecnoscia(typ));
     }
 }

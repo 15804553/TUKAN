@@ -184,7 +184,8 @@ public sealed class TukanAppServices : IDisposable
             if (ozn is null)
                 return false;
 
-            if (BOBER.Core.Constants.GrafikWpisTypy.MaOddal(typWpisu) && ozn.MoznaOddac)
+            // Overlay CENTRUM (np. Oddaje) — osoba w pracy.
+            if (BOBER.Core.Constants.GrafikWpisTypy.MaCentrumOverlay(typWpisu))
             {
                 sekcja = null;
                 return true;
@@ -204,15 +205,6 @@ public sealed class TukanAppServices : IDisposable
 
             sekcja = (SKRYBEK.Core.Enums.TypNieobecnosci)(int)ozn.SekcjaRozkazu.Value;
             return true;
-        };
-
-        SKRYBEK.Core.Rules.BoberOznaczeniaBridge.MapDodatkowaSekcja = typWpisu =>
-        {
-            var bazowy = BOBER.Core.Constants.GrafikWpisTypy.BazowyKod(typWpisu);
-            var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(bazowy);
-            if (ozn?.DodatkowaSekcjaRozkazu is null)
-                return null;
-            return (SKRYBEK.Core.Enums.TypNieobecnosci)(int)ozn.DodatkowaSekcjaRozkazu.Value;
         };
 
         SKRYBEK.Core.Rules.BoberOznaczeniaBridge.MapAdnotacja = (typWpisu, typSekcji) =>
