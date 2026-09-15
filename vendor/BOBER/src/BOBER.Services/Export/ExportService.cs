@@ -27,13 +27,14 @@ public sealed class ExportService
         string? alternatingColorB = null,
         string? nazwaZmiany = null,
         int zmianaId = 1,
-        IReadOnlySet<string>? wylaczoneKolory = null)
+        IReadOnlySet<string>? wylaczoneKolory = null,
+        IReadOnlyList<GrafikZliczanieWiersz>? zliczanie = null)
     {
         using var workbook = new XLWorkbook();
         AddMonthWorksheet(
             workbook, rok, miesiac, funkcjonariusze, wpisy, stanZmiany, stanMinimalny, kolory, workDays,
             lessColor, alternatingRows, alternatingColorA, alternatingColorB, nazwaZmiany, zmianaId,
-            wylaczoneKolory);
+            wylaczoneKolory, zliczanie);
         workbook.SaveAs(filePath);
     }
 
@@ -53,7 +54,8 @@ public sealed class ExportService
         string? alternatingColorB = null,
         string? nazwaZmiany = null,
         int zmianaId = 1,
-        IReadOnlySet<string>? wylaczoneKolory = null)
+        IReadOnlySet<string>? wylaczoneKolory = null,
+        IReadOnlyList<GrafikZliczanieWiersz>? zliczanie = null)
     {
         using var workbook = new XLWorkbook();
         for (var miesiac = 1; miesiac <= 12; miesiac++)
@@ -74,7 +76,8 @@ public sealed class ExportService
                 alternatingColorB,
                 nazwaZmiany,
                 zmianaId,
-                wylaczoneKolory);
+                wylaczoneKolory,
+                zliczanie);
         }
 
         workbook.SaveAs(filePath);
@@ -96,7 +99,8 @@ public sealed class ExportService
         string? alternatingColorB,
         string? nazwaZmiany,
         int zmianaId,
-        IReadOnlySet<string>? wylaczoneKolory)
+        IReadOnlySet<string>? wylaczoneKolory,
+        IReadOnlyList<GrafikZliczanieWiersz>? zliczanie)
     {
         var ws = workbook.Worksheets.Add(GetMonthName(miesiac));
         var altA = ResolveAlternatingHex(alternatingColorA, GrafikRowColorSettings.DefaultColorA);
@@ -279,9 +283,11 @@ public sealed class ExportService
         }
 
         int sumBase = funkcjonariusze.Count + FirstDataRow;
-        var sumLabels = new[] { "Wolne miejsca", "Dowódcy", "Nurkowie", "Kierowcy", "Poziom A/AB" };
+        var zliczanieWiersze = zliczanie ?? [];
+        var sumLabels = new List<string> { GrafikZliczanieEvaluator.WolneMiejscaNazwa };
+        sumLabels.AddRange(zliczanieWiersze.OrderBy(w => w.Kolejnosc).Select(w => w.Nazwa));
 
-        for (int s = 0; s < sumLabels.Length; s++)
+        for (int s = 0; s < sumLabels.Count; s++)
         {
             var row = sumBase + s;
             for (int col = 1; col <= lastCol; col++)
@@ -301,29 +307,27 @@ public sealed class ExportService
                 .Select(kv => kv.Key.FunkcjonariuszId)
                 .ToHashSet();
 
-            var obecniIds = funkcjonariusze
+            var obecni = funkcjonariusze
                 .Where(f => !nieobecniIds.Contains(f.Id))
-                .Select(f => f.Id)
-                .ToHashSet();
+                .ToList();
 
             var stanEfektywny = funkcjonariusze.Count > 0 ? funkcjonariusze.Count : stanZmiany;
             int wolne = stanEfektywny - stanMinimalny - nieobecniIds.Count;
-            int kierowcy = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && f.MaUprawnieniaKierowca);
-            int nurkowie = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && RoleClassifier.IsNurek(f));
-            int dowodcy = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && RoleClassifier.IsDowodca(f));
-            var obecni = obecniIds
-                .Where(id => funcLookup.ContainsKey(id))
-                .Select(id => funcLookup[id]);
-            var poziom = PoziomGotowosciNurkowejRules.Format(PoziomGotowosciNurkowejRules.Ocena(obecni));
 
             SetSummaryCell(ws.Cell(sumBase, col), wolne, bandBg, bandFg);
-            SetSummaryCell(ws.Cell(sumBase + 1, col), dowodcy, bandBg, bandFg);
-            SetSummaryCell(ws.Cell(sumBase + 2, col), nurkowie, bandBg, bandFg);
-            SetSummaryCell(ws.Cell(sumBase + 3, col), kierowcy, bandBg, bandFg);
-            SetSummaryCell(ws.Cell(sumBase + 4, col), poziom, bandBg, bandFg);
+            var offset = 1;
+            foreach (var wiersz in zliczanieWiersze.OrderBy(w => w.Kolejnosc))
+            {
+                SetSummaryCell(
+                    ws.Cell(sumBase + offset, col),
+                    GrafikZliczanieEvaluator.FormatWartosc(obecni, wiersz),
+                    bandBg,
+                    bandFg);
+                offset++;
+            }
         }
 
-        int lastRow = sumBase + sumLabels.Length - 1;
+        int lastRow = sumBase + sumLabels.Count - 1;
 
         // Szerokość nazwiska wg treści, z limitem tak by dni zmieściły się na 1 stronie A4 (poziom).
         var nameTexts = funkcjonariusze

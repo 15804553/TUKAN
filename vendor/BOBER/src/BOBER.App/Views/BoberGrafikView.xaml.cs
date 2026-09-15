@@ -931,7 +931,7 @@ public partial class BoberGrafikView : UserControl
             {
                 e.Row.FontWeight = FontWeights.SemiBold;
                 e.Row.Foreground = UrlopPlanPalette.ForegroundBrush;
-                e.Row.MinHeight = 88;
+                e.Row.MinHeight = GrafikGridBuilder.SummaryRowMinHeight(row.SummaryLineCount);
             }
             else if (row.IsNotesRow)
             {

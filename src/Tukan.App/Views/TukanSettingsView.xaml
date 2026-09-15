@@ -92,6 +92,9 @@
         <TabItem x:Name="OznaczeniaTab" Header="Oznaczenia w grafiku">
             <ContentControl x:Name="OznaczeniaSettingsHost" />
         </TabItem>
+        <TabItem x:Name="ZliczanieTab" Header="Zliczanie grafiku" Visibility="Collapsed">
+            <ContentControl x:Name="ZliczanieSettingsHost" />
+        </TabItem>
         <TabItem x:Name="PojazdyTab" Header="Pojazdy" Visibility="Collapsed">
             <ContentControl x:Name="SkrybekPojazdyHost" />
         </TabItem>

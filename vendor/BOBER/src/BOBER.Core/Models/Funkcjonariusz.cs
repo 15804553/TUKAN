@@ -18,6 +18,7 @@ public sealed class Funkcjonariusz
     public string PelneImieNazwisko => $"{Imie} {Nazwisko}".Trim();
 
     public List<string> NazwyUprawnien { get; set; } = [];
+    public List<int> IdsUprawnien { get; set; } = [];
 
     public bool MaUprawnieniaKierowcaC =>
         NazwyUprawnien.Any(u => u.Contains("kat. C", StringComparison.OrdinalIgnoreCase)

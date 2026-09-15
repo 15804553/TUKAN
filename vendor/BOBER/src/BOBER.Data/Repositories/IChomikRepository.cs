@@ -13,4 +13,10 @@ public interface IChomikRepository
     /// Klucz słownika: Id funkcjonariusza, wartość: nowy numer porządkowy (1-bazowany).
     /// </summary>
     Task UpdateNrAsync(IReadOnlyDictionary<int, int> idToNr, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<GrafikZliczanieSlownikPozycja>> GetTypyUprawnienAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<GrafikZliczanieSlownikPozycja>> GetStanowiskaAsync(
+        CancellationToken cancellationToken = default);
 }

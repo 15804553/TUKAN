@@ -91,7 +91,7 @@ public sealed class ChomikRepository(ChomikConnectionFactory connectionFactory) 
 
         await using var command = new OleDbCommand(
             """
-            SELECT fu.FunkcjonariuszId, tu.Nazwa, tu.Podtyp
+            SELECT fu.FunkcjonariuszId, tu.Id, tu.Nazwa, tu.Podtyp
             FROM FunkcjonariuszUprawnienia fu
             INNER JOIN TypyUprawnien tu ON tu.Id = fu.TypUprawnieniaId
             ORDER BY fu.FunkcjonariuszId
@@ -105,9 +105,11 @@ public sealed class ChomikRepository(ChomikConnectionFactory connectionFactory) 
             var fId = reader.GetFieldInt32(0);
             if (!lookup.TryGetValue(fId, out var f)) continue;
 
-            var nazwa = reader.GetString(1);
-            var podtyp = reader.IsDBNull(2) ? null : reader.GetString(2);
+            var typId = reader.GetFieldInt32(1);
+            var nazwa = reader.GetString(2);
+            var podtyp = reader.IsDBNull(3) ? null : reader.GetString(3);
             var label = podtyp != null ? $"{nazwa} {podtyp}" : nazwa;
+            f.IdsUprawnien.Add(typId);
             f.NazwyUprawnien.Add(label);
         }
     }
@@ -128,6 +130,51 @@ public sealed class ChomikRepository(ChomikConnectionFactory connectionFactory) 
             cmd.Parameters.AddWithValue("@p2", id);
             await cmd.ExecuteNonQueryAsync(cancellationToken);
         }
+    }
+
+    public async Task<IReadOnlyList<GrafikZliczanieSlownikPozycja>> GetTypyUprawnienAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = connectionFactory.CreateOpenConnection();
+        await using var command = new OleDbCommand(
+            "SELECT Id, Nazwa, Podtyp FROM TypyUprawnien ORDER BY Nazwa, Podtyp",
+            connection);
+
+        var result = new List<GrafikZliczanieSlownikPozycja>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            result.Add(new GrafikZliczanieSlownikPozycja
+            {
+                Id = reader.GetFieldInt32(0),
+                Nazwa = reader.GetString(1),
+                Podtyp = reader.IsDBNull(2) ? null : reader.GetString(2)
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<IReadOnlyList<GrafikZliczanieSlownikPozycja>> GetStanowiskaAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = connectionFactory.CreateOpenConnection();
+        await using var command = new OleDbCommand(
+            "SELECT Id, Nazwa FROM StanowiskaSlownik ORDER BY Nazwa",
+            connection);
+
+        var result = new List<GrafikZliczanieSlownikPozycja>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            result.Add(new GrafikZliczanieSlownikPozycja
+            {
+                Id = reader.GetFieldInt32(0),
+                Nazwa = reader.GetString(1)
+            });
+        }
+
+        return result;
     }
 
     private static Funkcjonariusz MapBase(DbDataReader reader) => new()

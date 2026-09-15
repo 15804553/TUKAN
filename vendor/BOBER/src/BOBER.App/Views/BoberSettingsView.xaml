@@ -741,6 +741,13 @@
                 </Border>
                 </StackPanel>
 
+                <StackPanel x:Name="ZliczanieSection">
+                <TextBlock x:Name="ZliczanieHeader"
+                           Text="ZLICZANIE GRAFIKU"
+                           Style="{StaticResource SectionHeader}" />
+                <ContentControl x:Name="ZliczanieHost" Margin="0,0,0,16" />
+                </StackPanel>
+
                 <StackPanel x:Name="GrafikManagementSection">
                 <TextBlock x:Name="GrafikManagementHeader"
                            Text="ZARZĄDZANIE GRAFIKIEM" Style="{StaticResource SectionHeader}" />

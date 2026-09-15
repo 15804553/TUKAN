@@ -1,0 +1,86 @@
+<Window x:Class="BOBER.App.Views.Chrome.GrafikZliczanieEditorDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Wiersz zliczania"
+        Width="720"
+        Height="640"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Border Background="{StaticResource SurfaceBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Background="{StaticResource TitleBarBrush}"
+                    MouseLeftButtonDown="OnTitleBarMouseDown"
+                    CornerRadius="8,8,0,0">
+                <Grid Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="TitleTextBlock"
+                               Text="Wiersz zliczania"
+                               Margin="14,0,0,0"
+                               VerticalAlignment="Center"
+                               Foreground="{StaticResource TitleBarForegroundBrush}"
+                               FontWeight="SemiBold"
+                               FontSize="13" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="✓" Style="{StaticResource ChromeIconButton}" ToolTip="Zatwierdź"
+                                FontWeight="Bold" Click="OnAcceptClick" />
+                        <Button Content="✕" Style="{StaticResource ChromeCloseButton}" ToolTip="Anuluj"
+                                Click="OnCancelClick" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="16">
+                <StackPanel>
+                    <TextBlock Text="Nazwa wiersza" Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,4" />
+                    <TextBox x:Name="NazwaTextBox" Margin="0,0,0,12" Padding="6,4" />
+
+                    <TextBlock Text="Typ" Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,4" />
+                    <ComboBox x:Name="TypCombo" Margin="0,0,0,12" SelectionChanged="OnTypChanged">
+                        <ComboBoxItem Content="Zliczanie osób" Tag="Zliczanie" />
+                        <ComboBoxItem Content="Poziom (np. A/AB)" Tag="Poziom" />
+                    </ComboBox>
+
+                    <StackPanel x:Name="ZliczaniePanel">
+                        <TextBlock Text="Źródło" Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,4" />
+                        <ComboBox x:Name="ZrodloCombo" Margin="0,0,0,8" SelectionChanged="OnZrodloChanged">
+                            <ComboBoxItem Content="Uprawnienia" Tag="Uprawnienia" />
+                            <ComboBoxItem Content="Stanowiska" Tag="Stanowiska" />
+                        </ComboBox>
+                        <TextBlock Text="W grupie pozycje łączone są LUB; kolejne grupy to ORAZ."
+                                   TextWrapping="Wrap"
+                                   Foreground="{StaticResource ForegroundBrush}"
+                                   Opacity="0.8"
+                                   Margin="0,0,0,8" />
+                        <Button Content="Dodaj grupę ORAZ" Style="{StaticResource SecondaryButton}"
+                                Padding="12,6" HorizontalAlignment="Left" Margin="0,0,0,8"
+                                Click="OnAddGrupaZliczaniaClick" />
+                        <ItemsControl x:Name="GrupyZliczaniaHost" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="PoziomPanel" Visibility="Collapsed">
+                        <TextBlock Text="Poziomy (pierwszy spełniony wygrywa). Slot: liczba osób + kryteria. Współdzielenie: kolejność wcześniejszego slotu (np. 0 = KPP)."
+                                   TextWrapping="Wrap"
+                                   Foreground="{StaticResource ForegroundBrush}"
+                                   Opacity="0.8"
+                                   Margin="0,0,0,8" />
+                        <Button Content="Dodaj poziom" Style="{StaticResource SecondaryButton}"
+                                Padding="12,6" HorizontalAlignment="Left" Margin="0,0,0,8"
+                                Click="OnAddPoziomClick" />
+                        <ItemsControl x:Name="PoziomyHost" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</Window>

@@ -140,6 +140,50 @@ internal static class SchemaScripts
             StylWyswietlania SHORT NOT NULL,
             FlagaPozycja SHORT NOT NULL
         )
+        """,
+        """
+        CREATE TABLE GrafikZliczanieWiersze (
+            Id AUTOINCREMENT PRIMARY KEY,
+            ZmianaId SHORT NOT NULL,
+            Nazwa TEXT(50) NOT NULL,
+            Typ SHORT NOT NULL,
+            Zrodlo SHORT NOT NULL,
+            Kolejnosc SHORT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE GrafikZliczaniePoziomy (
+            Id AUTOINCREMENT PRIMARY KEY,
+            WierszId LONG NOT NULL,
+            Kod TEXT(20) NOT NULL,
+            Kolejnosc SHORT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE GrafikZliczanieSloty (
+            Id AUTOINCREMENT PRIMARY KEY,
+            PoziomId LONG NOT NULL,
+            Nazwa TEXT(40) NOT NULL,
+            Zrodlo SHORT NOT NULL,
+            Liczba SHORT NOT NULL,
+            Kolejnosc SHORT NOT NULL,
+            WspoldzielSlotKolejnosc SHORT
+        )
+        """,
+        """
+        CREATE TABLE GrafikZliczanieGrupy (
+            Id AUTOINCREMENT PRIMARY KEY,
+            WierszId LONG,
+            SlotId LONG,
+            Kolejnosc SHORT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE GrafikZliczaniePozycje (
+            Id AUTOINCREMENT PRIMARY KEY,
+            GrupaId LONG NOT NULL,
+            RefId LONG NOT NULL
+        )
         """
     ];
 }

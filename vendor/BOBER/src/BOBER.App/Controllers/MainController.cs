@@ -26,6 +26,7 @@ public sealed class MainController(AppServices services)
     public SettingsController CreateSettingsController() => new(services);
 
     private IReadOnlyList<Funkcjonariusz>? _funkcjonariusze;
+    private IReadOnlyList<GrafikZliczanieWiersz> _zliczanie = [];
     private IReadOnlyDictionary<string, KolorStanowiska>? _koloryMap;
     private int _stanZmiany = 10;
     private int _stanMinimalny = 6;
@@ -46,6 +47,7 @@ public sealed class MainController(AppServices services)
         _koloryMap = KoloryLookup.Index(kolory);
         _stanZmiany = await services.Settings.GetStanZmianyAsync(ZmianaId, cancellationToken);
         _stanMinimalny = await services.Settings.GetStanMinimalnyAsync(ZmianaId, cancellationToken);
+        _zliczanie = await services.GrafikZliczanie.GetAllAsync(ZmianaId, cancellationToken);
         await ReloadOznaczeniaAsync(cancellationToken);
     }
 
@@ -114,11 +116,12 @@ public sealed class MainController(AppServices services)
             rows.Add(row);
         }
 
-        // Wiersz sumaryczny (Stan / Dowódcy / Nurkowie / Kierowcy / Poziom A/AB)
+        // Wiersz sumaryczny: Wolne miejsca + definicje z ustawień zmiany
         var summaryRow = new GrafikRowViewModel
         {
             IsSummaryRow = true,
-            ImieNazwisko = "Wolne miejsca\nDowódcy\nNurkowie\nKierowcy\nPoziom A/AB",
+            SummaryLineCount = 1 + _zliczanie.Count,
+            ImieNazwisko = GrafikZliczanieEvaluator.FormatEtykiety(_zliczanie),
             RowBackground = UrlopPlanPalette.SurfaceVariantBrush,
             RowForeground = UrlopPlanPalette.ForegroundBrush
         };
@@ -378,7 +381,8 @@ public sealed class MainController(AppServices services)
             exportAlt.ColorB,
             NazwaZmiany,
             ZmianaId,
-            wylaczone), cancellationToken);
+            wylaczone,
+            _zliczanie), cancellationToken);
     }
 
     public async Task ExportYearAsync(
@@ -422,7 +426,8 @@ public sealed class MainController(AppServices services)
             exportAlt.ColorB,
             NazwaZmiany,
             ZmianaId,
-            wylaczone), cancellationToken);
+            wylaczone,
+            _zliczanie), cancellationToken);
     }
 
     public Task<string> GetExportPathGrafikSluzbAsync(CancellationToken cancellationToken = default) =>
@@ -516,13 +521,10 @@ public sealed class MainController(AppServices services)
         IEnumerable<GrafikRowViewModel> allRows,
         int dzien)
     {
-        var (stan, kierowcy, nurkowie, dowodcy, poziom) = ComputeSummary(allRows, dzien);
-        summaryRow.SetCell(dzien, $"{stan}\n{dowodcy}\n{nurkowie}\n{kierowcy}\n{poziom}");
+        summaryRow.SetCell(dzien, ComputeSummaryText(allRows, dzien));
     }
 
-    private (int Stan, int Kierowcy, int Nurkowie, int Dowodcy, string Poziom) ComputeSummary(
-        IEnumerable<GrafikRowViewModel> allRows,
-        int dzien)
+    private string ComputeSummaryText(IEnumerable<GrafikRowViewModel> allRows, int dzien)
     {
         var workerRows = allRows
             .Where(r => !r.IsSummaryRow && !r.IsNotesRow && r.FunkcjonariuszId.HasValue)
@@ -533,21 +535,18 @@ public sealed class MainController(AppServices services)
         var stan = stanZmiany - _stanMinimalny - nieobecni;
 
         var funcLookup = (_funkcjonariusze ?? []).ToDictionary(f => f.Id);
-        var obecniIds = workerRows
+        var obecni = workerRows
             .Where(r => !GrafikWpisTypy.JestNieobecnoscia(r.GetCell(dzien)))
             .Select(r => r.FunkcjonariuszId!.Value)
-            .ToHashSet();
+            .Where(funcLookup.ContainsKey)
+            .Select(id => funcLookup[id])
+            .ToList();
 
-        var kierowcy = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && f.MaUprawnieniaKierowca);
-        var nurkowie = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && RoleClassifier.IsNurek(f));
-        var dowodcy = obecniIds.Count(id => funcLookup.TryGetValue(id, out var f) && RoleClassifier.IsDowodca(f));
+        var linie = new List<string> { stan.ToString() };
+        foreach (var wiersz in _zliczanie.OrderBy(w => w.Kolejnosc))
+            linie.Add(GrafikZliczanieEvaluator.FormatWartosc(obecni, wiersz));
 
-        var obecni = obecniIds
-            .Where(id => funcLookup.ContainsKey(id))
-            .Select(id => funcLookup[id]);
-        var poziom = PoziomGotowosciNurkowejRules.Format(PoziomGotowosciNurkowejRules.Ocena(obecni));
-
-        return (stan, kierowcy, nurkowie, dowodcy, poziom);
+        return string.Join('\n', linie);
     }
 
     private IReadOnlyDictionary<string, string> KoloryHex() =>

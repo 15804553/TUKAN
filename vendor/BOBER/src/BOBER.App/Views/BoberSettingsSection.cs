@@ -11,5 +11,6 @@ public enum BoberSettingsSection
     Oznaczenia,
     ParametryZmiany,
     Kolejnosc,
-    ZarzadzanieGrafikiem
+    ZarzadzanieGrafikiem,
+    Zliczanie
 }

@@ -58,6 +58,9 @@ public partial class BoberSettingsView : UserControl
     private bool IncludesZarzadzanieGrafikiem =>
         _section is BoberSettingsSection.All or BoberSettingsSection.ZarzadzanieGrafikiem;
 
+    private bool IncludesZliczanie =>
+        _section is BoberSettingsSection.All or BoberSettingsSection.Zliczanie;
+
     public BoberSettingsView(
         SettingsController controller,
         BoberSettingsSection section = BoberSettingsSection.All)
@@ -72,6 +75,12 @@ public partial class BoberSettingsView : UserControl
         KoloryEksportuItemsControl.ItemsSource = _koloryEksportu;
         KoloryKomorekItemsControl.ItemsSource = _koloryKomorek;
         OznaczeniaDataGrid.ItemsSource = _oznaczenia;
+        if (IncludesZliczanie)
+        {
+            var zliczanieView = new GrafikZliczanieSettingsView(_controller);
+            zliczanieView.SettingsSaved += (_, _) => SettingsSaved?.Invoke(this, EventArgs.Empty);
+            ZliczanieHost.Content = zliczanieView;
+        }
 
         ApplySectionLayout();
         Loaded += OnLoaded;
@@ -121,6 +130,7 @@ public partial class BoberSettingsView : UserControl
         GrafikManagementSection.Visibility = IncludesZarzadzanieGrafikiem
             ? Visibility.Visible
             : Visibility.Collapsed;
+        ZliczanieSection.Visibility = IncludesZliczanie ? Visibility.Visible : Visibility.Collapsed;
 
         if (_section is BoberSettingsSection.ParametryZmiany
             or BoberSettingsSection.Kolejnosc

@@ -140,6 +140,20 @@ public sealed class SettingsController(AppServices services)
     public Task SaveOznaczeniaAsync(IReadOnlyList<OznaczenieGrafiku> items, CancellationToken ct = default) =>
         services.Oznaczenia.SaveAsync(ZmianaId, items, ct);
 
+    public Task<IReadOnlyList<GrafikZliczanieWiersz>> GetZliczanieAsync(CancellationToken ct = default) =>
+        services.GrafikZliczanie.GetAllAsync(ZmianaId, ct);
+
+    public Task SaveZliczanieAsync(IReadOnlyList<GrafikZliczanieWiersz> items, CancellationToken ct = default) =>
+        services.GrafikZliczanie.SaveAsync(ZmianaId, items, ct);
+
+    public Task<IReadOnlyList<GrafikZliczanieSlownikPozycja>> GetTypyUprawnienZliczaniaAsync(
+        CancellationToken ct = default) =>
+        services.GrafikZliczanie.GetTypyUprawnienAsync(ct);
+
+    public Task<IReadOnlyList<GrafikZliczanieSlownikPozycja>> GetStanowiskaZliczaniaAsync(
+        CancellationToken ct = default) =>
+        services.GrafikZliczanie.GetStanowiskaAsync(ct);
+
     public Task<int> CountWpisowZKodemAsync(string kod, CancellationToken ct = default) =>
         services.Oznaczenia.CountWpisowZKodemAsync(kod, ZmianaId, ct);
 

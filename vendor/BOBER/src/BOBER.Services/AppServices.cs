@@ -39,6 +39,7 @@ public sealed class AppServices
         var koloryRepository = new KoloryRepository(boberFactory);
         var ustawieniaRepository = new UstawieniaRepository(boberFactory);
         var oznaczeniaRepository = new OznaczeniaGrafikuRepository(boberFactory);
+        var grafikZliczanieRepository = new GrafikZliczanieRepository(boberFactory);
         var chomikRepository = new ChomikRepository(chomikFactory);
 
         Chomik = chomikRepository;
@@ -48,6 +49,8 @@ public sealed class AppServices
         Kolory = koloryRepository;
         Kolejnosc = kolejnoscRepository;
         Oznaczenia = new OznaczeniaService(oznaczeniaRepository);
+        GrafikZliczanie = new GrafikZliczanieService(
+            grafikZliczanieRepository, chomikRepository, ustawieniaRepository);
 
         var calendarEngine = new ShiftCalendarEngine(ustawieniaRepository);
         Grafik = new GrafikService(grafikRepository, grafikNotatkaRepository, grafikUwagaMiesiecznaRepository);
@@ -84,6 +87,7 @@ public sealed class AppServices
     public IKoloryRepository Kolory { get; }
     public IKolejnoscRepository Kolejnosc { get; }
     public IOznaczeniaService Oznaczenia { get; }
+    public IGrafikZliczanieService GrafikZliczanie { get; }
     public IGrafikService Grafik { get; }
     public IObsadaFunkcjiService ObsadaFunkcji { get; }
     public ShiftCalendarEngine Calendar { get; }

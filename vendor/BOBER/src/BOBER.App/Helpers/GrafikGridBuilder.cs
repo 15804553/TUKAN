@@ -197,8 +197,12 @@ public static class GrafikGridBuilder
         return template;
     }
 
-    private const double SummaryLineFontSize = 12.0;
-    private const double SummaryLineHeight = 15.0;
+    public const double SummaryLineFontSize = 12.0;
+    public const double SummaryLineHeight = 15.0;
+    private const double SummaryRowPadding = 13.0;
+
+    public static double SummaryRowMinHeight(int lineCount) =>
+        Math.Max(28, Math.Max(1, lineCount) * SummaryLineHeight + SummaryRowPadding);
 
     private static SolidColorBrush SelectionBorderBrush => UrlopPlanPalette.PrimaryBrush;
 

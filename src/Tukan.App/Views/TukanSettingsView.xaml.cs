@@ -66,6 +66,7 @@ public partial class TukanSettingsView : UserControl
         UzytkoweTab.Visibility = Visibility.Collapsed;
         GrafikTab.Visibility = Visibility.Collapsed;
         OznaczeniaTab.Visibility = Visibility.Collapsed;
+        ZliczanieTab.Visibility = Visibility.Collapsed;
         RozkazyTab.Visibility = Visibility.Collapsed;
         PojazdyTab.Visibility = Visibility.Collapsed;
         KalendarzTab.Visibility = Visibility.Collapsed;
@@ -301,6 +302,19 @@ public partial class TukanSettingsView : UserControl
             controller, BoberSettingsSection.Grafik, "Ustawienia grafiku");
         OznaczeniaSettingsHost.Content = CreateBoberSection(
             controller, BoberSettingsSection.Oznaczenia, "Oznaczenia w grafiku");
+
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        if (user?.IsShiftAccount == true)
+        {
+            var zliczanieView = new GrafikZliczanieSettingsView(controller);
+            zliczanieView.SettingsSaved += async (_, _) =>
+            {
+                await TryAuditSettingsAsync("Zliczanie grafiku");
+                SettingsSaved?.Invoke(this, EventArgs.Empty);
+            };
+            ZliczanieSettingsHost.Content = zliczanieView;
+            ZliczanieTab.Visibility = Visibility.Visible;
+        }
 
         ParametryZmianHost.Content = CreateBoberSection(
             controller, BoberSettingsSection.ParametryZmiany, "Parametry zmian");

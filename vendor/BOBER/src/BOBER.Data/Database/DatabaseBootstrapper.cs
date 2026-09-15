@@ -70,6 +70,7 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         await MigrateKalendarzEntryTypesAsync(connection, cancellationToken);
         await MigrateOznaczeniaGrafikuAsync(connection, cancellationToken);
         await MigrateGrafikTypWpisuText20Async(connection, cancellationToken);
+        await MigrateGrafikZliczanieTablesAsync(connection, cancellationToken);
     }
 
     private static async Task MigrateKalendarzTablesAsync(
@@ -965,6 +966,66 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         {
             /* starsze bazy — TEXT(5) nadal mieści Del* */
         }
+    }
+
+    private static async Task MigrateGrafikZliczanieTablesAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await ExecuteDdlAsync(connection,
+            """
+            CREATE TABLE GrafikZliczanieWiersze (
+                Id AUTOINCREMENT PRIMARY KEY,
+                ZmianaId SHORT NOT NULL,
+                Nazwa TEXT(50) NOT NULL,
+                Typ SHORT NOT NULL,
+                Zrodlo SHORT NOT NULL,
+                Kolejnosc SHORT NOT NULL
+            )
+            """,
+            cancellationToken);
+        await ExecuteDdlAsync(connection,
+            """
+            CREATE TABLE GrafikZliczaniePoziomy (
+                Id AUTOINCREMENT PRIMARY KEY,
+                WierszId LONG NOT NULL,
+                Kod TEXT(20) NOT NULL,
+                Kolejnosc SHORT NOT NULL
+            )
+            """,
+            cancellationToken);
+        await ExecuteDdlAsync(connection,
+            """
+            CREATE TABLE GrafikZliczanieSloty (
+                Id AUTOINCREMENT PRIMARY KEY,
+                PoziomId LONG NOT NULL,
+                Nazwa TEXT(40) NOT NULL,
+                Zrodlo SHORT NOT NULL,
+                Liczba SHORT NOT NULL,
+                Kolejnosc SHORT NOT NULL,
+                WspoldzielSlotKolejnosc SHORT
+            )
+            """,
+            cancellationToken);
+        await ExecuteDdlAsync(connection,
+            """
+            CREATE TABLE GrafikZliczanieGrupy (
+                Id AUTOINCREMENT PRIMARY KEY,
+                WierszId LONG,
+                SlotId LONG,
+                Kolejnosc SHORT NOT NULL
+            )
+            """,
+            cancellationToken);
+        await ExecuteDdlAsync(connection,
+            """
+            CREATE TABLE GrafikZliczaniePozycje (
+                Id AUTOINCREMENT PRIMARY KEY,
+                GrupaId LONG NOT NULL,
+                RefId LONG NOT NULL
+            )
+            """,
+            cancellationToken);
     }
 
     private static async Task ExecuteDdlAsync(
