@@ -356,40 +356,6 @@ public sealed class ExportService
         ws.PageSetup.FitToPages(1, 0);
         ws.PageSetup.ScaleHFWithDocument = false;
         ws.PageSetup.AlignHFWithMargins = true;
-        AddPageFooterLegend(ws);
-    }
-
-    private static readonly string LegendLine2 =
-        "?=potrzebuje wolne | D=Dowódca | N=Nurek | K=Kierowca";
-
-    private static void AddPageFooterLegend(IXLWorksheet ws)
-    {
-        // Excel: cały footer razem z kodami &L/&C max 255 znaków — bez SetFontSize/Color.
-        ws.PageSetup.Footer.Left.AddText(BuildLegendLine1() + "\n" + LegendLine2, XLHFOccurrence.AllPages);
-    }
-
-    private static string BuildLegendLine1()
-    {
-        var katalog = BOBER.Core.Oznaczenia.OznaczeniaLookup.Items;
-        if (katalog.Count == 0)
-        {
-            return "Legenda: puste=praca | D=Dyżur (żółte) | żółte=WS | U=Urlop | Uₚ=z planu | Uᵣ=rodz. | U na żółtym=U z WS | Del=Delegacja | S=Szkolenie | C=Chory";
-        }
-
-        var parts = katalog
-            .Where(o => o.EksportDoExcela)
-            .OrderBy(o => o.Kolejnosc)
-            .Select(o =>
-            {
-                var symbol = string.IsNullOrWhiteSpace(o.Kod) ? "?" : o.Kod.Trim();
-                var opis = string.IsNullOrWhiteSpace(o.Nazwa) ? symbol : o.Nazwa.Trim();
-                return $"{symbol}={opis}";
-            })
-            .ToList();
-
-        var line = "Legenda: puste=praca | " + string.Join(" | ", parts);
-        const int maxLen = 200; // zapas na LegendLine2 i kody stopki Excel
-        return line.Length <= maxLen ? line : line[..(maxLen - 1)] + "…";
     }
 
     private const int TitleRow = 1;

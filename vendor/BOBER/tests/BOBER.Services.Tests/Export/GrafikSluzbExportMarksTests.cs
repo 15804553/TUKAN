@@ -753,7 +753,7 @@ public sealed class GrafikSluzbExportMarksTests
     }
 
     [Fact]
-    public void ExportMonth_Stopka_ZawieraLegendeOznaczen()
+    public void ExportMonth_Stopka_BezLegendyOznaczen()
     {
         var funkcjonariusze = new List<Funkcjonariusz>
         {
@@ -773,15 +773,7 @@ public sealed class GrafikSluzbExportMarksTests
             var ws = wb.Worksheet(1);
             var footer = ws.PageSetup.Footer.Left.GetText(XLHFOccurrence.OddPages);
 
-            Assert.Contains("Dyżur", footer);
-            Assert.Contains("WS", footer);
-            Assert.Contains("Urlop", footer);
-            Assert.Contains("Uₚ", footer);
-            Assert.Contains("Uᵣ", footer);
-            Assert.Contains("Nurek", footer);
-            Assert.Contains("Kierowca", footer);
-
-            // sumBase = 1+4 = 5; 5 wierszy sum → lastRow = 9; pod tabelą nie ma już legendy
+            Assert.True(string.IsNullOrEmpty(footer));
             Assert.True(ws.Cell(11, 1).IsEmpty());
             Assert.True(ws.Cell(12, 1).IsEmpty());
         }
