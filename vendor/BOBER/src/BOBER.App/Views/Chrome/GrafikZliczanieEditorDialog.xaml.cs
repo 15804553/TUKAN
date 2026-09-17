@@ -219,30 +219,45 @@ public partial class GrafikZliczanieEditorDialog : Window
     {
         var poziom = _poziomy[index];
         var root = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
-        var header = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
-        header.Children.Add(new TextBlock
+        var header = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        header.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var poziomLabel = new TextBlock
         {
             Text = $"Poziom {index + 1}",
             VerticalAlignment = VerticalAlignment.Center,
             FontWeight = FontWeights.SemiBold,
             Foreground = TryFindResource("ForegroundBrush") as System.Windows.Media.Brush
-        });
-        var usun = new Button { Content = "Usuń", Padding = new Thickness(8, 2, 8, 2) };
-        DockPanel.SetDock(usun, Dock.Right);
+        };
+        var usun = new Button
+        {
+            Content = "Usuń",
+            Padding = new Thickness(8, 2, 8, 2),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(0, 0, 0, 6)
+        };
         usun.Click += (_, _) =>
         {
             _poziomy.RemoveAt(index);
             RebuildPoziomy();
         };
-        header.Children.Add(usun);
-        root.Children.Add(header);
+        Grid.SetColumn(usun, 1);
 
-        var kodPanel = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
-        kodPanel.Children.Add(new TextBlock { Text = "Kod", Width = 80, VerticalAlignment = VerticalAlignment.Center });
+        var kodLabel = new TextBlock { Text = "Kod", VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetRow(kodLabel, 1);
         var kodBox = new TextBox { Text = poziom.Kod };
         kodBox.TextChanged += (_, _) => poziom.Kod = kodBox.Text;
-        kodPanel.Children.Add(kodBox);
-        root.Children.Add(kodPanel);
+        Grid.SetRow(kodBox, 1);
+        Grid.SetColumn(kodBox, 1);
+
+        header.Children.Add(poziomLabel);
+        header.Children.Add(usun);
+        header.Children.Add(kodLabel);
+        header.Children.Add(kodBox);
+        root.Children.Add(header);
 
         var addSlot = new Button { Content = "Dodaj slot", Padding = new Thickness(8, 4, 8, 4), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 6) };
         addSlot.Click += (_, _) =>
