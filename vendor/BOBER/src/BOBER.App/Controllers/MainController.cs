@@ -132,13 +132,7 @@ public sealed class MainController(AppServices services)
         rows.Add(summaryRow);
 
         var notatki = await services.Grafik.GetNotatkiMonthAsync(ZmianaId, rok, miesiac, cancellationToken);
-        var notesRow = new GrafikRowViewModel
-        {
-            IsNotesRow = true,
-            ImieNazwisko = string.Empty,
-            RowBackground = Brushes.Transparent,
-            RowForeground = UrlopPlanPalette.ForegroundBrush
-        };
+        var notesRow = CreateNotesRow();
 
         foreach (var notatka in notatki)
         {
@@ -155,7 +149,9 @@ public sealed class MainController(AppServices services)
                 notesRow.SetKalendarzNote(wpis.Data.Day, wpis.Tresc);
         }
 
-        rows.Add(notesRow);
+        if (notesRow.HasNotesContent)
+            rows.Add(notesRow);
+
         return rows;
     }
 
@@ -175,6 +171,15 @@ public sealed class MainController(AppServices services)
 
         await services.Grafik.SetNotatkaAsync(ZmianaId, rok, miesiac, dzien, trimmed, cancellationToken);
     }
+
+    public GrafikRowViewModel CreateNotesRow() =>
+        new()
+        {
+            IsNotesRow = true,
+            ImieNazwisko = string.Empty,
+            RowBackground = Brushes.Transparent,
+            RowForeground = UrlopPlanPalette.ForegroundBrush
+        };
 
     public void UpdateNotesRowCell(GrafikRowViewModel notesRow, int dzien, string tresc)
     {

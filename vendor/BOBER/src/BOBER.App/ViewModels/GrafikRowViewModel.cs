@@ -18,6 +18,24 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
     public int SummaryLineCount { get; init; }
     /// <summary>Wiersz ikon notatek pod sumą — komórki zawierają treść notatki dnia.</summary>
     public bool IsNotesRow { get; init; }
+
+    /// <summary>Czy wiersz notatek ma choć jedną ikonę (grafik albo kalendarz DCA).</summary>
+    public bool HasNotesContent
+    {
+        get
+        {
+            for (var day = 1; day <= 31; day++)
+            {
+                if (!string.IsNullOrWhiteSpace(GetCell(day)))
+                    return true;
+                if (!string.IsNullOrWhiteSpace(KalendarzNotes[day]))
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
     /// <summary>Numer porządkowy (Lp.) wynikający z pozycji na liście. Null dla wiersza sumarycznego.</summary>
     public int? Numer { get; init; }
     public string ImieNazwisko { get; init; } = string.Empty;

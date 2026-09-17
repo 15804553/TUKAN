@@ -931,21 +931,41 @@ public partial class BoberGrafikView : UserControl
             {
                 e.Row.FontWeight = FontWeights.SemiBold;
                 e.Row.Foreground = UrlopPlanPalette.ForegroundBrush;
-                e.Row.MinHeight = GrafikGridBuilder.SummaryRowMinHeight(row.SummaryLineCount);
+                var height = GrafikGridBuilder.SummaryRowMinHeight(row.SummaryLineCount);
+                e.Row.MinHeight = height;
+                e.Row.Height = height;
             }
             else if (row.IsNotesRow)
             {
-                e.Row.MinHeight = 28;
-                e.Row.Height = 28;
-                e.Row.Background = UrlopPlanPalette.SurfaceVariantBrush;
-                e.Row.IsHitTestVisible = true;
-                e.Row.Focusable = false;
+                ApplyNotesRowLayout(e.Row, row);
             }
             else
             {
                 e.Row.Foreground = row.RowForeground;
             }
         }
+    }
+
+    private static void ApplyNotesRowLayout(DataGridRow visual, GrafikRowViewModel row)
+    {
+        if (!row.HasNotesContent)
+        {
+            visual.Height = 0;
+            visual.MinHeight = 0;
+            visual.MaxHeight = 0;
+            visual.Visibility = Visibility.Collapsed;
+            visual.IsHitTestVisible = false;
+            visual.Focusable = false;
+            return;
+        }
+
+        visual.Visibility = Visibility.Visible;
+        visual.MaxHeight = double.PositiveInfinity;
+        visual.MinHeight = 28;
+        visual.Height = 28;
+        visual.Background = UrlopPlanPalette.SurfaceVariantBrush;
+        visual.IsHitTestVisible = true;
+        visual.Focusable = false;
     }
 
     private void OnDataGridRightClick(object? sender, MouseButtonEventArgs e)
@@ -1181,17 +1201,14 @@ public partial class BoberGrafikView : UserControl
 
     private async Task EditNotatkaAsync(DataGrid dataGrid, int month, int day)
     {
-        if (_controller is null || dataGrid.ItemsSource is not IEnumerable<GrafikRowViewModel> rows)
+        if (_controller is null || dataGrid.ItemsSource is not IList<GrafikRowViewModel> source)
             return;
 
-        var notesRow = rows.FirstOrDefault(r => r.IsNotesRow);
-        if (notesRow is null)
-            return;
-
+        var notesRow = source.FirstOrDefault(r => r.IsNotesRow);
         var dialog = new GrafikNotatkaDialog
         {
             Owner = OwnerWindow,
-            NoteText = notesRow.GetCell(day)
+            NoteText = notesRow?.GetCell(day) ?? string.Empty
         };
 
         if (dialog.ShowDialog() != true)
@@ -1201,8 +1218,19 @@ public partial class BoberGrafikView : UserControl
         {
             var tresc = dialog.NoteText;
             await _controller.SetNotatkaAsync(_year, month, day, tresc);
+
+            notesRow ??= _controller.CreateNotesRow();
+            if (!source.Contains(notesRow))
+            {
+                source.Add(notesRow);
+                dataGrid.Items.Refresh();
+            }
+
             _controller.UpdateNotesRowCell(notesRow, day, tresc);
-            dataGrid.ScrollIntoView(notesRow);
+            if (dataGrid.ItemContainerGenerator.ContainerFromItem(notesRow) is DataGridRow visual)
+                ApplyNotesRowLayout(visual, notesRow);
+            if (notesRow.HasNotesContent)
+                dataGrid.ScrollIntoView(notesRow);
         }
         catch (Exception ex)
         {

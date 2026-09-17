@@ -199,7 +199,7 @@ public static class GrafikGridBuilder
 
     public const double SummaryLineFontSize = 12.0;
     public const double SummaryLineHeight = 15.0;
-    private const double SummaryRowPadding = 13.0;
+    private const double SummaryRowPadding = 8.0;
 
     public static double SummaryRowMinHeight(int lineCount) =>
         Math.Max(28, Math.Max(1, lineCount) * SummaryLineHeight + SummaryRowPadding);
@@ -481,7 +481,7 @@ public static class GrafikGridBuilder
         panelFactory.SetValue(StackPanel.OrientationProperty, Orientation.Vertical);
         panelFactory.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
         panelFactory.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top);
-        panelFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2, 2, 2, 1));
+        panelFactory.SetValue(FrameworkElement.MarginProperty, new Thickness(2, 1, 2, 1));
 
         var textFactory = new FrameworkElementFactory(typeof(TextBlock));
         textFactory.SetBinding(TextBlock.TextProperty, new Binding($"[{day}]"));
