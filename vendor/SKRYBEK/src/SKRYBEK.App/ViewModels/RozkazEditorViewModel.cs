@@ -1,7 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using SKRYBEK.App.Helpers;
 using SKRYBEK.Core.Enums;
@@ -22,7 +21,6 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     private readonly Dictionary<int, string> _nazwyTypowUprawnien;
     private readonly List<RatownikMedycznyPozycjaUstawienie> _ustawieniaRatownikow;
     private bool _synchronizacjaDat;
-    private readonly DyzurWolnaSluzbaSynchronizer _dyzurSynchronizer = new();
 
     /// <summary>Odstęp cyklu zmian PSP: służba co 3 dni (1 praca, 2 wolne).</summary>
     private const int PrzesuniecieDniHarmonogramu = 3;
@@ -234,9 +232,6 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             NieobecniGrupy.Add(group);
         }
 
-        PodlaczSynchronizacjeDyzuru();
-        SynchronizujDyzurZWolnaSluzba();
-
         if (_isNew && CzyAutoRatownicyAktywne)
             ZastosujAutoFillRatownikow();
         else
@@ -402,15 +397,15 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Ponownie odczytuje dostępny personel z grafiku BOBER na bieżącą datę rozkazu.
-    /// Nie czyści wpisanych osób w comboboxach ani sekcji nieobecnych.
+    /// Ponownie odczytuje z grafiku BOBER dostępny personel i nieobecnych na bieżącą datę rozkazu.
+    /// Obsada wpisana ręcznie zostaje, o ile osoba nadal jest dostępna.
     /// </summary>
     [RelayCommand]
     private async Task PrzeladujPersonelZGrafikuAsync()
     {
         if (IsReadOnly || IsReloadingPersonel) return;
 
-        await PrzeladujDostepnyPersonelAsync(Data, odswiezNieobecnych: false);
+        await PrzeladujDostepnyPersonelAsync(Data, odswiezNieobecnych: true);
     }
 
     /// <summary>
@@ -485,18 +480,20 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             if (CzyAutoRatownicyAktywne)
                 ZastosujAutoFillRatownikow();
 
-            if (odswiezNieobecnych)
-                await OdswiezNieobecnychZBoberaAsync(data, nrZmiany);
-            else
-                StatusMessage = nowyPersonel.Count == 0
-                    ? $"Brak personelu na {data:dd.MM.yyyy} (zmiana {nrZmiany}) — sprawdź grafik BOBER."
-                    : $"Odświeżono personel z grafiku — {nowyPersonel.Count} os. na {data:dd.MM.yyyy} (zmiana {nrZmiany})";
+            if (odswiezNieobecnych && !await OdswiezNieobecnychZBoberaAsync(data, nrZmiany))
+                return;
+
+            var nieobecniInfo = odswiezNieobecnych
+                ? $", nieobecnych: {PoliczWpisanychNieobecnych()}"
+                : string.Empty;
+            StatusMessage = nowyPersonel.Count == 0
+                ? $"Brak personelu na {data:dd.MM.yyyy} (zmiana {nrZmiany}) — sprawdź grafik BOBER.{nieobecniInfo}"
+                : $"Odświeżono z grafiku — {nowyPersonel.Count} os. dostępnych na {data:dd.MM.yyyy} (zmiana {nrZmiany}){nieobecniInfo}";
         }
         catch (Exception ex)
         {
             SkrybekLog.Error($"Błąd odświeżania personelu na {data}", ex);
-            if (!odswiezNieobecnych)
-                StatusMessage = $"Błąd odświeżania personelu: {ex.Message}";
+            StatusMessage = $"Błąd odświeżania personelu: {ex.Message}";
         }
         finally
         {
@@ -504,7 +501,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         }
     }
 
-    private async Task OdswiezNieobecnychZBoberaAsync(DateOnly data, int nrZmiany)
+    private async Task<bool> OdswiezNieobecnychZBoberaAsync(DateOnly data, int nrZmiany)
     {
         try
         {
@@ -517,14 +514,18 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
                 grp.ZaladujZBobera(dlaTypu, _wszyscyZmiany);
             }
 
-            _dyzurSynchronizer.Reset();
-            SynchronizujDyzurZWolnaSluzba();
+            return true;
         }
         catch (Exception ex)
         {
             SkrybekLog.Error($"Błąd przeładowania nieobecnych z BOBER na {data}", ex);
+            StatusMessage = $"Błąd odświeżania nieobecnych z grafiku: {ex.Message}";
+            return false;
         }
     }
+
+    private int PoliczWpisanychNieobecnych() =>
+        NieobecniGrupy.Sum(g => g.Items.Count(i => !string.IsNullOrWhiteSpace(i.Nazwisko)));
 
     // ── Akceptacja / odblokowanie (wymaganie 3) ───────────────────────────────
 
@@ -1014,52 +1015,9 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             _rozkaz.RatwnicyMedyczni.Add(ratVm.ToModel());
 
         _rozkaz.Nieobecni.Clear();
-        SynchronizujDyzurZWolnaSluzba(wymusNoweWpisy: true);
         foreach (var grp in NieobecniGrupy)
             _rozkaz.Nieobecni.AddRange(grp.GetModele());
 
         return _rozkaz;
-    }
-
-    private void PodlaczSynchronizacjeDyzuru()
-    {
-        var dyzurGrp = NieobecniGrupy.FirstOrDefault(g => g.Typ == TypNieobecnosci.DyzurDomowy);
-        if (dyzurGrp is null) return;
-
-        dyzurGrp.Items.CollectionChanged += OnDyzurItemsChanged;
-        foreach (var item in dyzurGrp.Items)
-            PodlaczObserwatorNazwiskaDyzuru(item);
-    }
-
-    private void OnDyzurItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        if (e.NewItems is not null)
-        {
-            foreach (NieobecnyViewModel item in e.NewItems)
-                PodlaczObserwatorNazwiskaDyzuru(item);
-        }
-
-        SynchronizujDyzurZWolnaSluzba();
-    }
-
-    private void PodlaczObserwatorNazwiskaDyzuru(NieobecnyViewModel item)
-    {
-        item.PropertyChanged -= OnDyzurNazwiskoChanged;
-        item.PropertyChanged += OnDyzurNazwiskoChanged;
-    }
-
-    private void OnDyzurNazwiskoChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(NieobecnyViewModel.Nazwisko))
-            SynchronizujDyzurZWolnaSluzba();
-    }
-
-    private void SynchronizujDyzurZWolnaSluzba(bool wymusNoweWpisy = false)
-    {
-        var dyzurGrp = NieobecniGrupy.FirstOrDefault(g => g.Typ == TypNieobecnosci.DyzurDomowy);
-        var wolnaGrp = NieobecniGrupy.FirstOrDefault(g => g.Typ == TypNieobecnosci.CzasWolny);
-        if (dyzurGrp is null || wolnaGrp is null) return;
-
-        _dyzurSynchronizer.Synchronizuj(dyzurGrp.Items, wolnaGrp.Items, _wszyscyZmiany, wymusNoweWpisy);
     }
 }

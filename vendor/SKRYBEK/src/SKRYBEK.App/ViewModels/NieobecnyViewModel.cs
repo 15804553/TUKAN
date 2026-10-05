@@ -50,14 +50,6 @@ public sealed partial class NieobecnyViewModel : ObservableObject
         _funkcjonariuszId = WybranaOsoba?.Id;
     }
 
-    /// <summary>Aktualizuje kopię na liście wolnej służby bez tworzenia nowego wiersza.</summary>
-    public void ZastosujDane(string nazwisko, Funkcjonariusz? osoba, int? funkcjonariuszId)
-    {
-        _funkcjonariuszId = osoba?.Id ?? funkcjonariuszId;
-        WybranaOsoba = osoba;
-        Nazwisko = nazwisko;
-    }
-
     public NieobecnyWSluzbie ToModel()
         => new()
         {
@@ -93,10 +85,7 @@ public sealed partial class NieobecniGroupViewModel : ObservableObject
             Items.Add(new NieobecnyViewModel(n, personel));
     }
 
-    /// <summary>
-    /// Zastępuje zawartość listy danymi pobranymi z BOBER.
-    /// Zachowuje wpisy dodane ręcznie przez użytkownika (bez FunkcjonariuszId z BOBER).
-    /// </summary>
+    /// <summary>Zastępuje listę nieobecnych danymi z grafiku BOBER.</summary>
     public void ZaladujZBobera(IEnumerable<NieobecnyWSluzbie> nieobecni, IEnumerable<Funkcjonariusz>? personel = null)
     {
         if (personel is not null)
