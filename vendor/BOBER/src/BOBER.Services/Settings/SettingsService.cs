@@ -1,6 +1,6 @@
-using BOBER.Data.Repositories;
 using BOBER.Core.Constants;
 using BOBER.Core.Models;
+using BOBER.Data.Repositories;
 
 namespace BOBER.Services.Settings;
 
@@ -216,6 +216,44 @@ public sealed class SettingsService(IUstawieniaRepository ustawieniaRepository) 
         ustawieniaRepository.SetAsync(
             BuildKalendarzAutoDeleteKey(shiftNumber),
             mode.ToString(),
+            cancellationToken);
+
+    public async Task<GrafikNurkowyKolejnoscTryb> GetGrafikNurkowyKolejnoscAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var raw = await ustawieniaRepository.GetAsync(
+            GrafikNurkowyConstants.UstawienieKolejnoscKlucz,
+            cancellationToken);
+        return Enum.TryParse<GrafikNurkowyKolejnoscTryb>(raw, ignoreCase: true, out var tryb)
+            ? tryb
+            : GrafikNurkowyKolejnoscTryb.KppNaGorze;
+    }
+
+    public Task SetGrafikNurkowyKolejnoscAsync(
+        GrafikNurkowyKolejnoscTryb tryb,
+        CancellationToken cancellationToken = default) =>
+        ustawieniaRepository.SetAsync(
+            GrafikNurkowyConstants.UstawienieKolejnoscKlucz,
+            tryb.ToString(),
+            cancellationToken);
+
+    public async Task<GrafikNurkowyKolejnoscZakres> GetGrafikNurkowyKolejnoscZakresAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var raw = await ustawieniaRepository.GetAsync(
+            GrafikNurkowyConstants.UstawienieKolejnoscZakresKlucz,
+            cancellationToken);
+        return Enum.TryParse<GrafikNurkowyKolejnoscZakres>(raw, ignoreCase: true, out var zakres)
+            ? zakres
+            : GrafikNurkowyKolejnoscZakres.WObrebieZmian;
+    }
+
+    public Task SetGrafikNurkowyKolejnoscZakresAsync(
+        GrafikNurkowyKolejnoscZakres zakres,
+        CancellationToken cancellationToken = default) =>
+        ustawieniaRepository.SetAsync(
+            GrafikNurkowyConstants.UstawienieKolejnoscZakresKlucz,
+            zakres.ToString(),
             cancellationToken);
 
     private static string BuildKalendarzAutoDeleteKey(int? shiftNumber) =>

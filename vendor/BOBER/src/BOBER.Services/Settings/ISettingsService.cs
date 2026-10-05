@@ -79,4 +79,25 @@ public interface ISettingsService
         int? shiftNumber,
         KalendarzAutoDeleteMode mode,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Kolejność osób na liście grafiku nurkowego. Wspólna dla wszystkich zmian.
+    /// </summary>
+    Task<GrafikNurkowyKolejnoscTryb> GetGrafikNurkowyKolejnoscAsync(
+        CancellationToken cancellationToken = default);
+
+    Task SetGrafikNurkowyKolejnoscAsync(
+        GrafikNurkowyKolejnoscTryb tryb,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Czy sortowanie listy grafiku nurkowego jest w obrębie każdej zmiany,
+    /// czy jednej listy dla wszystkich zmian.
+    /// </summary>
+    Task<GrafikNurkowyKolejnoscZakres> GetGrafikNurkowyKolejnoscZakresAsync(
+        CancellationToken cancellationToken = default);
+
+    Task SetGrafikNurkowyKolejnoscZakresAsync(
+        GrafikNurkowyKolejnoscZakres zakres,
+        CancellationToken cancellationToken = default);
 }

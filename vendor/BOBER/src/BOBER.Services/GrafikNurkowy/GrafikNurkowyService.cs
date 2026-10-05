@@ -74,6 +74,8 @@ public sealed class GrafikNurkowyService(
             }
         }
 
+        var kolejnosc = await settings.GetGrafikNurkowyKolejnoscAsync(cancellationToken);
+        var zakres = await settings.GetGrafikNurkowyKolejnoscZakresAsync(cancellationToken);
         excel.CreateOrUpdate(
             filePath,
             rok,
@@ -83,7 +85,9 @@ public sealed class GrafikNurkowyService(
             wszyscyNurkowie,
             wartosci,
             workDays,
-            await calendar.GetWorkingShiftsForMonthAsync(rok, miesiac, cancellationToken));
+            await calendar.GetWorkingShiftsForMonthAsync(rok, miesiac, cancellationToken),
+            kolejnosc,
+            zakres);
 
         return new GrafikNurkowySyncResult
         {

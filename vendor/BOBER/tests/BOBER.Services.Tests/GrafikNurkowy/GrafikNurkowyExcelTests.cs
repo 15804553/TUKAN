@@ -193,6 +193,7 @@ public sealed class GrafikNurkowyExcelServiceTests
             Assert.True(ws.Cell(3, 1).IsMerged());
             Assert.False(ws.Cell(3, 1).GetString().Contains("SGRW", StringComparison.OrdinalIgnoreCase));
             Assert.True(ColorsMatch(ws.Cell(3, 1).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorJednostkaPsp));
+            // Domyślny zakres to zmiana: nurek zm. I zostaje w wierszu 3, KPP zm. II w wierszu 4.
             Assert.True(ColorsMatch(ws.Cell(3, 2).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana1));
             Assert.True(ColorsMatch(ws.Cell(4, 2).Style.Fill.BackgroundColor, GrafikNurkowyConstants.ColorZmiana2));
             Assert.Equal(XLAlignmentHorizontalValues.Center,
@@ -270,9 +271,9 @@ public sealed class GrafikNurkowyExcelServiceTests
             Assert.True(ws.Cell(3, day3Col).TryGetValue(out double numeric));
             Assert.Equal(1d, numeric);
 
-            // „U” jako tekst
+            // Obie osoby są na zm. I, więc KPP (Nowak) jest w wierszu 3, a „U” Kowalskiego w wierszu 4.
             var day6Col = GrafikNurkowyConstants.FirstDayCol + 6 - 1;
-            Assert.Equal("U", ws.Cell(3, day6Col).GetString());
+            Assert.Equal("U", ws.Cell(4, day6Col).GetString());
 
             Assert.True(ws.ConditionalFormats.Any());
             Assert.Contains(ws.ConditionalFormats, cf =>
@@ -285,6 +286,119 @@ public sealed class GrafikNurkowyExcelServiceTests
                 File.Delete(path);
         }
     }
+
+    [Fact]
+    public void CreateOrUpdate_ReordersRowsAndKeepsDayValuesWithPerson()
+    {
+        var service = new GrafikNurkowyExcelService();
+        var path = Path.Combine(Path.GetTempPath(), $"grafik_nurkowy_order_{Guid.NewGuid():N}.xlsx");
+        var nurkowie = new List<Funkcjonariusz>
+        {
+            new() { Id = 1, Imie = "Jan", Nazwisko = "Nurek", NumerZmiany = 1, NazwyUprawnien = ["Nurek"] },
+            new() { Id = 2, Imie = "Ewa", Nazwisko = "Mlodsza", NumerZmiany = 1, NazwyUprawnien = ["Mł.nurek"] },
+            new() { Id = 3, Imie = "Adam", Nazwisko = "Kierownik", NumerZmiany = 2, NazwyUprawnien = ["Kierownik prac podwodnych"] },
+            new() { Id = 4, Imie = "Ola", Nazwisko = "Druga", NumerZmiany = 3, NazwyUprawnien = ["Nurek"] }
+        };
+        var workDays = new HashSet<int> { 2 };
+        var wartosci = new Dictionary<(int, int), string?>
+        {
+            [(1, 2)] = "1",
+            [(2, 2)] = "U",
+            [(3, 2)] = "Del",
+            [(4, 2)] = "C"
+        };
+
+        try
+        {
+            service.CreateOrUpdate(
+                path, 2026, 10, 1, nurkowie, nurkowie, wartosci, workDays,
+                kolejnosc: GrafikNurkowyKolejnoscTryb.KppNaGorze,
+                zakres: GrafikNurkowyKolejnoscZakres.WObrebieWszystkichZmian);
+
+            var kppFirst = service.ReadPreview(path, 2026, 10);
+            Assert.Equal(
+                ["Kierownik", "Nurek", "Mlodsza", "Druga"],
+                kppFirst.Select(NameToken).ToArray());
+            Assert.Equal("Del", kppFirst[0].Dni[2]);
+            Assert.Equal("1", kppFirst[1].Dni[2]);
+            Assert.Equal("U", kppFirst[2].Dni[2]);
+            Assert.Equal("C", kppFirst[3].Dni[2]);
+
+            service.CreateOrUpdate(
+                path, 2026, 10, 1, nurkowie, nurkowie, wartosci, workDays,
+                kolejnosc: GrafikNurkowyKolejnoscTryb.KppNurekMlodszy,
+                zakres: GrafikNurkowyKolejnoscZakres.WObrebieWszystkichZmian);
+
+            var grouped = service.ReadPreview(path, 2026, 10);
+            Assert.Equal(
+                ["Kierownik", "Nurek", "Druga", "Mlodsza"],
+                grouped.Select(NameToken).ToArray());
+            Assert.Equal("U", grouped.Single(r => r.ImieNazwisko.Contains("Mlodsza", StringComparison.Ordinal)).Dni[2]);
+            Assert.Equal(GrafikNurkowyConstants.FunkcjaMlodszyNurek, grouped[^1].Funkcja);
+            Assert.Equal(GrafikNurkowyConstants.FunkcjaKpp, grouped[0].Funkcja);
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void CreateOrUpdate_SortsInsideEachShiftWithoutMixingShifts()
+    {
+        var service = new GrafikNurkowyExcelService();
+        var path = Path.Combine(Path.GetTempPath(), $"grafik_nurkowy_shift_{Guid.NewGuid():N}.xlsx");
+        var nurkowie = new List<Funkcjonariusz>
+        {
+            new() { Id = 1, Imie = "Ewa", Nazwisko = "Mlodsza", NumerZmiany = 1, NazwyUprawnien = ["Mł.nurek"] },
+            new() { Id = 2, Imie = "Jan", Nazwisko = "Nurek", NumerZmiany = 1, NazwyUprawnien = ["Nurek"] },
+            new() { Id = 3, Imie = "Adam", Nazwisko = "Kierownik", NumerZmiany = 1, NazwyUprawnien = ["Kierownik prac podwodnych"] },
+            new() { Id = 4, Imie = "Ola", Nazwisko = "Druga", NumerZmiany = 2, NazwyUprawnien = ["Nurek"] },
+            new() { Id = 5, Imie = "Beata", Nazwisko = "Szefowa", NumerZmiany = 2, NazwyUprawnien = ["Kierownik prac podwodnych"] }
+        };
+        var workDays = new HashSet<int> { 2 };
+        var wartosci = new Dictionary<(int, int), string?>
+        {
+            [(1, 2)] = "U",
+            [(3, 2)] = "1",
+            [(5, 2)] = "Del"
+        };
+
+        try
+        {
+            service.CreateOrUpdate(
+                path, 2026, 10, 1, nurkowie, nurkowie, wartosci, workDays,
+                kolejnosc: GrafikNurkowyKolejnoscTryb.KppNaGorze,
+                zakres: GrafikNurkowyKolejnoscZakres.WObrebieZmian);
+
+            var withinShift = service.ReadPreview(path, 2026, 10);
+            Assert.Equal(
+                ["Kierownik", "Mlodsza", "Nurek", "Szefowa", "Druga"],
+                withinShift.Select(NameToken).ToArray());
+            Assert.Equal("1", withinShift[0].Dni[2]);
+            Assert.Equal("U", withinShift[1].Dni[2]);
+            Assert.Equal("Del", withinShift[3].Dni[2]);
+
+            service.CreateOrUpdate(
+                path, 2026, 10, 1, nurkowie, nurkowie, wartosci, workDays,
+                kolejnosc: GrafikNurkowyKolejnoscTryb.KppNurekMlodszy,
+                zakres: GrafikNurkowyKolejnoscZakres.WObrebieZmian);
+
+            var groupedInsideShift = service.ReadPreview(path, 2026, 10);
+            Assert.Equal(
+                ["Kierownik", "Nurek", "Mlodsza", "Szefowa", "Druga"],
+                groupedInsideShift.Select(NameToken).ToArray());
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
+    private static string NameToken(GrafikNurkowyWiersz row) =>
+        row.ImieNazwisko.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
 
     private static bool ColorsMatch(XLColor actual, string expectedHex)
     {

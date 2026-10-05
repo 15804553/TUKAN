@@ -1,0 +1,57 @@
+<UserControl x:Class="Tukan.App.Views.GrafikNurkowyKolejnoscSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Loaded="OnLoaded">
+    <StackPanel Margin="4,8,4,4">
+        <TextBlock Text="Kolejność osób na liście grafiku nurkowego. Ustawienie jest wspólne i obowiązuje przy kolejnym generowaniu lub aktualizacji dokumentu, niezależnie od tego, która zmiana zapisuje plik."
+                   Foreground="{StaticResource MutedTextBrush}"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,12" />
+
+        <TextBlock Text="Zakres sortowania"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,8" />
+        <RadioButton x:Name="WObrebieZmianRadio"
+                     GroupName="GrafikNurkowyKolejnoscZakres"
+                     Margin="0,0,0,8"
+                     HorizontalContentAlignment="Stretch"
+                     VerticalContentAlignment="Center">
+            <TextBlock TextWrapping="Wrap"
+                       Text="W obrębie każdej zmiany — na górze zmiany kierownicy prac podwodnych, pozostałe osoby tej zmiany poniżej" />
+        </RadioButton>
+        <RadioButton x:Name="WObrebieWszystkichRadio"
+                     GroupName="GrafikNurkowyKolejnoscZakres"
+                     Margin="0,0,0,16"
+                     HorizontalContentAlignment="Stretch"
+                     VerticalContentAlignment="Center">
+            <TextBlock TextWrapping="Wrap"
+                       Text="W obrębie wszystkich zmian — jedna lista dla całej jednostki" />
+        </RadioButton>
+
+        <TextBlock Text="Układ uprawnień"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,8" />
+        <RadioButton x:Name="KppNaGorzeRadio"
+                     GroupName="GrafikNurkowyKolejnosc"
+                     Margin="0,0,0,8"
+                     HorizontalContentAlignment="Stretch"
+                     VerticalContentAlignment="Center">
+            <TextBlock TextWrapping="Wrap"
+                       Text="Kierownik prac podwodnych na górze, pozostałe osoby bez zmiany kolejności" />
+        </RadioButton>
+        <RadioButton x:Name="KppNurekMlodszyRadio"
+                     GroupName="GrafikNurkowyKolejnosc"
+                     Margin="0,0,0,16"
+                     HorizontalContentAlignment="Stretch"
+                     VerticalContentAlignment="Center">
+            <TextBlock TextWrapping="Wrap"
+                       Text="Kierownik prac podwodnych na górze, następnie osoby z uprawnieniem nurek, na dole osoby z uprawnieniem mł. nurek" />
+        </RadioButton>
+
+        <Button Content="Zapisz"
+                HorizontalAlignment="Left"
+                Padding="16,8"
+                Style="{StaticResource PrimaryButton}"
+                Click="OnSaveClick" />
+    </StackPanel>
+</UserControl>

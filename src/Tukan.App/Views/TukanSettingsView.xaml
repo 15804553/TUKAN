@@ -41,6 +41,11 @@
                           Style="{StaticResource TukanSettingsExpander}">
                     <ContentControl x:Name="DcaPojazdyHost" />
                 </Expander>
+                <Expander x:Name="DcaGrafikNurkowyExpander"
+                          Header="Grafik nurkowy"
+                          Style="{StaticResource TukanSettingsExpander}">
+                    <ContentControl x:Name="DcaGrafikNurkowyHost" />
+                </Expander>
             </StackPanel>
         </ScrollViewer>
 

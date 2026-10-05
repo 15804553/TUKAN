@@ -105,6 +105,14 @@ public partial class TukanSettingsView : UserControl
             session, SkrybekSettingsSection.OgolneZBackupem, skrybekViewModel);
         DcaPojazdyHost.Content = new SkrybekSettingsView(
             session, SkrybekSettingsSection.Pojazdy, skrybekViewModel);
+
+        var grafikNurkowyKolejnosc = new GrafikNurkowyKolejnoscSettingsView(_tukanServices.Bober.Settings);
+        grafikNurkowyKolejnosc.SettingsSaved += async (_, _) =>
+        {
+            await TryAuditSettingsAsync("Kolejność grafiku nurkowego");
+            SettingsSaved?.Invoke(this, EventArgs.Empty);
+        };
+        DcaGrafikNurkowyHost.Content = grafikNurkowyKolejnosc;
     }
 
     private SettingsView CreateChomikSection(ChomikSettingsSection section, string auditMessage)
@@ -230,6 +238,7 @@ public partial class TukanSettingsView : UserControl
             DcaKalendarzExpander.IsExpanded = false;
             DcaRozkazyExpander.IsExpanded = false;
             DcaPojazdyExpander.IsExpanded = false;
+            DcaGrafikNurkowyExpander.IsExpanded = false;
         }
 
         if (BoberSettingsHost.Content is BoberSettingsView bober)

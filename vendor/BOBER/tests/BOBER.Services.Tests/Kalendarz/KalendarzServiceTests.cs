@@ -466,6 +466,18 @@ public sealed class KalendarzServiceTests
             return Task.CompletedTask;
         }
 
+        public Task<GrafikNurkowyKolejnoscTryb> GetGrafikNurkowyKolejnoscAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(GrafikNurkowyKolejnoscTryb.KppNaGorze);
+
+        public Task SetGrafikNurkowyKolejnoscAsync(GrafikNurkowyKolejnoscTryb tryb, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<GrafikNurkowyKolejnoscZakres> GetGrafikNurkowyKolejnoscZakresAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(GrafikNurkowyKolejnoscZakres.WObrebieZmian);
+
+        public Task SetGrafikNurkowyKolejnoscZakresAsync(GrafikNurkowyKolejnoscZakres zakres, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
         private static string BuildKey(int? shiftNumber) => shiftNumber?.ToString() ?? "DCA";
     }
 

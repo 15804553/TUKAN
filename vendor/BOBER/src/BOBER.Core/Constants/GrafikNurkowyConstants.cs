@@ -19,6 +19,12 @@ public static class GrafikNurkowyConstants
     public const string FunkcjaNurek = "nurek";
     public const string FunkcjaMlodszyNurek = "mł.nurek";
 
+    /// <summary>Klucz ustawienia reguły kolejności. Wspólny dla wszystkich zmian.</summary>
+    public const string UstawienieKolejnoscKlucz = "GrafikNurkowyKolejnosc";
+
+    /// <summary>Klucz ustawienia zakresu sortowania (zmiana albo cała lista).</summary>
+    public const string UstawienieKolejnoscZakresKlucz = "GrafikNurkowyKolejnoscZakres";
+
     public const int TitleRow = 1;
     public const int HeaderRow = 2;
     public const int FirstDataRow = 3;
@@ -84,6 +90,52 @@ public static class GrafikNurkowyConstants
             return FunkcjaMlodszyNurek;
 
         return FunkcjaNurek;
+    }
+
+    /// <summary>
+    /// Kolejność grup na liście grafiku nurkowego.
+    /// Wewnątrz grupy zostaje dotychczasowa kolejność (sortowanie stabilne).
+    /// </summary>
+    public static int KolejnoscRank(string? funkcja, GrafikNurkowyKolejnoscTryb tryb)
+    {
+        var label = funkcja?.Trim() ?? string.Empty;
+        var isKpp = label.Equals(FunkcjaKpp, StringComparison.OrdinalIgnoreCase);
+        if (tryb == GrafikNurkowyKolejnoscTryb.KppNaGorze)
+            return isKpp ? 0 : 1;
+
+        if (isKpp)
+            return 0;
+
+        if (label.Equals(FunkcjaMlodszyNurek, StringComparison.OrdinalIgnoreCase)
+            || IsMlodszyNurekLabel(label))
+            return 2;
+
+        return 1;
+    }
+
+    public static List<T> OrderByKolejnosc<T>(
+        IReadOnlyList<T> items,
+        Func<T, string?> funkcja,
+        GrafikNurkowyKolejnoscTryb tryb,
+        GrafikNurkowyKolejnoscZakres zakres = GrafikNurkowyKolejnoscZakres.WObrebieWszystkichZmian,
+        Func<T, int>? zmianaId = null)
+    {
+        var indexed = items.Select((item, index) => (item, index));
+        if (zakres == GrafikNurkowyKolejnoscZakres.WObrebieZmian && zmianaId is not null)
+        {
+            return indexed
+                .OrderBy(x => zmianaId(x.item))
+                .ThenBy(x => KolejnoscRank(funkcja(x.item), tryb))
+                .ThenBy(x => x.index)
+                .Select(x => x.item)
+                .ToList();
+        }
+
+        return indexed
+            .OrderBy(x => KolejnoscRank(funkcja(x.item), tryb))
+            .ThenBy(x => x.index)
+            .Select(x => x.item)
+            .ToList();
     }
 
     /// <summary>Etykieta uprawnienia typu mł.nurek / młodszy nurek (nie zwykły „Nurek”).</summary>
