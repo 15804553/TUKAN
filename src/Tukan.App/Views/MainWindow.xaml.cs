@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private KalendarzView? _kalendarzView;
     private DutyAssignmentsView? _dutyAssignmentsView;
     private DutyAssignmentsWindow? _dutyAssignmentsWindow;
+    private GrafikSluzbWindow? _grafikWindow;
     private SkrybekMainView? _skrybekView;
 
     private MainController? _boberController;
@@ -47,6 +48,7 @@ public partial class MainWindow : Window
         Closing += (_, _) =>
         {
             _dutyAssignmentsWindow?.Close();
+            _grafikWindow?.Close();
             if (DialogResult is null)
             {
                 DialogResult = false;
@@ -326,7 +328,7 @@ public partial class MainWindow : Window
         NavigateTo(_passwordView, "Zarządzanie hasłami", PasswordAdminButton);
     }
 
-    private void OnBoberViewClick(object sender, RoutedEventArgs e)
+    private async void OnBoberViewClick(object sender, RoutedEventArgs e)
     {
         var user = _tukanServices.Chomik.Auth.CurrentUser;
         if (user is null || user.IsPaUser || user.IsDcaJrgUser)
@@ -336,8 +338,77 @@ public partial class MainWindow : Window
 
         _boberController ??= new MainController(_tukanServices.Bober);
         _boberView ??= new BoberGrafikView { IsEmbedded = true };
+
+        if (await ShouldOpenGrafikInNewWindowAsync(user))
+        {
+            OpenGrafikInNewWindow();
+            return;
+        }
+
+        CloseGrafikWindow();
         _boberView.Initialize(_boberController);
         NavigateTo(_boberView, "Grafik służb", BoberViewButton);
+    }
+
+    private async Task<bool> ShouldOpenGrafikInNewWindowAsync(Chomik.Core.Security.SessionUser user)
+    {
+        if (user.IsShiftAccount != true || user.ShiftNumber is not int shiftNumber || shiftNumber is < 1 or > 3)
+            return false;
+
+        try
+        {
+            return await _tukanServices.GrafikWindowSettings.GetOpenInNewWindowAsync(shiftNumber);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void OpenGrafikInNewWindow()
+    {
+        if (_boberView is null || _boberController is null)
+            return;
+
+        if (_grafikWindow is { IsLoaded: true })
+        {
+            if (_grafikWindow.WindowState == WindowState.Minimized)
+                _grafikWindow.WindowState = WindowState.Normal;
+
+            _grafikWindow.Activate();
+            return;
+        }
+
+        var wasMainContent = ReferenceEquals(MainContentHost.Content, _boberView);
+        DetachFromVisualParent(_boberView);
+        if (wasMainContent)
+        {
+            ViewTitleTextBlock.Text = string.Empty;
+            HighlightSidebarButton(null);
+        }
+
+        _boberView.Initialize(_boberController);
+        _grafikWindow = new GrafikSluzbWindow(_boberView, "Grafik służb");
+        _grafikWindow.Closed += (_, _) =>
+        {
+            if (_boberView is not null)
+                DetachFromVisualParent(_boberView);
+            _grafikWindow = null;
+        };
+        _grafikWindow.Show();
+    }
+
+    private void CloseGrafikWindow()
+    {
+        if (_grafikWindow is null)
+            return;
+
+        if (_boberView is not null)
+            DetachFromVisualParent(_boberView);
+
+        var window = _grafikWindow;
+        _grafikWindow = null;
+        window.Close();
     }
 
     private async void OnUrlopPlanClick(object sender, RoutedEventArgs e)

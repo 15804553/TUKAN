@@ -86,7 +86,25 @@
                               Header="Zarządzanie grafikiem"
                               Style="{StaticResource TukanSettingsExpander}"
                               Visibility="Collapsed">
-                        <ContentControl x:Name="ZarzadzanieGrafikiemHost" />
+                        <StackPanel>
+                            <StackPanel x:Name="GrafikNoweOknoPanel"
+                                        Visibility="Collapsed"
+                                        Margin="0,4,0,12">
+                                <CheckBox x:Name="GrafikNoweOknoCheckBox"
+                                          FontWeight="Normal"
+                                          FontSize="13"
+                                          Content="Otwieraj grafik miesięczny służb w nowym oknie"
+                                          Checked="OnGrafikNoweOknoChanged"
+                                          Unchecked="OnGrafikNoweOknoChanged" />
+                                <TextBlock FontWeight="Normal"
+                                           FontSize="12"
+                                           Foreground="{StaticResource ForegroundMutedBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,4,0,0"
+                                           Text="Domyślnie wyłączone. Po włączeniu przycisk Grafik służb zostawia bieżący widok (np. rozkaz dzienny) i otwiera miesięczny grafik w osobnym oknie." />
+                            </StackPanel>
+                            <ContentControl x:Name="ZarzadzanieGrafikiemHost" />
+                        </StackPanel>
                     </Expander>
                 </StackPanel>
             </ScrollViewer>

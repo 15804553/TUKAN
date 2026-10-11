@@ -8,6 +8,7 @@ using SKRYBEK.App.ViewModels;
 using SKRYBEK.App.Views;
 using SKRYBEK.Core.Models;
 using Tukan.App.Services;
+using Tukan.App.Views.Chrome;
 
 namespace Tukan.App.Views;
 
@@ -17,6 +18,8 @@ public partial class TukanSettingsView : UserControl
     private readonly Chomik.App.Controllers.SettingsController _chomikSettingsController;
     private SettingsView? _chomikSettingsView;
     private RatownikMedycznyUstawieniaView? _ratownikMedycznySettingsView;
+    private bool _loadingGrafikWindowSetting;
+    private int? _grafikWindowShiftNumber;
 
     public event EventHandler? SettingsSaved;
     public event EventHandler? InstallationNameChanged;
@@ -345,7 +348,66 @@ public partial class TukanSettingsView : UserControl
         ZarzadzanieGrafikiemHost.Content = CreateBoberSection(
             controller, BoberSettingsSection.ZarzadzanieGrafikiem, "Zarządzanie grafikiem");
         ZarzadzanieGrafikiemExpander.Visibility = Visibility.Visible;
+        await InitializeGrafikWindowSettingAsync();
         RefreshUzytkoweTabVisibility();
+    }
+
+    private async Task InitializeGrafikWindowSettingAsync()
+    {
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        if (user?.IsShiftAccount != true || user.ShiftNumber is not int shiftNumber || shiftNumber is < 1 or > 3)
+        {
+            GrafikNoweOknoPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        _grafikWindowShiftNumber = shiftNumber;
+        _loadingGrafikWindowSetting = true;
+        try
+        {
+            GrafikNoweOknoCheckBox.IsChecked =
+                await _tukanServices.GrafikWindowSettings.GetOpenInNewWindowAsync(shiftNumber);
+            GrafikNoweOknoPanel.Visibility = Visibility.Visible;
+        }
+        catch (Exception ex)
+        {
+            GrafikNoweOknoCheckBox.IsChecked = false;
+            GrafikNoweOknoPanel.Visibility = Visibility.Visible;
+            TukanMessageBox.Show(
+                Window.GetWindow(this),
+                $"Nie udało się odczytać ustawienia okna grafiku:\n\n{ex.Message}",
+                "Ustawienia");
+        }
+        finally
+        {
+            _loadingGrafikWindowSetting = false;
+        }
+    }
+
+    private async void OnGrafikNoweOknoChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loadingGrafikWindowSetting || _grafikWindowShiftNumber is not int shiftNumber)
+            return;
+
+        var enabled = GrafikNoweOknoCheckBox.IsChecked == true;
+        try
+        {
+            await _tukanServices.GrafikWindowSettings.SetOpenInNewWindowAsync(shiftNumber, enabled);
+            await TryAuditSettingsAsync(
+                enabled
+                    ? "Włączono otwieranie grafiku służb w nowym oknie"
+                    : "Wyłączono otwieranie grafiku służb w nowym oknie");
+        }
+        catch (Exception ex)
+        {
+            _loadingGrafikWindowSetting = true;
+            GrafikNoweOknoCheckBox.IsChecked = !enabled;
+            _loadingGrafikWindowSetting = false;
+            TukanMessageBox.Show(
+                Window.GetWindow(this),
+                $"Nie udało się zapisać ustawienia okna grafiku:\n\n{ex.Message}",
+                "Ustawienia");
+        }
     }
 
     private BoberSettingsView CreateBoberSection(

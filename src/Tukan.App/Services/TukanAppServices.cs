@@ -19,6 +19,8 @@ public sealed class TukanAppServices : IDisposable
 
     public GuestAuditFacade GuestAudit { get; }
 
+    public GrafikWindowSettingsService GrafikWindowSettings { get; }
+
     private TukanAppServices(
         Chomik.Services.AppServices chomik,
         BOBER.Services.AppServices bober,
@@ -27,6 +29,7 @@ public sealed class TukanAppServices : IDisposable
         Chomik = chomik;
         Bober = bober;
         GuestAudit = guestAudit;
+        GrafikWindowSettings = new GrafikWindowSettingsService(bober.Ustawienia);
     }
 
     public static async Task<TukanAppServices> CreateAsync()
