@@ -267,7 +267,7 @@ public static class GrafikWpisTypy
             return true;
 
         var ozn = OznaczeniaLookup.FindByKod(kod);
-        return ozn?.SekcjaRozkazu == SekcjaRozkazuGrafiku.Urlop;
+        return ozn?.EfektywneSekcjeRozkazu.Contains(SekcjaRozkazuGrafiku.Urlop) == true;
     }
 
     public static bool JestUrlopemRodzicielskim(string? typWpisu) =>

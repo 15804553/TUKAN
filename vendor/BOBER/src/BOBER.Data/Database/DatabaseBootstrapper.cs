@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using BOBER.Core.Constants;
 using BOBER.Core.Enums;
 using BOBER.Core.Models;
+using BOBER.Core.Oznaczenia;
 
 namespace BOBER.Data.Database;
 
@@ -761,7 +762,8 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                 KolorExcelHex TEXT(10),
                 AdnotacjaRozkazu TEXT(40),
                 StylWyswietlania SHORT NOT NULL,
-                FlagaPozycja SHORT NOT NULL
+                FlagaPozycja SHORT NOT NULL,
+                SekcjeRozkazuMaska SHORT
             )
             """,
             cancellationToken);
@@ -789,6 +791,10 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         await TryAlterTableAsync(
             connection,
             "ALTER TABLE OznaczeniaGrafiku ADD COLUMN FlagaPozycja SHORT",
+            cancellationToken);
+        await TryAlterTableAsync(
+            connection,
+            "ALTER TABLE OznaczeniaGrafiku ADD COLUMN SekcjeRozkazuMaska SHORT",
             cancellationToken);
 
         // Uzupełnij brakujące wartości dla wierszy sprzed migracji kolumn.
@@ -854,7 +860,39 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         }
         catch { /* ignore */ }
 
+        try
+        {
+            await BackfillSekcjeRozkazuMaskaAsync(connection, cancellationToken);
+        }
+        catch
+        {
+            /* kolumna niedostępna — odczyt spadnie na SekcjaRozkazu */
+        }
+
         await CloneOznaczeniaToMissingZmianyAsync(connection, cancellationToken);
+    }
+
+    /// <summary>
+    /// Przenosi dotychczasowy pojedynczy wybór sekcji do maski bitowej, bez nadpisywania już zapisanej listy.
+    /// </summary>
+    private static async Task BackfillSekcjeRozkazuMaskaAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        foreach (SekcjaRozkazuGrafiku sekcja in Enum.GetValues<SekcjaRozkazuGrafiku>())
+        {
+            await using var cmd = new OleDbCommand(
+                """
+                UPDATE OznaczeniaGrafiku
+                SET SekcjeRozkazuMaska = ?
+                WHERE SekcjaRozkazu = ?
+                  AND (SekcjeRozkazuMaska IS NULL OR SekcjeRozkazuMaska = 0)
+                """,
+                connection);
+            cmd.Parameters.AddWithValue("@m", SekcjeRozkazuMaska.ToMask([sekcja]));
+            cmd.Parameters.AddWithValue("@s", (short)sekcja);
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 
     /// <summary>
@@ -881,7 +919,7 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                            TekstWyswietlany, MoznaOddac, MoznaKropke, ZachowajTloWsPrzyBraku,
                            DodatkowaSekcjaRozkazu, RolaNalozania, Kolejnosc,
                            EksportDoExcela, KolorExcelHex, AdnotacjaRozkazu,
-                           StylWyswietlania, FlagaPozycja
+                           StylWyswietlania, FlagaPozycja, SekcjeRozkazuMaska
                     FROM OznaczeniaGrafiku
                     WHERE ZmianaId = 1
                     ORDER BY Kolejnosc, Kod
@@ -908,8 +946,8 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                              TekstWyswietlany, MoznaOddac, MoznaKropke, ZachowajTloWsPrzyBraku,
                              DodatkowaSekcjaRozkazu, RolaNalozania, Kolejnosc,
                              EksportDoExcela, KolorExcelHex, AdnotacjaRozkazu,
-                             StylWyswietlania, FlagaPozycja)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             StylWyswietlania, FlagaPozycja, SekcjeRozkazuMaska)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         connection);
                     insertCmd.Parameters.AddWithValue("@z", target);

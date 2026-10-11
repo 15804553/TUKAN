@@ -138,7 +138,8 @@ internal static class SchemaScripts
             KolorExcelHex TEXT(10),
             AdnotacjaRozkazu TEXT(40),
             StylWyswietlania SHORT NOT NULL,
-            FlagaPozycja SHORT NOT NULL
+            FlagaPozycja SHORT NOT NULL,
+            SekcjeRozkazuMaska SHORT
         )
         """,
         """

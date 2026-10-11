@@ -195,4 +195,31 @@ public sealed class GrafikWpisTypyTests
         var typ = GrafikWpisTypy.Compose("U", null, null, true);
         Assert.False(GrafikWpisTypy.JestNieobecnoscia(typ));
     }
+
+    [Fact]
+    public void JestUrlopem_GdyUrlopJestJednaZWieluSekcji()
+    {
+        OznaczeniaLookup.Set(
+        [
+            new BOBER.Core.Models.OznaczenieGrafiku
+            {
+                Kod = "X",
+                WPracy = false,
+                SekcjeRozkazu =
+                [
+                    SekcjaRozkazuGrafiku.CzasWolny,
+                    SekcjaRozkazuGrafiku.Urlop
+                ]
+            }
+        ]);
+
+        try
+        {
+            Assert.True(GrafikWpisTypy.JestUrlopem("X"));
+        }
+        finally
+        {
+            OznaczeniaLookup.Clear();
+        }
+    }
 }

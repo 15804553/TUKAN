@@ -157,8 +157,8 @@ internal static class DatabaseSeed
                  TekstWyswietlany, MoznaOddac, MoznaKropke, ZachowajTloWsPrzyBraku,
                  DodatkowaSekcjaRozkazu, RolaNalozania, Kolejnosc,
                  EksportDoExcela, KolorExcelHex, AdnotacjaRozkazu,
-                 StylWyswietlania, FlagaPozycja)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 StylWyswietlania, FlagaPozycja, SekcjeRozkazuMaska)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             connection);
 
@@ -167,7 +167,7 @@ internal static class DatabaseSeed
         cmd.Parameters.AddWithValue("@p2", item.Nazwa);
         cmd.Parameters.AddWithValue("@p3", item.KolorHex);
         cmd.Parameters.AddWithValue("@p4", item.WPracy);
-        AddNullableShort(cmd, item.SekcjaRozkazu is null ? null : (short?)item.SekcjaRozkazu.Value);
+        AddNullableShort(cmd, item.SekcjaRozkazuDoZapisu);
         cmd.Parameters.AddWithValue("@p6", item.SkrotKlawiszowy ?? string.Empty);
         cmd.Parameters.AddWithValue("@p7", (object?)item.TekstWyswietlany ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@p8", false);
@@ -182,6 +182,7 @@ internal static class DatabaseSeed
         cmd.Parameters.AddWithValue("@p16", item.AdnotacjaRozkazu ?? string.Empty);
         cmd.Parameters.AddWithValue("@p17", (short)item.StylWyswietlania);
         cmd.Parameters.AddWithValue("@p18", (short)item.FlagaPozycja);
+        cmd.Parameters.AddWithValue("@p19", item.MaskaSekcjiRozkazu);
         await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 

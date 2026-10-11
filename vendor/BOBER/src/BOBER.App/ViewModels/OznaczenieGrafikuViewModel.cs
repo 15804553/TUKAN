@@ -14,7 +14,6 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
     private string _kolorHex = RoleKeys.BrakWypelnienia;
     private string _kolorExcelHex = RoleKeys.BrakWypelnienia;
     private bool _wPracy;
-    private SekcjaRozkazuGrafiku? _sekcjaRozkazu;
     private string _skrotKlawiszowy = string.Empty;
     private string? _tekstWyswietlany;
     private short _kolejnosc;
@@ -85,7 +84,7 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(WPracyTakNie));
             if (value)
-                SekcjaRozkazu = null;
+                Grupy.Wyczysc();
             OnPropertyChanged(nameof(SekcjaEnabled));
         }
     }
@@ -98,41 +97,7 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
 
     public bool SekcjaEnabled => !WPracy;
 
-    public SekcjaRozkazuGrafiku? SekcjaRozkazu
-    {
-        get => _sekcjaRozkazu;
-        set
-        {
-            _sekcjaRozkazu = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(GrupaRozkazu));
-        }
-    }
-
-    public string GrupaRozkazu
-    {
-        get => SekcjaRozkazu switch
-        {
-            SekcjaRozkazuGrafiku.Urlop => "Urlopy",
-            SekcjaRozkazuGrafiku.CzasWolny => "Wolna służba",
-            SekcjaRozkazuGrafiku.Chory => "Chorzy",
-            SekcjaRozkazuGrafiku.Delegowany => "Delegacje",
-            SekcjaRozkazuGrafiku.DyzurDomowy => "Dyżur",
-            _ => "—"
-        };
-        set
-        {
-            SekcjaRozkazu = value switch
-            {
-                "Urlopy" => SekcjaRozkazuGrafiku.Urlop,
-                "Wolna służba" => SekcjaRozkazuGrafiku.CzasWolny,
-                "Chorzy" => SekcjaRozkazuGrafiku.Chory,
-                "Delegacje" => SekcjaRozkazuGrafiku.Delegowany,
-                "Dyżur" => SekcjaRozkazuGrafiku.DyzurDomowy,
-                _ => null
-            };
-        }
-    }
+    public GrupyRozkazuWybor Grupy { get; } = new();
 
     public string SkrotKlawiszowy
     {
@@ -284,7 +249,7 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
             : m.KolorHex;
         vm.KolorExcelHex = string.IsNullOrWhiteSpace(m.KolorExcelHex) ? m.KolorHex : m.KolorExcelHex;
         vm.WPracy = m.WPracy;
-        vm.SekcjaRozkazu = m.SekcjaRozkazu;
+        vm.Grupy.Ustaw(m.EfektywneSekcjeRozkazu);
         vm.SkrotKlawiszowy = m.SkrotKlawiszowy;
         vm.TekstWyswietlany = m.TekstWyswietlany;
         vm.Kolejnosc = m.Kolejnosc;
@@ -305,7 +270,8 @@ public sealed class OznaczenieGrafikuViewModel : INotifyPropertyChanged
                 ? RoleKeys.BrakWypelnienia
                 : KolorExcelHex.Trim(),
             WPracy = WPracy,
-            SekcjaRozkazu = WPracy ? null : SekcjaRozkazu,
+            SekcjaRozkazu = WPracy || Grupy.Wybrane.Count == 0 ? null : Grupy.Wybrane[0],
+            SekcjeRozkazu = WPracy ? [] : Grupy.Wybrane.ToList(),
             SkrotKlawiszowy = SkrotKlawiszowy.Trim(),
             TekstWyswietlany = string.IsNullOrWhiteSpace(TekstWyswietlany) ? null : TekstWyswietlany,
             Kolejnosc = Kolejnosc,

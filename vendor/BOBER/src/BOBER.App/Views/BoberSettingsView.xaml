@@ -2,7 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-             xmlns:enums="clr-namespace:BOBER.Core.Enums;assembly=BOBER.Core">
+             xmlns:enums="clr-namespace:BOBER.Core.Enums;assembly=BOBER.Core"
+             xmlns:local="clr-namespace:BOBER.App.Views">
     <UserControl.Resources>
         <Style x:Key="BoberSettingsGroupBox" TargetType="GroupBox">
             <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
@@ -651,20 +652,11 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Grupa w rozkazie" Width="120" MinWidth="100">
+                                <DataGridTemplateColumn Header="Grupy w rozkazie" Width="180" MinWidth="140">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <ComboBox IsEnabled="{Binding SekcjaEnabled}"
-                                                      SelectedItem="{Binding GrupaRozkazu, UpdateSourceTrigger=PropertyChanged}"
-                                                      Margin="2,0"
-                                                      VerticalAlignment="Center">
-                                                <sys:String>—</sys:String>
-                                                <sys:String>Urlopy</sys:String>
-                                                <sys:String>Wolna służba</sys:String>
-                                                <sys:String>Chorzy</sys:String>
-                                                <sys:String>Delegacje</sys:String>
-                                                <sys:String>Dyżur</sys:String>
-                                            </ComboBox>
+                                            <local:GrupyRozkazuLista IsEnabled="{Binding SekcjaEnabled}"
+                                                                     Margin="2,1" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -731,7 +723,7 @@
                                                      Background="Transparent"
                                                      VerticalContentAlignment="Center"
                                                      Margin="2,0"
-                                                     ToolTip="Dopisek przy nazwisku w wybranej grupie rozkazu, np. -odb" />
+                                                     ToolTip="Dopisek przy nazwisku w każdej zaznaczonej grupie rozkazu, np. -odb" />
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>

@@ -213,12 +213,13 @@ public sealed class PersonnelRepository
             {
                 var fid = reader.GetIntSafe(0);
                 var typStr = reader.IsDBNull(1) ? null : reader.GetStringSafe(1);
-                var typ = BoberTypWpisuMapper.MapLubPominOddal(typStr);
-                if (typ is null)
+                var typy = BoberTypWpisuMapper.MapWszystkie(typStr);
+                if (typy.Count == 0)
                     continue;
 
                 var typWpisu = typStr ?? string.Empty;
-                wynik.Add((fid, typ.Value, typWpisu));
+                foreach (var typ in typy)
+                    wynik.Add((fid, typ, typWpisu));
             }
             return wynik;
         }

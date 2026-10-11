@@ -1,5 +1,6 @@
 using BOBER.Core.Constants;
 using BOBER.Core.Enums;
+using BOBER.Core.Oznaczenia;
 
 namespace BOBER.Core.Models;
 
@@ -12,7 +13,38 @@ public sealed class OznaczenieGrafiku
     public string Nazwa { get; set; } = string.Empty;
     public string KolorHex { get; set; } = RoleKeys.BrakWypelnienia;
     public bool WPracy { get; set; }
+
+    /// <summary>Pierwsza wybrana sekcja — zgodność ze starszym zapisem jednej grupy.</summary>
     public SekcjaRozkazuGrafiku? SekcjaRozkazu { get; set; }
+
+    /// <summary>
+    /// Wszystkie sekcje nieobecnych, do których trafia osoba z tym oznaczeniem.
+    /// Pusta lista oznacza odczyt ze starszej kolumny <see cref="SekcjaRozkazu"/>.
+    /// </summary>
+    public List<SekcjaRozkazuGrafiku> SekcjeRozkazu { get; set; } = [];
+
+    public IReadOnlyList<SekcjaRozkazuGrafiku> EfektywneSekcjeRozkazu
+    {
+        get
+        {
+            if (SekcjeRozkazu.Count > 0)
+                return SekcjeRozkazu;
+            if (SekcjaRozkazu is { } jedna)
+                return [jedna];
+            return [];
+        }
+    }
+
+    public short? SekcjaRozkazuDoZapisu
+    {
+        get
+        {
+            var sekcje = EfektywneSekcjeRozkazu;
+            return sekcje.Count == 0 ? null : (short)sekcje[0];
+        }
+    }
+
+    public short MaskaSekcjiRozkazu => SekcjeRozkazuMaska.ToMask(EfektywneSekcjeRozkazu);
     public string SkrotKlawiszowy { get; set; } = string.Empty;
     public string? TekstWyswietlany { get; set; }
     public short Kolejnosc { get; set; }

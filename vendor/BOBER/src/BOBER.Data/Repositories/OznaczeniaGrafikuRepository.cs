@@ -2,6 +2,7 @@ using System.Data.OleDb;
 using BOBER.Core.Constants;
 using BOBER.Core.Enums;
 using BOBER.Core.Models;
+using BOBER.Core.Oznaczenia;
 
 namespace BOBER.Data.Repositories;
 
@@ -18,7 +19,7 @@ public sealed class OznaczeniaGrafikuRepository(BoberConnectionFactory connectio
             SELECT Id, ZmianaId, Kod, Nazwa, KolorHex, WPracy, SekcjaRozkazu, SkrotKlawiszowy,
                    TekstWyswietlany, Kolejnosc,
                    EksportDoExcela, KolorExcelHex, AdnotacjaRozkazu,
-                   StylWyswietlania, FlagaPozycja
+                   StylWyswietlania, FlagaPozycja, SekcjeRozkazuMaska
             FROM OznaczeniaGrafiku
             WHERE ZmianaId = ?
             ORDER BY Kolejnosc, Kod
@@ -59,8 +60,8 @@ public sealed class OznaczeniaGrafikuRepository(BoberConnectionFactory connectio
                      TekstWyswietlany, MoznaOddac, MoznaKropke, ZachowajTloWsPrzyBraku,
                      DodatkowaSekcjaRozkazu, RolaNalozania, Kolejnosc,
                      EksportDoExcela, KolorExcelHex, AdnotacjaRozkazu,
-                     StylWyswietlania, FlagaPozycja)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     StylWyswietlania, FlagaPozycja, SekcjeRozkazuMaska)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 connection);
 
@@ -69,7 +70,7 @@ public sealed class OznaczeniaGrafikuRepository(BoberConnectionFactory connectio
             insertCmd.Parameters.AddWithValue("@p2", item.Nazwa);
             insertCmd.Parameters.AddWithValue("@p3", item.KolorHex);
             insertCmd.Parameters.AddWithValue("@p4", item.WPracy);
-            AddNullableShort(insertCmd, item.SekcjaRozkazu is null ? null : (short?)item.SekcjaRozkazu.Value);
+            AddNullableShort(insertCmd, item.SekcjaRozkazuDoZapisu);
             insertCmd.Parameters.AddWithValue("@p6", item.SkrotKlawiszowy ?? string.Empty);
             insertCmd.Parameters.AddWithValue(
                 "@p7",
@@ -89,6 +90,7 @@ public sealed class OznaczeniaGrafikuRepository(BoberConnectionFactory connectio
             insertCmd.Parameters.AddWithValue("@p16", item.AdnotacjaRozkazu ?? string.Empty);
             insertCmd.Parameters.AddWithValue("@p17", (short)item.StylWyswietlania);
             insertCmd.Parameters.AddWithValue("@p18", (short)item.FlagaPozycja);
+            insertCmd.Parameters.AddWithValue("@p19", item.MaskaSekcjiRozkazu);
             await insertCmd.ExecuteNonQueryAsync(cancellationToken);
         }
     }
@@ -140,6 +142,18 @@ public sealed class OznaczeniaGrafikuRepository(BoberConnectionFactory connectio
         if (HasColumn(reader, "FlagaPozycja") && reader["FlagaPozycja"] is not DBNull)
             flaga = (FlagaPozycjaOznaczenia)Convert.ToInt16(reader["FlagaPozycja"]);
 
+        var legacySekcja = ReadSekcja(reader["SekcjaRozkazu"]);
+        short maska = 0;
+        if (HasColumn(reader, "SekcjeRozkazuMaska") && reader["SekcjeRozkazuMaska"] is not DBNull)
+            maska = Convert.ToInt16(reader["SekcjeRozkazuMaska"]);
+        List<SekcjaRozkazuGrafiku> sekcje;
+        if (maska > 0)
+            sekcje = SekcjeRozkazuMaska.FromMask(maska);
+        else if (legacySekcja is { } jedna)
+            sekcje = [jedna];
+        else
+            sekcje = [];
+
         return new OznaczenieGrafiku
         {
             Id = Convert.ToInt32(reader["Id"]),
@@ -148,7 +162,8 @@ public sealed class OznaczeniaGrafikuRepository(BoberConnectionFactory connectio
             Nazwa = reader["Nazwa"]?.ToString() ?? string.Empty,
             KolorHex = kolor,
             WPracy = Convert.ToBoolean(reader["WPracy"]),
-            SekcjaRozkazu = ReadSekcja(reader["SekcjaRozkazu"]),
+            SekcjaRozkazu = sekcje.Count > 0 ? sekcje[0] : null,
+            SekcjeRozkazu = sekcje,
             SkrotKlawiszowy = reader["SkrotKlawiszowy"]?.ToString() ?? string.Empty,
             TekstWyswietlany = string.IsNullOrWhiteSpace(tekstRaw) ? null : tekstRaw,
             Kolejnosc = Convert.ToInt16(reader["Kolejnosc"]),

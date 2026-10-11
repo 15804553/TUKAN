@@ -250,7 +250,8 @@ public partial class BoberSettingsView : UserControl
 
                 OznaczeniaHeader.Text = $"OZNACZENIA GRAFIKU — {_controller.NazwaZmiany}";
                 OznaczeniaHintText.Text =
-                    $"Konfiguracja tylko dla {_controller.NazwaZmiany}. Zmiany 1, 2 i 3 mają osobne oznaczenia.";
+                    $"Konfiguracja tylko dla {_controller.NazwaZmiany}. Zmiany 1, 2 i 3 mają osobne oznaczenia. " +
+                    "W kolumnie „Grupy w rozkazie” można zaznaczyć kilka sekcji — osoba trafi do każdej z nich w nieobecnych.";
 
                 foreach (var o in oznaczenia.OrderBy(x => x.Kolejnosc))
                     _oznaczenia.Add(OznaczenieGrafikuViewModel.FromModel(o));
@@ -804,8 +805,8 @@ public partial class BoberSettingsView : UserControl
                     zajeteSkroty.Add(a);
             }
 
-            if (!o.JestFlaga && !o.WPracy && o.SekcjaRozkazu is null)
-                return $"Oznaczenie „{kod}” (nieobecność) wymaga grupy w rozkazie.";
+            if (!o.JestFlaga && !o.WPracy && !o.Grupy.MaWybor)
+                return $"Oznaczenie „{kod}” (nieobecność) wymaga co najmniej jednej grupy w rozkazie.";
         }
 
         return null;

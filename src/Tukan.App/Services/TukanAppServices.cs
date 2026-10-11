@@ -176,37 +176,17 @@ public sealed class TukanAppServices : IDisposable
 
     private static void WireOznaczeniaBridge()
     {
+        SKRYBEK.Core.Rules.BoberOznaczeniaBridge.TryMapWszystkie = MapujSekcjeOznaczenia;
         SKRYBEK.Core.Rules.BoberOznaczeniaBridge.TryMap = (string? typWpisu, out SKRYBEK.Core.Enums.TypNieobecnosci? sekcja) =>
         {
-            sekcja = null;
-            if (string.IsNullOrWhiteSpace(typWpisu))
-                return true;
-
-            var bazowy = BOBER.Core.Constants.GrafikWpisTypy.BazowyKod(typWpisu);
-            var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(bazowy);
-            if (ozn is null)
+            var sekcje = MapujSekcjeOznaczenia(typWpisu);
+            if (sekcje is null)
+            {
+                sekcja = null;
                 return false;
-
-            // Overlay CENTRUM (np. Oddaje) — osoba w pracy.
-            if (BOBER.Core.Constants.GrafikWpisTypy.MaCentrumOverlay(typWpisu))
-            {
-                sekcja = null;
-                return true;
             }
 
-            if (ozn.WPracy)
-            {
-                sekcja = null;
-                return true;
-            }
-
-            if (ozn.SekcjaRozkazu is null)
-            {
-                sekcja = null;
-                return true;
-            }
-
-            sekcja = (SKRYBEK.Core.Enums.TypNieobecnosci)(int)ozn.SekcjaRozkazu.Value;
+            sekcja = sekcje.Count > 0 ? sekcje[0] : null;
             return true;
         };
 
@@ -214,15 +194,36 @@ public sealed class TukanAppServices : IDisposable
         {
             var bazowy = BOBER.Core.Constants.GrafikWpisTypy.BazowyKod(typWpisu);
             var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(bazowy);
-            if (ozn is null || string.IsNullOrWhiteSpace(ozn.AdnotacjaRozkazu) || ozn.SekcjaRozkazu is null)
+            if (ozn is null || string.IsNullOrWhiteSpace(ozn.AdnotacjaRozkazu))
                 return null;
 
-            var oczekiwana = (SKRYBEK.Core.Enums.TypNieobecnosci)(int)ozn.SekcjaRozkazu.Value;
-            if (oczekiwana != typSekcji)
-                return null;
-
-            return ozn.AdnotacjaRozkazu;
+            var pasuje = ozn.EfektywneSekcjeRozkazu
+                .Any(s => (SKRYBEK.Core.Enums.TypNieobecnosci)(int)s == typSekcji);
+            return pasuje ? ozn.AdnotacjaRozkazu : null;
         };
+    }
+
+    /// <summary>
+    /// null = kod spoza katalogu; pusta lista = w pracy; niepusta = sekcje nieobecnych.
+    /// </summary>
+    private static IReadOnlyList<SKRYBEK.Core.Enums.TypNieobecnosci>? MapujSekcjeOznaczenia(string? typWpisu)
+    {
+        if (string.IsNullOrWhiteSpace(typWpisu))
+            return [];
+
+        var bazowy = BOBER.Core.Constants.GrafikWpisTypy.BazowyKod(typWpisu);
+        var ozn = BOBER.Core.Oznaczenia.OznaczeniaLookup.FindByKod(bazowy);
+        if (ozn is null)
+            return null;
+
+        // Overlay CENTRUM (np. Oddaje) — osoba w pracy.
+        if (BOBER.Core.Constants.GrafikWpisTypy.MaCentrumOverlay(typWpisu) || ozn.WPracy)
+            return [];
+
+        return ozn.EfektywneSekcjeRozkazu
+            .Distinct()
+            .Select(s => (SKRYBEK.Core.Enums.TypNieobecnosci)(int)s)
+            .ToArray();
     }
 
     private static void ConfigureLogging()
