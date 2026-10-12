@@ -86,24 +86,37 @@
                               Header="Zarządzanie grafikiem"
                               Style="{StaticResource TukanSettingsExpander}"
                               Visibility="Collapsed">
+                        <ContentControl x:Name="ZarzadzanieGrafikiemHost" />
+                    </Expander>
+                    <Expander x:Name="RozneExpander"
+                              Header="Różne"
+                              Style="{StaticResource TukanSettingsExpander}"
+                              Visibility="Collapsed">
                         <StackPanel>
-                            <StackPanel x:Name="GrafikNoweOknoPanel"
-                                        Visibility="Collapsed"
-                                        Margin="0,4,0,12">
-                                <CheckBox x:Name="GrafikNoweOknoCheckBox"
-                                          FontWeight="Normal"
-                                          FontSize="13"
-                                          Content="Otwieraj grafik miesięczny służb w nowym oknie"
-                                          Checked="OnGrafikNoweOknoChanged"
-                                          Unchecked="OnGrafikNoweOknoChanged" />
-                                <TextBlock FontWeight="Normal"
-                                           FontSize="12"
-                                           Foreground="{StaticResource ForegroundMutedBrush}"
-                                           TextWrapping="Wrap"
-                                           Margin="0,4,0,0"
-                                           Text="Domyślnie wyłączone. Po włączeniu przycisk Grafik służb zostawia bieżący widok (np. rozkaz dzienny) i otwiera miesięczny grafik w osobnym oknie." />
-                            </StackPanel>
-                            <ContentControl x:Name="ZarzadzanieGrafikiemHost" />
+                            <CheckBox x:Name="GrafikNoweOknoCheckBox"
+                                      FontWeight="Normal"
+                                      FontSize="13"
+                                      Content="Otwieraj grafik miesięczny służb w nowym oknie"
+                                      Checked="OnGrafikNoweOknoChanged"
+                                      Unchecked="OnGrafikNoweOknoChanged" />
+                            <TextBlock FontWeight="Normal"
+                                       FontSize="12"
+                                       Foreground="{StaticResource ForegroundMutedBrush}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,4,0,12"
+                                       Text="Domyślnie wyłączone. Po włączeniu przycisk Grafik służb zostawia bieżący widok (np. rozkaz dzienny) i otwiera miesięczny grafik w osobnym oknie." />
+                            <CheckBox x:Name="ObsadaNoweOknoCheckBox"
+                                      FontWeight="Normal"
+                                      FontSize="13"
+                                      Content="Otwieraj obsadę funkcji w nowym oknie"
+                                      Checked="OnObsadaNoweOknoChanged"
+                                      Unchecked="OnObsadaNoweOknoChanged" />
+                            <TextBlock FontWeight="Normal"
+                                       FontSize="12"
+                                       Foreground="{StaticResource ForegroundMutedBrush}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,4,0,0"
+                                       Text="Domyślnie włączone. Po wyłączeniu przycisk Obsada funkcji otwiera widok w oknie głównym zamiast w osobnym oknie." />
                         </StackPanel>
                     </Expander>
                 </StackPanel>

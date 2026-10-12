@@ -336,6 +336,9 @@ public partial class TukanSettingsView : UserControl
             controller, BoberSettingsSection.Kolejnosc, "Kolejność funkcjonariuszy");
         KolejnoscExpander.Visibility = Visibility.Visible;
 
+        if (user?.IsShiftAccount == true)
+            _ = InitializeRozneSettingsAsync();
+
         _ = InitializeZarzadzanieGrafikiemAsync(controller);
     }
 
@@ -348,16 +351,15 @@ public partial class TukanSettingsView : UserControl
         ZarzadzanieGrafikiemHost.Content = CreateBoberSection(
             controller, BoberSettingsSection.ZarzadzanieGrafikiem, "Zarządzanie grafikiem");
         ZarzadzanieGrafikiemExpander.Visibility = Visibility.Visible;
-        await InitializeGrafikWindowSettingAsync();
         RefreshUzytkoweTabVisibility();
     }
 
-    private async Task InitializeGrafikWindowSettingAsync()
+    private async Task InitializeRozneSettingsAsync()
     {
         var user = _tukanServices.Chomik.Auth.CurrentUser;
         if (user?.IsShiftAccount != true || user.ShiftNumber is not int shiftNumber || shiftNumber is < 1 or > 3)
         {
-            GrafikNoweOknoPanel.Visibility = Visibility.Collapsed;
+            RozneExpander.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -367,45 +369,68 @@ public partial class TukanSettingsView : UserControl
         {
             GrafikNoweOknoCheckBox.IsChecked =
                 await _tukanServices.GrafikWindowSettings.GetOpenInNewWindowAsync(shiftNumber);
-            GrafikNoweOknoPanel.Visibility = Visibility.Visible;
+            ObsadaNoweOknoCheckBox.IsChecked =
+                await _tukanServices.GrafikWindowSettings.GetObsadaOpenInNewWindowAsync(shiftNumber);
+            RozneExpander.Visibility = Visibility.Visible;
         }
         catch (Exception ex)
         {
             GrafikNoweOknoCheckBox.IsChecked = false;
-            GrafikNoweOknoPanel.Visibility = Visibility.Visible;
+            ObsadaNoweOknoCheckBox.IsChecked = true;
+            RozneExpander.Visibility = Visibility.Visible;
             TukanMessageBox.Show(
                 Window.GetWindow(this),
-                $"Nie udało się odczytać ustawienia okna grafiku:\n\n{ex.Message}",
+                $"Nie udało się odczytać ustawień okien:\n\n{ex.Message}",
                 "Ustawienia");
         }
         finally
         {
             _loadingGrafikWindowSetting = false;
+            RefreshUzytkoweTabVisibility();
         }
     }
 
-    private async void OnGrafikNoweOknoChanged(object sender, RoutedEventArgs e)
+    private async void OnGrafikNoweOknoChanged(object sender, RoutedEventArgs e) =>
+        await SaveWindowFlagAsync(
+            GrafikNoweOknoCheckBox,
+            (shift, enabled) => _tukanServices.GrafikWindowSettings.SetOpenInNewWindowAsync(shift, enabled),
+            enabled => enabled
+                ? "Włączono otwieranie grafiku służb w nowym oknie"
+                : "Wyłączono otwieranie grafiku służb w nowym oknie",
+            "okna grafiku");
+
+    private async void OnObsadaNoweOknoChanged(object sender, RoutedEventArgs e) =>
+        await SaveWindowFlagAsync(
+            ObsadaNoweOknoCheckBox,
+            (shift, enabled) => _tukanServices.GrafikWindowSettings.SetObsadaOpenInNewWindowAsync(shift, enabled),
+            enabled => enabled
+                ? "Włączono otwieranie obsady funkcji w nowym oknie"
+                : "Wyłączono otwieranie obsady funkcji w nowym oknie",
+            "okna obsady funkcji");
+
+    private async Task SaveWindowFlagAsync(
+        CheckBox checkBox,
+        Func<int, bool, Task> save,
+        Func<bool, string> auditMessage,
+        string errorSubject)
     {
         if (_loadingGrafikWindowSetting || _grafikWindowShiftNumber is not int shiftNumber)
             return;
 
-        var enabled = GrafikNoweOknoCheckBox.IsChecked == true;
+        var enabled = checkBox.IsChecked == true;
         try
         {
-            await _tukanServices.GrafikWindowSettings.SetOpenInNewWindowAsync(shiftNumber, enabled);
-            await TryAuditSettingsAsync(
-                enabled
-                    ? "Włączono otwieranie grafiku służb w nowym oknie"
-                    : "Wyłączono otwieranie grafiku służb w nowym oknie");
+            await save(shiftNumber, enabled);
+            await TryAuditSettingsAsync(auditMessage(enabled));
         }
         catch (Exception ex)
         {
             _loadingGrafikWindowSetting = true;
-            GrafikNoweOknoCheckBox.IsChecked = !enabled;
+            checkBox.IsChecked = !enabled;
             _loadingGrafikWindowSetting = false;
             TukanMessageBox.Show(
                 Window.GetWindow(this),
-                $"Nie udało się zapisać ustawienia okna grafiku:\n\n{ex.Message}",
+                $"Nie udało się zapisać ustawienia {errorSubject}:\n\n{ex.Message}",
                 "Ustawienia");
         }
     }
@@ -434,7 +459,8 @@ public partial class TukanSettingsView : UserControl
             || RatownicyExpander.Visibility == Visibility.Visible
             || ParametryZmianExpander.Visibility == Visibility.Visible
             || KolejnoscExpander.Visibility == Visibility.Visible
-            || ZarzadzanieGrafikiemExpander.Visibility == Visibility.Visible;
+            || ZarzadzanieGrafikiemExpander.Visibility == Visibility.Visible
+            || RozneExpander.Visibility == Visibility.Visible;
         UzytkoweTab.Visibility = anyVisible ? Visibility.Visible : Visibility.Collapsed;
     }
 }

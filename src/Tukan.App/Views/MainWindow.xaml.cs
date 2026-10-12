@@ -480,7 +480,7 @@ public partial class MainWindow : Window
     private void OnKalendarzNotesChanged(object? sender, EventArgs e) =>
         _ = RefreshKalendarzUnreadBadgeAsync();
 
-    private void OnDutyAssignmentsClick(object sender, RoutedEventArgs e)
+    private async void OnDutyAssignmentsClick(object sender, RoutedEventArgs e)
     {
         var user = _tukanServices.Chomik.Auth.CurrentUser;
         if (user?.IsShiftScoped != true || user.IsPaUser || user.ShiftNumber is not int shiftNumber)
@@ -488,28 +488,82 @@ public partial class MainWindow : Window
             return;
         }
 
+        var shiftName = $"Zmiana {shiftNumber}";
+        var title = $"Obsada funkcji — {shiftName}";
+        _dutyAssignmentsController ??= new DutyAssignmentsController(_tukanServices, shiftNumber, shiftName);
+        _dutyAssignmentsView ??= new DutyAssignmentsView();
+
+        if (await ShouldOpenObsadaInNewWindowAsync(user))
+        {
+            OpenObsadaInNewWindow(title);
+            return;
+        }
+
+        CloseDutyAssignmentsWindow();
+        _dutyAssignmentsView.Initialize(_dutyAssignmentsController);
+        NavigateTo(_dutyAssignmentsView, "Obsada funkcji", DutyAssignmentsButton);
+    }
+
+    private async Task<bool> ShouldOpenObsadaInNewWindowAsync(Chomik.Core.Security.SessionUser user)
+    {
+        if (user.IsShiftAccount != true || user.ShiftNumber is not int shiftNumber || shiftNumber is < 1 or > 3)
+            return true;
+
+        try
+        {
+            return await _tukanServices.GrafikWindowSettings.GetObsadaOpenInNewWindowAsync(shiftNumber);
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    private void OpenObsadaInNewWindow(string title)
+    {
+        if (_dutyAssignmentsView is null || _dutyAssignmentsController is null)
+            return;
+
         if (_dutyAssignmentsWindow is { IsLoaded: true })
         {
             if (_dutyAssignmentsWindow.WindowState == WindowState.Minimized)
-            {
                 _dutyAssignmentsWindow.WindowState = WindowState.Normal;
-            }
 
             _dutyAssignmentsWindow.Activate();
             return;
         }
 
-        var shiftName = $"Zmiana {shiftNumber}";
-        _dutyAssignmentsController ??= new DutyAssignmentsController(_tukanServices, shiftNumber, shiftName);
-        _dutyAssignmentsView ??= new DutyAssignmentsView();
+        var wasMainContent = ReferenceEquals(MainContentHost.Content, _dutyAssignmentsView);
         DetachFromVisualParent(_dutyAssignmentsView);
-        _dutyAssignmentsView.Initialize(_dutyAssignmentsController);
+        if (wasMainContent)
+        {
+            ViewTitleTextBlock.Text = string.Empty;
+            HighlightSidebarButton(null);
+        }
 
-        var title = $"Obsada funkcji — {shiftName}";
+        _dutyAssignmentsView.Initialize(_dutyAssignmentsController);
         _dutyAssignmentsWindow = new DutyAssignmentsWindow(_dutyAssignmentsView, title);
         // Bez Owner — okno niezależne, można przenieść na drugi monitor obok Rozkazów.
-        _dutyAssignmentsWindow.Closed += (_, _) => _dutyAssignmentsWindow = null;
+        _dutyAssignmentsWindow.Closed += (_, _) =>
+        {
+            if (_dutyAssignmentsView is not null)
+                DetachFromVisualParent(_dutyAssignmentsView);
+            _dutyAssignmentsWindow = null;
+        };
         _dutyAssignmentsWindow.Show();
+    }
+
+    private void CloseDutyAssignmentsWindow()
+    {
+        if (_dutyAssignmentsWindow is null)
+            return;
+
+        if (_dutyAssignmentsView is not null)
+            DetachFromVisualParent(_dutyAssignmentsView);
+
+        var window = _dutyAssignmentsWindow;
+        _dutyAssignmentsWindow = null;
+        window.Close();
     }
 
     private static void DetachFromVisualParent(FrameworkElement element)
