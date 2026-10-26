@@ -209,9 +209,7 @@ public sealed class ExportService
                     ? "#FFFFFF"
                     : ResolveHex(kolory, role, RoleKeys.DomyslneKolory);
                 rowBg = ToXl(rowBgHex);
-                nameText = RoleClassifier.IsNurek(f) && !wylaczone.Contains(RoleKeys.NurekCzcionka)
-                    ? ToXl(ResolveHex(kolory, RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow))
-                    : ToXl(AppColors.ContrastTextHex(rowBgHex));
+                nameText = ResolveNameText(f, kolory, wylaczone, rowBgHex);
             }
 
             // Kolumna oznaczeń D/N/K
@@ -525,6 +523,21 @@ public sealed class ExportService
                 prawaOzn?.EffectiveKolorCzcionkiHex
                 ?? OznaczenieGrafiku.DomyslnyKolorCzcionkiFlagi);
         }
+    }
+
+    private static XLColor ResolveNameText(
+        Funkcjonariusz f,
+        IReadOnlyDictionary<string, string> kolory,
+        IReadOnlySet<string> wylaczone,
+        string rowBgHex)
+    {
+        if (RoleClassifier.IsNurek(f) && !wylaczone.Contains(RoleKeys.NurekCzcionka))
+            return ToXl(ResolveHex(kolory, RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow));
+
+        if (RoleClassifier.IsSonarzysta(f) && !wylaczone.Contains(RoleKeys.SonarCzcionka))
+            return ToXl(ResolveHex(kolory, RoleKeys.SonarCzcionka, RoleKeys.DomyslneKoloryWpisow));
+
+        return ToXl(AppColors.ContrastTextHex(rowBgHex));
     }
 
     private static string ResolveHex(

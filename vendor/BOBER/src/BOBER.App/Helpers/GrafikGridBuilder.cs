@@ -213,7 +213,7 @@ public static class GrafikGridBuilder
         var template = new DataTemplate();
         var borderFactory = new FrameworkElementFactory(typeof(Border));
         borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(2));
-        borderFactory.SetValue(Border.PaddingProperty, new Thickness(4, 2, 4, 2));
+        borderFactory.SetValue(Border.PaddingProperty, new Thickness(0));
         borderFactory.SetValue(Border.MarginProperty, new Thickness(1));
         borderFactory.SetValue(Border.BackgroundProperty, Brushes.Transparent);
         borderFactory.SetBinding(Border.BorderBrushProperty,
@@ -223,7 +223,7 @@ public static class GrafikGridBuilder
         borderStyle.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(0)));
         var nurekBorder = new DataTrigger
         {
-            Binding = new Binding(nameof(GrafikRowViewModel.IsNurek)),
+            Binding = new Binding(nameof(GrafikRowViewModel.HasNameBorder)),
             Value = true
         };
         nurekBorder.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(2)));
@@ -241,6 +241,23 @@ public static class GrafikGridBuilder
         borderStyle.Triggers.Add(selectionHighlight);
         borderFactory.SetValue(FrameworkElement.StyleProperty, borderStyle);
 
+        var innerFactory = new FrameworkElementFactory(typeof(Border));
+        innerFactory.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+        innerFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(1));
+        innerFactory.SetValue(Border.PaddingProperty, new Thickness(4, 2, 4, 2));
+        innerFactory.SetBinding(Border.BorderBrushProperty,
+            new Binding(nameof(GrafikRowViewModel.NameInnerBorderBrush)));
+        var innerStyle = new Style(typeof(Border));
+        innerStyle.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(0)));
+        var innerBorder = new DataTrigger
+        {
+            Binding = new Binding(nameof(GrafikRowViewModel.HasInnerNameBorder)),
+            Value = true
+        };
+        innerBorder.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(2)));
+        innerStyle.Triggers.Add(innerBorder);
+        innerFactory.SetValue(FrameworkElement.StyleProperty, innerStyle);
+
         var textFactory = new FrameworkElementFactory(typeof(TextBlock));
         textFactory.SetBinding(TextBlock.TextProperty,
             new Binding(nameof(GrafikRowViewModel.ImieNazwisko)));
@@ -253,7 +270,7 @@ public static class GrafikGridBuilder
         var textStyle = new Style(typeof(TextBlock));
         var nurekFg = new DataTrigger
         {
-            Binding = new Binding(nameof(GrafikRowViewModel.IsNurek)),
+            Binding = new Binding(nameof(GrafikRowViewModel.HasNameBorder)),
             Value = true
         };
         nurekFg.Setters.Add(new Setter(TextBlock.ForegroundProperty, NormalDayFg));
@@ -282,7 +299,8 @@ public static class GrafikGridBuilder
         textStyle.Triggers.Add(summaryText);
         textFactory.SetValue(FrameworkElement.StyleProperty, textStyle);
 
-        borderFactory.AppendChild(textFactory);
+        innerFactory.AppendChild(textFactory);
+        borderFactory.AppendChild(innerFactory);
         template.VisualTree = borderFactory;
         return template;
     }

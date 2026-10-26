@@ -1,5 +1,6 @@
 using System.Data.OleDb;
 using System.IO;
+using System.Windows;
 using System.Windows.Media;
 using BOBER.Core.Constants;
 using SKRYBEK.Core.Chomik;
@@ -38,13 +39,36 @@ public static class RoleKolorHelper
     }
 
     /// <summary>
-    /// Obramowanie wyróżniające nurka na liście dostępnego personelu.
-    /// Dla pozostałych — przezroczysta, przy stałej grubości 2 px bez przesuwania layoutu.
+    /// Zewnętrzny pierścień: nurek, a gdy brak nurka — sonar.
     /// </summary>
-    public static Brush WyznaczKolorObramowaniaNurek(Funkcjonariusz osoba) =>
-        CzyNurek(osoba)
-            ? new SolidColorBrush(PobierzHexKlucza(RoleKeys.NurekCzcionka))
+    public static Brush WyznaczKolorObramowaniaNurek(Funkcjonariusz osoba)
+    {
+        var plan = PlanObramowania(osoba);
+        return plan.HasOuter
+            ? new SolidColorBrush(ParsujKolor(plan.OuterHex!))
             : Brushes.Transparent;
+    }
+
+    /// <summary>Wewnętrzny pierścień sonara, gdy osoba ma też uprawnienie nurka.</summary>
+    public static Brush WyznaczKolorObramowaniaWewnetrznego(Funkcjonariusz osoba)
+    {
+        var plan = PlanObramowania(osoba);
+        return plan.HasInner
+            ? new SolidColorBrush(ParsujKolor(plan.InnerHex!))
+            : Brushes.Transparent;
+    }
+
+    public static Thickness WyznaczGruboscObramowaniaWewnetrznego(Funkcjonariusz osoba) =>
+        PlanObramowania(osoba).HasInner ? new Thickness(2) : new Thickness(0);
+
+    private static NameBorderPlan PlanObramowania(Funkcjonariusz osoba) =>
+        NameBorderPlanResolver.Resolve(
+            CzyNurek(osoba),
+            osoba.MaUprawnieniaSonar,
+            nurekAktywny: true,
+            sonarAktywny: true,
+            HexKlucza(RoleKeys.NurekCzcionka),
+            HexKlucza(RoleKeys.SonarCzcionka));
 
     public static bool CzyNurek(Funkcjonariusz osoba) =>
         osoba.MaUprawnieniaNumek || osoba.MaUprawnieniaKPP;
@@ -94,13 +118,13 @@ public static class RoleKolorHelper
     private static Color PobierzKolorTlaRoli(string klucz) =>
         PobierzHexKlucza(klucz);
 
-    private static Color PobierzHexKlucza(string klucz)
-    {
-        if (KoloryRoli.Value.TryGetValue(klucz, out var hex))
-            return ParsujKolor(hex);
+    private static string HexKlucza(string klucz) =>
+        KoloryRoli.Value.TryGetValue(klucz, out var hex)
+            ? hex
+            : RoleKeys.GetDefaultKolorHex(klucz);
 
-        return ParsujKolor(RoleKeys.GetDefaultKolorHex(klucz));
-    }
+    private static Color PobierzHexKlucza(string klucz) =>
+        ParsujKolor(HexKlucza(klucz));
 
     private static Color KontrastowyTekst(Color tlo)
     {

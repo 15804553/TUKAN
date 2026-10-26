@@ -666,6 +666,51 @@ public sealed class GrafikSluzbExportMarksTests
     }
 
     [Fact]
+    public void ExportMonth_Sonarzysta_KolorujeImieNaNiebiesko()
+    {
+        var funkcjonariusze = new List<Funkcjonariusz>
+        {
+            new()
+            {
+                Id = 1, Imie = "Piotr", Nazwisko = "Sonar", Stanowisko = "Strażak",
+                NazwyUprawnien = ["Sonar"]
+            },
+            new()
+            {
+                Id = 2, Imie = "Jan", Nazwisko = "Oba", Stanowisko = "Strażak",
+                NazwyUprawnien = ["Nurek", "Sonar"]
+            },
+        };
+
+        var path = Path.Combine(Path.GetTempPath(), $"tukan-grafik-sonar-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            new ExportService().ExportMonth(
+                path, 2026, 7, funkcjonariusze, wpisy: [],
+                stanZmiany: 2, stanMinimalny: 1,
+                kolory: DefaultKolory(),
+                workDays: [1],
+                lessColor: false);
+
+            using var wb = new XLWorkbook(path);
+            var ws = wb.Worksheet(1);
+
+            var sonarBlue = XLColor.FromHtml(RoleKeys.DomyslneKoloryWpisow[RoleKeys.SonarCzcionka]);
+            var nurekRed = XLColor.FromHtml(RoleKeys.DomyslneKoloryWpisow[RoleKeys.NurekCzcionka]);
+
+            Assert.True(RoleClassifier.IsSonarzysta(funkcjonariusze[0]));
+            Assert.False(RoleClassifier.IsNurek(funkcjonariusze[0]));
+            Assert.Equal(sonarBlue, ws.Cell(4, 2).Style.Font.FontColor);
+            Assert.Equal(nurekRed, ws.Cell(5, 2).Style.Font.FontColor);
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void ExportMonth_KolorowanieNaprzemienne_NaprzemienneTloWierszyZachowujeZolteWs()
     {
         var funkcjonariusze = new List<Funkcjonariusz>

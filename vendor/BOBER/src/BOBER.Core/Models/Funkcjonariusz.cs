@@ -35,6 +35,9 @@ public sealed class Funkcjonariusz
     public bool MaUprawnieniaKPP =>
         NazwyUprawnien.Any(u => u.Contains("Kierownik prac podwodnych", StringComparison.OrdinalIgnoreCase));
 
+    public bool MaUprawnieniaSonar =>
+        NazwyUprawnien.Any(u => u.Contains("Sonar", StringComparison.OrdinalIgnoreCase));
+
     public bool MaUprawnieniaObslugaLodzi =>
         NazwyUprawnien.Any(PoziomGotowosciNurkowejRules.CzyEtykietaObslugiLodzi);
 }

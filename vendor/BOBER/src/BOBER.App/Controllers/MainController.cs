@@ -90,6 +90,7 @@ public sealed class MainController(AppServices services)
             var rowBackground = useAlternating
                 ? (i % 2 == 0 ? altBrushA : altBrushB)
                 : GetRoleBrush(f);
+            var nameBorder = ResolveNameBorder(f);
             var row = new GrafikRowViewModel
             {
                 FunkcjonariuszId = f.Id,
@@ -97,10 +98,16 @@ public sealed class MainController(AppServices services)
                 ImieNazwisko = f.PelneImieNazwisko,
                 Stanowisko = f.Stanowisko,
                 KluczRoli = RoleClassifier.DetermineRole(f),
-                IsNurek = RoleClassifier.IsNurek(f),
+                HasNameBorder = nameBorder.HasOuter,
+                HasInnerNameBorder = nameBorder.HasInner,
                 RowBackground = rowBackground,
                 RowForeground = GetForegroundForBackground(rowBackground),
-                NameBorderBrush = GetNurekBorderBrush(f),
+                NameBorderBrush = nameBorder.HasOuter
+                    ? ParseBrush(nameBorder.OuterHex!)
+                    : Brushes.Transparent,
+                NameInnerBorderBrush = nameBorder.HasInner
+                    ? ParseBrush(nameBorder.InnerHex!)
+                    : Brushes.Transparent,
                 UwagaMiesieczna = uwagiLookup.TryGetValue(f.Id, out var uwaga) ? uwaga : string.Empty
             };
 
@@ -483,13 +490,14 @@ public sealed class MainController(AppServices services)
             : new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0));
     }
 
-    private Brush GetNurekBorderBrush(Funkcjonariusz f)
-    {
-        if (!RoleClassifier.IsNurek(f) || !KoloryLookup.IsAktywny(_koloryMap, RoleKeys.NurekCzcionka))
-            return Brushes.Transparent;
-
-        return ParseBrush(GetKolorHex(RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow));
-    }
+    private NameBorderPlan ResolveNameBorder(Funkcjonariusz f) =>
+        NameBorderPlanResolver.Resolve(
+            RoleClassifier.IsNurek(f),
+            RoleClassifier.IsSonarzysta(f),
+            KoloryLookup.IsAktywny(_koloryMap, RoleKeys.NurekCzcionka),
+            KoloryLookup.IsAktywny(_koloryMap, RoleKeys.SonarCzcionka),
+            GetKolorHex(RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow),
+            GetKolorHex(RoleKeys.SonarCzcionka, RoleKeys.DomyslneKoloryWpisow));
 
     private static bool IsLightColor(Color c)
     {

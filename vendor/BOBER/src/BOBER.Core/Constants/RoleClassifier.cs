@@ -8,6 +8,10 @@ public static class RoleClassifier
     public static bool IsNurek(Funkcjonariusz f) =>
         f.MaUprawnieniaKPP || f.MaUprawnieniaNumek;
 
+    /// <summary>Uprawnienie Sonar — niebieskie obramowanie imienia, analogicznie do nurka.</summary>
+    public static bool IsSonarzysta(Funkcjonariusz f) =>
+        f.MaUprawnieniaSonar;
+
     /// <summary>
     /// Zwraca true dla dowódcy zastępu, dowódcy sekcji, dowódcy zmiany oraz zastępcy dowódcy zmiany.
     /// </summary>
@@ -38,14 +42,14 @@ public static class RoleClassifier
     /// <summary>
     /// Określa rolę funkcjonariusza na podstawie stanowiska.
     /// Priorytet: dowódca zmiany → dowódca sekcji / z-ca dcy zmiany → dowódca zastępu → kierowca → zwykły.
-    /// Status nureka nie wpływa na rolę — jest obsługiwany wyłącznie przez kolor obramowania (NurekCzcionka).
+    /// Status nureka i sonarzysty nie wpływa na rolę — wyróżnia je kolor obramowania (NurekCzcionka, SonarCzcionka).
     /// </summary>
     public static string DetermineRole(Funkcjonariusz f) => DetermineBackgroundRole(f);
 
     /// <summary>
     /// Zwraca rolę używaną do koloru tła wiersza oraz kolejności sortowania.
-    /// Nurek nie ma własnej roli — otrzymuje kolor tła i sort wynikający ze stanowiska,
-    /// a wyróżnienie obramowaniem jest ustawiane oddzielnie jako NurekCzcionka.
+    /// Nurek i sonarzysta nie mają własnej roli tła — otrzymują kolor i sort ze stanowiska,
+    /// a wyróżnienie obramowaniem jest ustawiane oddzielnie (NurekCzcionka, SonarCzcionka).
     /// </summary>
     public static string DetermineBackgroundRole(Funkcjonariusz f)
     {

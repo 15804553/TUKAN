@@ -50,6 +50,10 @@ public sealed class Funkcjonariusz
     public bool MaUprawnieniaKPP =>
         IdUprawnien.Contains(ChomikSlowniki.UprawnienieKPP);
 
+    public bool MaUprawnieniaSonar =>
+        IdUprawnien.Contains(ChomikSlowniki.UprawnienieSonarzysta)
+        || NazwyUprawnien.Any(u => u.Contains("Sonar", StringComparison.OrdinalIgnoreCase));
+
     public bool MaUprawnieniaObslugaLodzi =>
         NazwyUprawnien.Any(PoziomGotowosciNurkowejRules.CzyEtykietaObslugiLodzi);
 

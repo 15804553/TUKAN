@@ -41,12 +41,16 @@ public sealed class GrafikRowViewModel : INotifyPropertyChanged
     public string ImieNazwisko { get; init; } = string.Empty;
     public string Stanowisko { get; init; } = string.Empty;
     public string KluczRoli { get; init; } = string.Empty;
-    /// <summary>Ma uprawnienia nurka (KPP lub Nurek) — czerwone obramowanie w kolumnie imienia.</summary>
-    public bool IsNurek { get; init; }
+    /// <summary>Zewnętrzny pierścień imienia (nurek albo sam sonar).</summary>
+    public bool HasNameBorder { get; init; }
+    /// <summary>Wewnętrzny pierścień — sonar przy jednoczesnym uprawnieniu nurka.</summary>
+    public bool HasInnerNameBorder { get; init; }
     public Brush RowBackground { get; set; } = Brushes.Transparent;
     public Brush RowForeground { get; set; } = Brushes.White;
-    /// <summary>Kolor obramowania imienia (czerwony dla nurka, przezroczysty w pozostałych przypadkach).</summary>
+    /// <summary>Kolor zewnętrznego pierścienia imienia.</summary>
     public Brush NameBorderBrush { get; set; } = Brushes.Transparent;
+    /// <summary>Kolor wewnętrznego pierścienia imienia (sonar przy nurku).</summary>
+    public Brush NameInnerBorderBrush { get; set; } = Brushes.Transparent;
 
     private bool _isSelectionHighlight;
 

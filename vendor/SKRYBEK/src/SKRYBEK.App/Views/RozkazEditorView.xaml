@@ -159,11 +159,16 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Border Margin="4,2"
-                                    Padding="6,4"
+                                    Padding="0"
                                     CornerRadius="3"
                                     BorderThickness="2"
                                     BorderBrush="{Binding Converter={StaticResource FunkcjonariuszNurekObramowanieConverter}}"
                                     Background="{Binding Converter={StaticResource FunkcjonariuszRoleTloConverter}}">
+                                <Border Padding="6,4"
+                                        CornerRadius="2"
+                                        Background="Transparent"
+                                        BorderBrush="{Binding Converter={StaticResource FunkcjonariuszSonarObramowanieConverter}}"
+                                        BorderThickness="{Binding Converter={StaticResource FunkcjonariuszSonarObramowanieGruboscConverter}}">
                                 <StackPanel>
                                     <TextBlock FontWeight="SemiBold" FontSize="12"
                                                Foreground="{Binding Converter={StaticResource FunkcjonariuszRoleKolorConverter}}"
@@ -174,6 +179,7 @@
                                                Text="{Binding Stanowisko}"
                                                TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
+                                </Border>
                             </Border>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

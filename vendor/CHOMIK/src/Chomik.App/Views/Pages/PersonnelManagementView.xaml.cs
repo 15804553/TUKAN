@@ -62,15 +62,21 @@ public partial class PersonnelManagementView : UserControl
     private void ApplyColoring(PersonnelGridRow row)
     {
         if (RowColoring is null
-            || !RowColoring.TryGetAppearance(row.Entity, out var background, out var nameBorder))
+            || !RowColoring.TryGetAppearance(row.Entity, out var background, out var nameBorder, out var nameInnerBorder))
         {
             row.RowBackground = Brushes.Transparent;
             row.NameBorderBrush = Brushes.Transparent;
+            row.NameInnerBorderBrush = Brushes.Transparent;
+            row.NameInnerBorderThickness = new Thickness(0);
             return;
         }
 
         row.RowBackground = background;
         row.NameBorderBrush = nameBorder;
+        row.NameInnerBorderBrush = nameInnerBorder;
+        row.NameInnerBorderThickness = nameInnerBorder == Brushes.Transparent
+            ? new Thickness(0)
+            : new Thickness(2);
     }
 
     private void OnPersonnelGridLoadingRow(object? sender, DataGridRowEventArgs e)
@@ -230,5 +236,7 @@ public partial class PersonnelManagementView : UserControl
 
         public Brush RowBackground { get; set; } = Brushes.Transparent;
         public Brush NameBorderBrush { get; set; } = Brushes.Transparent;
+        public Brush NameInnerBorderBrush { get; set; } = Brushes.Transparent;
+        public Thickness NameInnerBorderThickness { get; set; } = new(0);
     }
 }

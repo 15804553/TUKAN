@@ -102,3 +102,27 @@ public sealed class FunkcjonariuszNurekObramowanieConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
+
+[ValueConversion(typeof(Funkcjonariusz), typeof(Brush))]
+public sealed class FunkcjonariuszSonarObramowanieConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is Funkcjonariusz f
+            ? RoleKolorHelper.WyznaczKolorObramowaniaWewnetrznego(f)
+            : Brushes.Transparent;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+[ValueConversion(typeof(Funkcjonariusz), typeof(Thickness))]
+public sealed class FunkcjonariuszSonarObramowanieGruboscConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is Funkcjonariusz f
+            ? RoleKolorHelper.WyznaczGruboscObramowaniaWewnetrznego(f)
+            : new Thickness(0);
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}

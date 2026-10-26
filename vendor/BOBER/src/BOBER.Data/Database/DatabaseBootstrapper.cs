@@ -58,6 +58,7 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
         await MigrateKierowcaRoleMergeAsync(connection, cancellationToken);
         await MigrateWolnaSluzbaColorAsync(connection, cancellationToken);
         await MigrateNurekRoleMergeAsync(connection, cancellationToken);
+        await MigrateSonarCzcionkaAsync(connection, cancellationToken);
         await MigrateRemoveDyzurColorAsync(connection, cancellationToken);
         await MigrateExportBandColorsAsync(connection, cancellationToken);
         await MigrateUrlopPlanWpisyTableAsync(connection, cancellationToken);
@@ -605,6 +606,47 @@ public sealed class DatabaseBootstrapper(BoberDatabaseOptions options)
                         connection,
                         RoleKeys.NurekCzcionka,
                         RoleKeys.DomyslneKoloryWpisow[RoleKeys.NurekCzcionka],
+                        cancellationToken);
+                }
+            }
+
+            await using var flagCmd = new OleDbCommand(
+                "INSERT INTO Ustawienia (Klucz, Wartosc) VALUES (?, ?)",
+                connection);
+            flagCmd.Parameters.AddWithValue("@p1", migrationKey);
+            flagCmd.Parameters.AddWithValue("@p2", "1");
+            await flagCmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch { /* seed uzupełni brakujące dane */ }
+    }
+
+    /// <summary>Dodaje kolor obramowania sonarzysty do ustawień kolorów.</summary>
+    private static async Task MigrateSonarCzcionkaAsync(
+        OleDbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        const string migrationKey = "MigratedSonarCzcionka20261026";
+
+        try
+        {
+            await using var checkCmd = new OleDbCommand(
+                "SELECT COUNT(*) FROM Ustawienia WHERE Klucz = ? AND Wartosc = '1'",
+                connection);
+            checkCmd.Parameters.AddWithValue("@p1", migrationKey);
+            if (Convert.ToInt32(await checkCmd.ExecuteScalarAsync(cancellationToken)) > 0)
+                return;
+
+            await using (var existsCmd = new OleDbCommand(
+                "SELECT COUNT(*) FROM KoloryStanowisk WHERE KluczRoli = ?",
+                connection))
+            {
+                existsCmd.Parameters.AddWithValue("@p1", RoleKeys.SonarCzcionka);
+                if (Convert.ToInt32(await existsCmd.ExecuteScalarAsync(cancellationToken)) == 0)
+                {
+                    await InsertKolorStanowiskaAsync(
+                        connection,
+                        RoleKeys.SonarCzcionka,
+                        RoleKeys.DomyslneKoloryWpisow[RoleKeys.SonarCzcionka],
                         cancellationToken);
                 }
             }

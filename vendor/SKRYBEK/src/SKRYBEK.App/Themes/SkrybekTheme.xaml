@@ -15,6 +15,8 @@
     <conv:FunkcjonariuszRoleKolorConverter x:Key="FunkcjonariuszRoleKolorConverter" />
     <conv:FunkcjonariuszRoleTloConverter x:Key="FunkcjonariuszRoleTloConverter" />
     <conv:FunkcjonariuszNurekObramowanieConverter x:Key="FunkcjonariuszNurekObramowanieConverter" />
+    <conv:FunkcjonariuszSonarObramowanieConverter x:Key="FunkcjonariuszSonarObramowanieConverter" />
+    <conv:FunkcjonariuszSonarObramowanieGruboscConverter x:Key="FunkcjonariuszSonarObramowanieGruboscConverter" />
 
     <!-- Paleta grafitowa (grafit + szarości) -->
     <Color x:Key="BackgroundColor">#1E1E1E</Color>

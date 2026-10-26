@@ -24,20 +24,33 @@ public sealed class PersonnelListColoring(BoberServices bober) : IPersonnelListC
         _kolory = KoloryLookup.Index(all);
     }
 
-    public bool TryGetAppearance(ChomikFunkcjonariusz funkcjonariusz, out Brush background, out Brush nameBorder)
+    public bool TryGetAppearance(
+        ChomikFunkcjonariusz funkcjonariusz,
+        out Brush background,
+        out Brush nameBorder,
+        out Brush nameInnerBorder)
     {
         background = Brushes.Transparent;
         nameBorder = Brushes.Transparent;
+        nameInnerBorder = Brushes.Transparent;
         if (!_enabled)
             return false;
 
         var role = ClassifyRole(funkcjonariusz);
         background = BrushFromHex(GetHex(role, RoleKeys.DomyslneKolory), Colors.White);
 
-        if (IsNurek(funkcjonariusz))
-            nameBorder = BrushFromHex(
-                GetHex(RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow),
-                Color.FromRgb(0xF8, 0x08, 0x08));
+        var plan = NameBorderPlanResolver.Resolve(
+            IsNurek(funkcjonariusz),
+            IsSonarzysta(funkcjonariusz),
+            nurekAktywny: true,
+            sonarAktywny: true,
+            GetHex(RoleKeys.NurekCzcionka, RoleKeys.DomyslneKoloryWpisow),
+            GetHex(RoleKeys.SonarCzcionka, RoleKeys.DomyslneKoloryWpisow));
+
+        if (plan.HasOuter)
+            nameBorder = BrushFromHex(plan.OuterHex!, Color.FromRgb(0xF8, 0x08, 0x08));
+        if (plan.HasInner)
+            nameInnerBorder = BrushFromHex(plan.InnerHex!, Color.FromRgb(0x1E, 0x88, 0xE5));
 
         return true;
     }
@@ -71,6 +84,9 @@ public sealed class PersonnelListColoring(BoberServices bober) : IPersonnelListC
             ContainsInsensitive(u.Nazwa, "nurek")
             || ContainsInsensitive(u.Nazwa, "kierownik prac podwodnych")
             || ContainsInsensitive(u.Nazwa, "kpp"));
+
+    private static bool IsSonarzysta(ChomikFunkcjonariusz f) =>
+        f.Uprawnienia.Any(u => ContainsInsensitive(u.Nazwa, "sonar"));
 
     private static bool IsKierowca(ChomikFunkcjonariusz f)
     {

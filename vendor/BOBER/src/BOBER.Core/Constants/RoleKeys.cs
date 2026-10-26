@@ -10,6 +10,8 @@ public static class RoleKeys
     public const string DowodcaSekcji = "DowodcaSekcji";
     public const string Nurek = "Nurek";
     public const string NurekCzcionka = "NurekCzcionka";
+    /// <summary>Obramowanie imienia i nazwiska osoby z uprawnieniem Sonar.</summary>
+    public const string SonarCzcionka = "SonarCzcionka";
     /// <summary>Legacy — usuwany migracją; KPP scalone z Nurkiem.</summary>
     public const string KierownikPracPodwodnych = "KierownikPracPodwodnych";
     public const string Kierowca = "Kierowca";
@@ -72,6 +74,7 @@ public static class RoleKeys
             WolnaSluzba,
             Nurek,
             NurekCzcionka,
+            SonarCzcionka,
             Delegacja,
             Szkolenie,
             .. KalendarzKolory,
@@ -86,6 +89,7 @@ public static class RoleKeys
             { DowodcaZastepu, "Dowódca zastępu" },
             { Nurek, "Nurek" },
             { NurekCzcionka, "Nurek — obramowanie (imię i nazwisko)" },
+            { SonarCzcionka, "Sonarzysta — obramowanie (imię i nazwisko)" },
             { Kierowca, "Kierowca (C/C+E/D)" },
             { Zwykly, "Zwykły strażak" },
             { WolnaSluzba, "D / WS — tło komórki" },
@@ -118,6 +122,7 @@ public static class RoleKeys
             { WolnaSluzba, "#6A5C00" },
             { DzienSluzby, "#FFD700" },
             { NurekCzcionka, "#F80808" },
+            { SonarCzcionka, "#1E88E5" },
             { Delegacja, BrakWypelnienia },
             { Szkolenie, BrakWypelnienia }
         };

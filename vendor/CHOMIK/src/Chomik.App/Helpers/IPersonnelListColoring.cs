@@ -10,5 +10,9 @@ public interface IPersonnelListColoring
 {
     Task RefreshAsync(CancellationToken cancellationToken = default);
 
-    bool TryGetAppearance(Funkcjonariusz funkcjonariusz, out Brush background, out Brush nameBorder);
+    bool TryGetAppearance(
+        Funkcjonariusz funkcjonariusz,
+        out Brush background,
+        out Brush nameBorder,
+        out Brush nameInnerBorder);
 }
