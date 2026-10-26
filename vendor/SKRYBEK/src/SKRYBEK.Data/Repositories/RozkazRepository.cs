@@ -99,6 +99,29 @@ public sealed class RozkazRepository
         return rozkaz;
     }
 
+    public async Task<RozkazDzienny?> GetByDataAsync(DateOnly data)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync();
+
+        await using var cmd = new OleDbCommand(
+            "SELECT Id, NumerRozkazu, Rok, Data, ZmianaId, Zajecia, Uwagi, DataUtworzenia, Status FROM Rozkazy WHERE Data=?",
+            conn);
+        cmd.Parameters.AddDate(data.ToDateTime(TimeOnly.MinValue));
+        await using var r = await cmd.ExecuteReaderAsync();
+        return await r.ReadAsync() ? MapRozkaz(r) : null;
+    }
+
+    public async Task UpdateUwagiAsync(int id, string uwagi)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync();
+        await using var cmd = new OleDbCommand("UPDATE Rozkazy SET Uwagi=? WHERE Id=?", conn);
+        cmd.Parameters.AddMemo(uwagi);
+        cmd.Parameters.AddInteger(id);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
     public async Task<int> SaveAsync(RozkazDzienny rozkaz)
     {
         await using var conn = _factory.Create();

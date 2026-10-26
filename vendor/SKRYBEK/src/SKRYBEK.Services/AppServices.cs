@@ -31,6 +31,7 @@ public sealed class AppServices
 
     public AuthService      Auth      { get; }
     public RozkazService    Rozkaz    { get; }
+    public KalendarzUwagiRozkazuService KalendarzUwagi { get; }
     public RatownikMedycznyAutoFillService RatownikMedycznyAutoFill { get; }
     public PersonnelService Personnel { get; }
     public BackupService    Backup    { get; }
@@ -61,6 +62,7 @@ public sealed class AppServices
 
         Auth       = new AuthService(ChomikAuthRepo);
         Rozkaz     = new RozkazService(RozkazRepo, SamochodyRepo);
+        KalendarzUwagi = new KalendarzUwagiRozkazuService(RozkazRepo);
         RatownikMedycznyAutoFill = new RatownikMedycznyAutoFillService();
         Personnel  = new PersonnelService(PersonnelRepo, calendar);
         Backup     = new BackupService(skrybek, UstawieniaRepo);

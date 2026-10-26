@@ -10,6 +10,7 @@ using Tukan.App.Views.Chrome;
 using Chomik.App.Views.Pages;
 using Microsoft.Win32;
 using SKRYBEK.App.Views;
+using SKRYBEK.Core.Enums;
 using Tukan.App.Controllers;
 using Tukan.App.Infrastructure;
 using Tukan.App.Services;
@@ -469,6 +470,7 @@ public partial class MainWindow : Window
         _kalendarzView ??= new KalendarzView { IsEmbedded = true };
         _kalendarzView.NotesChanged -= OnKalendarzNotesChanged;
         _kalendarzView.NotesChanged += OnKalendarzNotesChanged;
+        _kalendarzView.WriteNoteToRozkazAsync = WriteKalendarzNoteToRozkazAsync;
         _kalendarzView.Initialize(
             controller,
             canEdit: user.CanEditKalendarz,
@@ -479,6 +481,25 @@ public partial class MainWindow : Window
 
     private void OnKalendarzNotesChanged(object? sender, EventArgs e) =>
         _ = RefreshKalendarzUnreadBadgeAsync();
+
+    private async Task<string?> WriteKalendarzNoteToRozkazAsync(DateOnly data, string tresc)
+    {
+        var user = _tukanServices.Chomik.Auth.CurrentUser;
+        if (user?.IsShiftAccount != true || user.ShiftNumber is not >= 1 and <= 3)
+            return "Wpis do rozkazu dziennego jest dostępny tylko dla zmian I–III.";
+
+        var wynik = await _tukanServices.Skrybek.KalendarzUwagi.DopiszAsync(data, tresc);
+        return wynik switch
+        {
+            DopisUwagKalendarzaResult.Dopisano or DopisUwagKalendarzaResult.JuzZawiera => null,
+            DopisUwagKalendarzaResult.BrakRozkazu =>
+                $"Brak rozkazu dziennego na dzień {data:dd.MM.yyyy}. Notatka została zapisana w kalendarzu.",
+            DopisUwagKalendarzaResult.Zablokowany =>
+                "Rozkaz dzienny na ten dzień jest zatwierdzony — nie można dopisać uwagi. Notatka została zapisana w kalendarzu.",
+            DopisUwagKalendarzaResult.PustaTresc => "Treść notatki nie może być pusta.",
+            _ => "Nie udało się wpisać notatki do rozkazu dziennego."
+        };
+    }
 
     private async void OnDutyAssignmentsClick(object sender, RoutedEventArgs e)
     {

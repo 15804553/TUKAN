@@ -32,6 +32,17 @@ public partial class KalendarzView : UserControl
 
     public event EventHandler? NotesChanged;
 
+    /// <summary>
+    /// Opcjonalny zapis treści notatki do działu Uwagi rozkazu dziennego na wskazany dzień.
+    /// Zwraca komunikat błędu albo null przy powodzeniu.
+    /// </summary>
+    public Func<DateOnly, string, Task<string?>>? WriteNoteToRozkazAsync { get; set; }
+
+    private bool CanWriteNoteToRozkaz =>
+        WriteNoteToRozkazAsync is not null
+        && !_canEdit
+        && _shiftNumber is >= 1 and <= 3;
+
     public KalendarzView()
     {
         InitializeComponent();
@@ -367,9 +378,21 @@ public partial class KalendarzView : UserControl
             workingShift,
             existingForShift?.Tresc ?? dcaNotesForDay.FirstOrDefault()?.Tresc,
             status,
-            canDelete: dcaNotesForDay.Count > 0);
+            canDelete: dcaNotesForDay.Count > 0,
+            showWriteToRozkaz: false);
 
         if (dialog.ShowDialog() != true)
+            return;
+
+        await ApplyDcaNoteDialogAsync(date, workingShift, dialog);
+    }
+
+    private async Task ApplyDcaNoteDialogAsync(
+        DateOnly date,
+        int workingShift,
+        KalendarzNotatkaDialog dialog)
+    {
+        if (_controller is null)
             return;
 
         var targets = dialog.TargetAllShifts
@@ -389,6 +412,16 @@ public partial class KalendarzView : UserControl
         }
 
         await ReloadAsync();
+    }
+
+    private async Task TryWriteNoteToRozkazAsync(DateOnly date, string tresc)
+    {
+        if (!CanWriteNoteToRozkaz || WriteNoteToRozkazAsync is null)
+            return;
+
+        var blad = await WriteNoteToRozkazAsync(date, tresc);
+        if (!string.IsNullOrWhiteSpace(blad))
+            BoberMessageBox.Show(OwnerWindow, blad, "Kalendarz");
     }
 
     private async Task ShowDcaDayDialogAsync(DateOnly date, IReadOnlyList<KalendarzWpis> dayWpisy)
@@ -448,28 +481,13 @@ public partial class KalendarzView : UserControl
             workingShift,
             existingForShift?.Tresc,
             BuildDcaStatusText(dcaNotes),
-            canDelete: dcaNotes.Count > 0);
+            canDelete: dcaNotes.Count > 0,
+            showWriteToRozkaz: false);
 
         if (dialog.ShowDialog() != true)
             return;
 
-        var targets = dialog.TargetAllShifts
-            ? (IReadOnlyList<int>)[1, 2, 3]
-            : [workingShift];
-
-        switch (dialog.ResultAction)
-        {
-            case KalendarzNotatkaDialog.DialogAction.Save:
-                await _controller.UpsertAsync(date, targets, dialog.NoteText, _userLogin);
-                break;
-            case KalendarzNotatkaDialog.DialogAction.Delete:
-                await _controller.DeleteAsync(date, targets);
-                break;
-            default:
-                return;
-        }
-
-        await ReloadAsync();
+        await ApplyDcaNoteDialogAsync(date, workingShift, dialog);
     }
 
     private async Task OpenDcaEntryAsync(DateOnly date, KalendarzDzienWpisViewModel entry)
@@ -489,28 +507,13 @@ public partial class KalendarzView : UserControl
                 workingShift,
                 entry.Wpis.Tresc,
                 BuildDcaStatusText(dcaNotes),
-                canDelete: true);
+                canDelete: true,
+                showWriteToRozkaz: false);
 
             if (dialog.ShowDialog() != true)
                 return;
 
-            var targets = dialog.TargetAllShifts
-                ? (IReadOnlyList<int>)[1, 2, 3]
-                : [workingShift];
-
-            switch (dialog.ResultAction)
-            {
-                case KalendarzNotatkaDialog.DialogAction.Save:
-                    await _controller.UpsertAsync(date, targets, dialog.NoteText, _userLogin);
-                    break;
-                case KalendarzNotatkaDialog.DialogAction.Delete:
-                    await _controller.DeleteAsync(date, targets);
-                    break;
-                default:
-                    return;
-            }
-
-            await ReloadAsync();
+            await ApplyDcaNoteDialogAsync(date, workingShift, dialog);
             return;
         }
 
@@ -607,11 +610,18 @@ public partial class KalendarzView : UserControl
             return;
 
         var dialog = new KalendarzNotatkaDialog { Owner = OwnerWindow };
-        dialog.ConfigureForShiftCompose(date, zmianaId, defaultTargets, titleOverride);
+        dialog.ConfigureForShiftCompose(
+            date,
+            zmianaId,
+            defaultTargets,
+            titleOverride,
+            showWriteToRozkaz: CanWriteNoteToRozkaz);
         if (dialog.ShowDialog() != true || dialog.ResultAction != KalendarzNotatkaDialog.DialogAction.Save)
             return;
 
         await _controller.AddShiftNoteAsync(date, zmianaId, dialog.SelectedPrivateTargets, dialog.NoteText, _userLogin);
+        if (dialog.WriteToRozkazDzienny)
+            await TryWriteNoteToRozkazAsync(date, dialog.NoteText);
         await ReloadAsync();
     }
 

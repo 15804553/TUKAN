@@ -41,6 +41,8 @@ public partial class KalendarzNotatkaDialog : Window
 
     public bool TargetAllShifts => AllShiftsRadio.IsChecked == true;
 
+    public bool WriteToRozkazDzienny => WriteToRozkazCheckBox.IsChecked == true;
+
     public IReadOnlyList<int> SelectedPrivateTargets =>
         new[]
         {
@@ -57,7 +59,8 @@ public partial class KalendarzNotatkaDialog : Window
         int workingShiftId,
         string? existingText,
         string? readStatus,
-        bool canDelete)
+        bool canDelete,
+        bool showWriteToRozkaz = false)
     {
         _requiresPrivateTargets = false;
         TitleTextBlock.Text = string.IsNullOrWhiteSpace(existingText) ? "Dodaj notatkę" : "Edytuj notatkę";
@@ -76,6 +79,7 @@ public partial class KalendarzNotatkaDialog : Window
             : Visibility.Collapsed;
         ReplyButton.Visibility = Visibility.Collapsed;
         MarkReadButton.Visibility = Visibility.Collapsed;
+        SetWriteToRozkazVisible(showWriteToRozkaz);
         SetStatus(readStatus);
     }
 
@@ -104,6 +108,7 @@ public partial class KalendarzNotatkaDialog : Window
         MarkReadButton.Visibility = canConfirmRead && !alreadyRead
             ? Visibility.Visible
             : Visibility.Collapsed;
+        SetWriteToRozkazVisible(false);
 
         if (canConfirmRead && !alreadyRead)
         {
@@ -124,7 +129,8 @@ public partial class KalendarzNotatkaDialog : Window
         int authorShiftId,
         IReadOnlyList<int>? defaultTargets = null,
         string? titleOverride = null,
-        string? initialText = null)
+        string? initialText = null,
+        bool showWriteToRozkaz = false)
     {
         _requiresPrivateTargets = true;
         TitleTextBlock.Text = titleOverride ?? "Prywatna notatka między zmianami";
@@ -142,6 +148,7 @@ public partial class KalendarzNotatkaDialog : Window
         ReplyButton.Visibility = Visibility.Collapsed;
         MarkReadButton.Visibility = Visibility.Collapsed;
         SetPrivateTargetSelection(defaultTargets ?? []);
+        SetWriteToRozkazVisible(showWriteToRozkaz);
         SetStatus("Wiadomość jest widoczna tylko dla wskazanych zmian. DCA nie zobaczy tej notatki.");
     }
 
@@ -161,7 +168,14 @@ public partial class KalendarzNotatkaDialog : Window
         DeleteButton.Visibility = Visibility.Collapsed;
         ReplyButton.Visibility = Visibility.Collapsed;
         MarkReadButton.Visibility = Visibility.Collapsed;
+        SetWriteToRozkazVisible(false);
         SetStatus("Odpowiedź będzie widoczna dla DCA.");
+    }
+
+    private void SetWriteToRozkazVisible(bool visible)
+    {
+        WriteToRozkazCheckBox.IsChecked = false;
+        WriteToRozkazCheckBox.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void SetStatus(string? text)

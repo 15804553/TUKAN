@@ -104,6 +104,13 @@
                              Padding="8"
                              CaretBrush="{StaticResource ForegroundBrush}" />
 
+                    <CheckBox x:Name="WriteToRozkazCheckBox"
+                              Content="Wpisz do rozkazu dziennego"
+                              IsChecked="False"
+                              Foreground="{StaticResource ForegroundBrush}"
+                              Margin="0,10,0,0"
+                              Visibility="Collapsed" />
+
                     <TextBlock x:Name="StatusTextBlock"
                                Foreground="{StaticResource ForegroundMutedBrush}"
                                FontSize="11"
