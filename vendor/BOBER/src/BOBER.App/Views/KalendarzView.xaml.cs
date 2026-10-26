@@ -228,6 +228,7 @@ public partial class KalendarzView : UserControl
     private Border CreateDayCell(DateOnly date)
     {
         var workingShift = _workingShifts.GetValueOrDefault(date.Day, 1);
+        var isToday = date == DateOnly.FromDateTime(DateTime.Today);
 
         var dayWpisy = _wpisy.Where(w => w.Data == date).ToList();
         var hasNote = dayWpisy.Count > 0;
@@ -240,7 +241,7 @@ public partial class KalendarzView : UserControl
             BorderBrush = (Brush)FindResource("BorderBrush"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(4),
-            Margin = new Thickness(2),
+            Margin = isToday ? new Thickness(0) : new Thickness(2),
             Cursor = Cursors.Hand,
             Tag = date,
             Padding = new Thickness(6, 4, 6, 4)
@@ -253,8 +254,8 @@ public partial class KalendarzView : UserControl
         var dayNumber = new TextBlock
         {
             Text = date.Day.ToString(),
-            FontWeight = FontWeights.SemiBold,
-            FontSize = 13,
+            FontWeight = isToday ? FontWeights.Bold : FontWeights.SemiBold,
+            FontSize = isToday ? 14 : 13,
             Foreground = Brushes.Black
         };
         Grid.SetRow(dayNumber, 0);
@@ -286,7 +287,23 @@ public partial class KalendarzView : UserControl
 
         border.Child = grid;
         border.MouseLeftButtonUp += async (_, _) => await OnDayClickAsync(date);
-        return border;
+
+        if (!isToday)
+            return border;
+
+        var todayFrame = new Border
+        {
+            BorderBrush = (Brush)FindResource("DyzurBrush"),
+            BorderThickness = new Thickness(3),
+            CornerRadius = new CornerRadius(6),
+            Margin = new Thickness(1),
+            Cursor = Cursors.Hand,
+            Tag = date,
+            ToolTip = "Dzisiaj",
+            Child = border
+        };
+        todayFrame.MouseLeftButtonUp += async (_, _) => await OnDayClickAsync(date);
+        return todayFrame;
     }
 
     private static string BuildNoteTooltip(IReadOnlyList<KalendarzWpis> wpisy)

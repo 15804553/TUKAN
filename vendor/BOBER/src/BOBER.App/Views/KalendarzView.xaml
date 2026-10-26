@@ -74,6 +74,19 @@
                                FontSize="12"
                                VerticalAlignment="Center" />
                 </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                    <Border Width="16"
+                            Height="16"
+                            CornerRadius="3"
+                            Margin="0,0,6,0"
+                            BorderBrush="{StaticResource DyzurBrush}"
+                            BorderThickness="2"
+                            Background="Transparent" />
+                    <TextBlock Text="Dzisiaj"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="12"
+                               VerticalAlignment="Center" />
+                </StackPanel>
                 <TextBlock x:Name="HintTextBlock"
                            Foreground="{StaticResource ForegroundMutedBrush}"
                            FontSize="12"
