@@ -85,6 +85,11 @@
 
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,8,0,8">
                         <StackPanel x:Name="NavigationPanel">
+                            <Button x:Name="PaNotatkiButton"
+                                    Content="Notatki"
+                                    Style="{StaticResource TukanSidebarButton}"
+                                    Click="OnPaNotatkiClick"
+                                    Visibility="Collapsed" />
                             <Button x:Name="GeneralViewButton"
                                     Content="Widok ogólny"
                                     Style="{StaticResource TukanSidebarButton}"

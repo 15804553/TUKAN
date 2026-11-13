@@ -54,6 +54,14 @@
                         Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Margin="24,0,24,24">
+                <Button x:Name="CancelButton"
+                        Content="Anuluj"
+                        MinWidth="88"
+                        Margin="0,0,8,0"
+                        Style="{StaticResource SecondaryButton}"
+                        Visibility="Collapsed"
+                        Click="OnCancelClick"
+                        IsCancel="True" />
                 <Button x:Name="OkButton"
                         Content="OK"
                         MinWidth="88"

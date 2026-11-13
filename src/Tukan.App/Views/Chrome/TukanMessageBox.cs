@@ -21,4 +21,22 @@ public static class TukanMessageBox
 
         window.ShowDialog();
     }
+
+    public static bool Confirm(Window? owner, string message, string title = "TUKAN", string acceptText = "Tak")
+    {
+        var window = new TukanMessageWindow();
+        window.ConfigureConfirm(message, title, acceptText);
+
+        if (owner is not null)
+        {
+            window.Owner = owner;
+            window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        }
+        else
+        {
+            window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        }
+
+        return window.ShowDialog() == true;
+    }
 }

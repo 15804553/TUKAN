@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private DutyAssignmentsView? _dutyAssignmentsView;
     private DutyAssignmentsWindow? _dutyAssignmentsWindow;
     private GrafikSluzbWindow? _grafikWindow;
+    private PaNotatkiView? _paNotatkiView;
     private SkrybekMainView? _skrybekView;
 
     private MainController? _boberController;
@@ -107,6 +108,9 @@ public partial class MainWindow : Window
             ? Visibility.Visible
             : Visibility.Collapsed;
         KalendarzNavItem.Visibility = _tukanServices.Chomik.Auth.CurrentUser?.CanViewKalendarz == true
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        PaNotatkiButton.Visibility = user?.IsPaUser == true
             ? Visibility.Visible
             : Visibility.Collapsed;
         DutyAssignmentsButton.Visibility = CanOpenDutyAssignments()
@@ -190,7 +194,7 @@ public partial class MainWindow : Window
 
         foreach (var button in new[]
         {
-            GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
+            PaNotatkiButton, GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
             UrlopPlanButton, GrafikNurkowyButton, BoberViewButton, SkrybekViewButton,
             DutyAssignmentsButton, KalendarzButton, SettingsButton, LogoutButton
         })
@@ -201,6 +205,7 @@ public partial class MainWindow : Window
 
     private static string GetButtonLabel(Button button) => button.Name switch
     {
+        nameof(PaNotatkiButton) => "Notatki",
         nameof(GeneralViewButton) => "Widok ogólny",
         nameof(PersonnelEditButton) => "Edycja personelu",
         nameof(PasswordAdminButton) => "Zarządzanie hasłami",
@@ -218,6 +223,7 @@ public partial class MainWindow : Window
 
     private static string GetButtonIcon(Button button) => button.Name switch
     {
+        nameof(PaNotatkiButton) => "📝",
         nameof(GeneralViewButton) => "◎",
         nameof(PersonnelEditButton) => "✎",
         nameof(PasswordAdminButton) => "🔑",
@@ -855,7 +861,7 @@ public partial class MainWindow : Window
     {
         foreach (var button in new[]
         {
-            GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
+            PaNotatkiButton, GeneralViewButton, PersonnelEditButton, PasswordAdminButton, CreatePersonnelListButton,
             UrlopPlanButton, GrafikNurkowyButton, BoberViewButton, SkrybekViewButton,
             DutyAssignmentsButton, KalendarzButton, SettingsButton
         })
@@ -869,6 +875,20 @@ public partial class MainWindow : Window
             button.FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal;
             button.Opacity = isActive ? 1.0 : 0.75;
         }
+    }
+
+    private void OnPaNotatkiClick(object sender, RoutedEventArgs e) => ShowPaNotatki();
+
+    private void ShowPaNotatki()
+    {
+        if (_tukanServices.Chomik.Auth.CurrentUser?.IsPaUser != true)
+        {
+            return;
+        }
+
+        _paNotatkiView ??= new PaNotatkiView(new PaNotatkiRepository());
+        NavigateTo(_paNotatkiView, "Notatki", PaNotatkiButton);
+        _ = _paNotatkiView.OdswiezAsync();
     }
 
     private void OnLogoutClick(object sender, RoutedEventArgs e)

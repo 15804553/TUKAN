@@ -33,6 +33,7 @@ public static class TukanUnifiedDatabaseBootstrapper
 
         if (File.Exists(unifiedPath) && await IsSchemaCurrentAsync(unifiedPath, workingPassword, cancellationToken))
         {
+            await EnsurePaNotatkiTableAsync(unifiedPath, workingPassword, cancellationToken);
             return;
         }
 
@@ -61,7 +62,64 @@ public static class TukanUnifiedDatabaseBootstrapper
         await skrybekBootstrapper.EnsureCreatedAsync();
 
         await EnsurePerformanceIndexesAsync(unifiedPath, workingPassword, cancellationToken);
+        await EnsurePaNotatkiTableAsync(unifiedPath, workingPassword, cancellationToken);
         await MarkSchemaCurrentAsync(unifiedPath, workingPassword, cancellationToken);
+    }
+
+    /// <summary>
+    /// Tabela notatek PA powstaje także przy aktualnym schemacie,
+    /// żeby nie wymuszać pełnej migracji trzech modułów.
+    /// </summary>
+    private static async Task EnsurePaNotatkiTableAsync(
+        string unifiedPath,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = OpenConnection(unifiedPath, password);
+        await connection.OpenAsync(cancellationToken);
+
+        if (TabelaIstnieje(connection, "PaNotatki"))
+        {
+            return;
+        }
+
+        try
+        {
+            await using var command = new OleDbCommand(
+                """
+                CREATE TABLE PaNotatki (
+                    Id AUTOINCREMENT PRIMARY KEY,
+                    DataModyfikacji DATETIME NOT NULL,
+                    Naglowek TEXT(200) NOT NULL,
+                    Tresc MEMO
+                )
+                """,
+                connection);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch (OleDbException ex) when (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase)
+                                         || ex.Message.Contains("już istnieje", StringComparison.OrdinalIgnoreCase))
+        {
+            // Drugie uruchomienie utworzyło tabelę w tym samym czasie.
+        }
+    }
+
+    private static bool TabelaIstnieje(OleDbConnection connection, string nazwa)
+    {
+        var tabele = connection.GetSchema("Tables");
+        foreach (System.Data.DataRow wiersz in tabele.Rows)
+        {
+            var nazwaTabeli = wiersz["TABLE_NAME"]?.ToString();
+            var rodzaj = wiersz["TABLE_TYPE"]?.ToString();
+            var toTabela = string.Equals(rodzaj, "TABLE", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(rodzaj, "ACCESS TABLE", StringComparison.OrdinalIgnoreCase);
+            if (toTabela && string.Equals(nazwaTabeli, nazwa, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static async Task<string> ResolveWorkingPasswordAsync(
