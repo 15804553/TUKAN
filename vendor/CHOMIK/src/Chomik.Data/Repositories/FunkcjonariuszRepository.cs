@@ -118,12 +118,7 @@ public sealed class FunkcjonariuszRepository(AccessConnectionFactory connectionF
         FunkcjonariuszListQuery query,
         CancellationToken cancellationToken = default)
     {
-        var exportQuery = new FunkcjonariuszListQuery
-        {
-            NumerZmiany = query.NumerZmiany
-        };
-
-        var (listSql, parameters) = BuildListQuery(exportQuery);
+        var (listSql, parameters) = BuildListQuery(query);
         var fromIndex = listSql.IndexOf("\nFROM ", StringComparison.Ordinal);
         if (fromIndex < 0)
         {

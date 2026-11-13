@@ -137,6 +137,15 @@ public sealed class PermissionFilterOption : INotifyPropertyChanged
     public override string ToString() => Label;
 }
 
+public sealed class PersonnelListExportCriterion
+{
+    public IReadOnlyList<UprawnienieTypFiltr> Uprawnienia { get; init; } = [];
+
+    public SposobLaczeniaUprawnien LaczenieUprawnien { get; init; } = SposobLaczeniaUprawnien.Lub;
+
+    public string Etykieta { get; init; } = "Wszystkie uprawnienia";
+}
+
 public sealed class ShiftFilterOption
 {
     public string Label { get; init; } = string.Empty;

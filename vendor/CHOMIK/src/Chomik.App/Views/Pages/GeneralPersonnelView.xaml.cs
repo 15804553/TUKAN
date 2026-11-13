@@ -306,6 +306,34 @@ public partial class GeneralPersonnelView : UserControl
         return new ShiftFilterOption { Label = "Wszystkie zmiany", Value = null };
     }
 
+    public PersonnelListExportCriterion GetPersonnelListExportCriterion() =>
+        new()
+        {
+            Uprawnienia = GetSelectedPermissionFilters()
+                .Select(option => new UprawnienieTypFiltr
+                {
+                    Nazwa = option.Nazwa!,
+                    Podtyp = option.Podtyp
+                })
+                .ToList(),
+            LaczenieUprawnien = PermissionAndRadio.IsChecked == true
+                ? SposobLaczeniaUprawnien.I
+                : SposobLaczeniaUprawnien.Lub,
+            Etykieta = DescribePermissionFilter()
+        };
+
+    private string DescribePermissionFilter()
+    {
+        var selected = GetSelectedPermissionFilters();
+        var lacznik = PermissionAndRadio.IsChecked == true ? " i " : " lub ";
+        return selected.Count switch
+        {
+            0 => "Wszystkie uprawnienia",
+            1 => selected[0].Label,
+            _ => string.Join(lacznik, selected.Select(option => option.Label))
+        };
+    }
+
     private FunkcjonariuszRowFilter BuildFilter()
     {
         var shiftItem = ShiftFilterComboBox.SelectedItem as ShiftFilterOption;
@@ -333,14 +361,7 @@ public partial class GeneralPersonnelView : UserControl
 
     private void UpdatePermissionFilterSummary()
     {
-        var selected = GetSelectedPermissionFilters();
-        var lacznik = PermissionAndRadio.IsChecked == true ? " i " : " lub ";
-        var summary = selected.Count switch
-        {
-            0 => "Wszystkie uprawnienia",
-            1 => selected[0].Label,
-            _ => string.Join(lacznik, selected.Select(option => option.Label))
-        };
+        var summary = DescribePermissionFilter();
 
         PermissionFilterToggle.ApplyTemplate();
         if (PermissionFilterToggle.Template.FindName("PermissionFilterSummary", PermissionFilterToggle) is TextBlock summaryText)

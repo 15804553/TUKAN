@@ -70,7 +70,7 @@ public interface IFunkcjonariuszService
 
     Task<IReadOnlyList<string>> GetPersonnelNamesForExportAsync(
         SessionUser user,
-        int? numerZmiany,
+        FunkcjonariuszFilter filter,
         CancellationToken cancellationToken = default);
 }
 

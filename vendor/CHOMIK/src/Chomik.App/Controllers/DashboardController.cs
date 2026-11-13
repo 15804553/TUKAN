@@ -279,13 +279,19 @@ public sealed class DashboardController(AppServices services)
     }
 
     public Task<IReadOnlyList<string>> GetPersonnelNamesForExportAsync(
-        int? numerZmiany,
+        PersonnelListExportCriterion criterion,
         CancellationToken cancellationToken = default)
     {
         var user = services.Auth.CurrentUser
             ?? throw new InvalidOperationException("Brak zalogowanego użytkownika.");
 
-        return services.Funkcjonariusze.GetPersonnelNamesForExportAsync(user, numerZmiany, cancellationToken);
+        var filter = new FunkcjonariuszFilter
+        {
+            Uprawnienia = criterion.Uprawnienia,
+            LaczenieUprawnien = criterion.LaczenieUprawnien
+        };
+
+        return services.Funkcjonariusze.GetPersonnelNamesForExportAsync(user, filter, cancellationToken);
     }
 
     public static void ExportPersonnelListToExcel(IReadOnlyList<string> fullNames, string filePath) =>

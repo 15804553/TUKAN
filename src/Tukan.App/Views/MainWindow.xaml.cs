@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -5,6 +6,7 @@ using System.Windows.Controls;
 using BOBER.App.Controllers;
 using BOBER.App.Views;
 using Chomik.App.Controllers;
+using Chomik.App.ViewModels;
 using Chomik.App.Views;
 using Tukan.App.Views.Chrome;
 using Chomik.App.Views.Pages;
@@ -728,32 +730,16 @@ public partial class MainWindow : Window
             return;
         }
 
-        int? shiftValue;
-        string shiftLabel;
-        if (_dashboardController.ExportPersonnelListUsesOwnShiftOnly)
-        {
-            shiftValue = _dashboardController.PersonnelListExportShiftNumber;
-            shiftLabel = shiftValue is int shift ? $"Zmiana {shift}" : "Zmiana";
-        }
-        else
-        {
-            _generalView ??= CreateGeneralView();
-            if (MainContentHost.Content != _generalView)
-            {
-                ShowGeneralView();
-            }
-
-            var shiftFilter = _generalView!.GetCurrentShiftFilter();
-            shiftValue = shiftFilter.Value;
-            shiftLabel = shiftFilter.Label;
-        }
+        var criterion = _generalView?.GetPersonnelListExportCriterion()
+            ?? new PersonnelListExportCriterion();
+        var scopeLabel = DescribePersonnelListScope();
 
         var dialog = new SaveFileDialog
         {
             Title = "Zapisz listę osób",
             Filter = "Plik Excel (*.xlsx)|*.xlsx",
             DefaultExt = "xlsx",
-            FileName = $"Lista_osob_{SanitizeFileName(shiftLabel)}_{DateTime.Now:yyyy-MM-dd}.xlsx",
+            FileName = $"Lista_osob_{SanitizeFileName(scopeLabel)}_{DateTime.Now:yyyy-MM-dd}.xlsx",
             AddExtension = true
         };
 
@@ -765,12 +751,13 @@ public partial class MainWindow : Window
         try
         {
             CreatePersonnelListButton.IsEnabled = false;
-            var names = await _dashboardController.GetPersonnelNamesForExportAsync(shiftValue);
+            var names = await _dashboardController.GetPersonnelNamesForExportAsync(criterion);
             DashboardController.ExportPersonnelListToExcel(names, dialog.FileName);
             TukanMessageBox.Show(
                 this,
-                $"Zapisano {names.Count} osób (filtr: {shiftLabel}).\n\nLokalizacja pliku:\n{dialog.FileName}",
+                $"Zapisano {names.Count} osób.\nZakres: {scopeLabel}.\nUprawnienia / kursy: {criterion.Etykieta}.\n\nLokalizacja pliku:\n{dialog.FileName}",
                 "Lista osób");
+            OpenExportedFileLocation(dialog.FileName);
         }
         catch (Exception ex)
         {
@@ -888,6 +875,40 @@ public partial class MainWindow : Window
     {
         DialogResult = false;
         Close();
+    }
+
+    private static void OpenExportedFileLocation(string filePath)
+    {
+        if (!File.Exists(filePath))
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{filePath}\"",
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            // Ścieżka została już pokazana w komunikacie o zapisie.
+        }
+    }
+
+    private string DescribePersonnelListScope()
+    {
+        if (!_dashboardController.ExportPersonnelListUsesOwnShiftOnly)
+        {
+            return "Jednostka";
+        }
+
+        return _dashboardController.PersonnelListExportShiftNumber is int shift
+            ? $"Zmiana {shift}"
+            : "Zmiana";
     }
 
     private static string SanitizeFileName(string name)

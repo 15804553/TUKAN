@@ -333,7 +333,7 @@ public sealed class FunkcjonariuszService(
 
     public async Task<IReadOnlyList<string>> GetPersonnelNamesForExportAsync(
         SessionUser user,
-        int? numerZmiany,
+        FunkcjonariuszFilter filter,
         CancellationToken cancellationToken = default)
     {
         int? exportShift;
@@ -346,18 +346,16 @@ public sealed class FunkcjonariuszService(
 
             exportShift = ownShift;
         }
-        else if (user.IsPaUser)
-        {
-            exportShift = numerZmiany;
-        }
         else
         {
-            throw new UnauthorizedAccessException("Brak uprawnień do eksportu listy osób.");
+            exportShift = null;
         }
 
         var query = new FunkcjonariuszListQuery
         {
-            NumerZmiany = exportShift
+            NumerZmiany = exportShift,
+            Uprawnienia = filter.Uprawnienia,
+            LaczenieUprawnien = filter.LaczenieUprawnien
         };
 
         return await repository.GetPersonnelFullNamesAsync(query, cancellationToken);

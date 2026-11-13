@@ -27,7 +27,8 @@ public sealed class SessionUser
 
     public bool CanViewGeneralView => !IsAdministrator && !IsGuest;
 
-    public bool CanCreatePersonnelList => IsPaUser || IsShiftAccount;
+    /// <summary>Lista osób jest dostępna dla każdego zalogowanego użytkownika; zakres ogranicza zmiana albo cała jednostka.</summary>
+    public bool CanCreatePersonnelList => true;
 
     /// <summary>PA ma widok ogólny domyślnie; przycisk nawigacji jest ukryty.</summary>
     public bool ShowGeneralViewNavButton => CanViewGeneralView && !IsPaUser;

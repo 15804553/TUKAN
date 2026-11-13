@@ -211,26 +211,13 @@ public partial class DashboardWindow : Window
             return;
         }
 
-        int? shiftValue;
-        string shiftLabel;
-        if (_controller.ExportPersonnelListUsesOwnShiftOnly)
-        {
-            shiftValue = _controller.PersonnelListExportShiftNumber;
-            shiftLabel = shiftValue is int shift ? $"Zmiana {shift}" : "Zmiana";
-        }
-        else
-        {
-            if (_generalView is null)
-            {
-                ShowGeneralView();
-            }
+        var criterion = _generalView?.GetPersonnelListExportCriterion()
+            ?? new PersonnelListExportCriterion();
+        var scopeLabel = _controller.ExportPersonnelListUsesOwnShiftOnly
+            ? _controller.PersonnelListExportShiftNumber is int shift ? $"Zmiana {shift}" : "Zmiana"
+            : "Jednostka";
 
-            var shiftFilter = _generalView!.GetCurrentShiftFilter();
-            shiftValue = shiftFilter.Value;
-            shiftLabel = shiftFilter.Label;
-        }
-
-        var defaultFileName = $"Lista_osob_{SanitizeFileName(shiftLabel)}_{DateTime.Now:yyyy-MM-dd}.xlsx";
+        var defaultFileName = $"Lista_osob_{SanitizeFileName(scopeLabel)}_{DateTime.Now:yyyy-MM-dd}.xlsx";
 
         var dialog = new SaveFileDialog
         {
@@ -249,14 +236,13 @@ public partial class DashboardWindow : Window
         try
         {
             CreatePersonnelListButton.IsEnabled = false;
-            var names = await _controller.GetPersonnelNamesForExportAsync(shiftValue);
+            var names = await _controller.GetPersonnelNamesForExportAsync(criterion);
             DashboardController.ExportPersonnelListToExcel(names, dialog.FileName);
-            OpenFileLocationInExplorer(dialog.FileName);
-
             ChomikMessageBox.Show(
                 this,
-                $"Zapisano {names.Count} osób (filtr: {shiftLabel}).\n\nLokalizacja pliku:\n{dialog.FileName}",
+                $"Zapisano {names.Count} osób.\nZakres: {scopeLabel}.\nUprawnienia / kursy: {criterion.Etykieta}.\n\nLokalizacja pliku:\n{dialog.FileName}",
                 "Lista osób");
+            OpenFileLocationInExplorer(dialog.FileName);
         }
         catch (Exception ex)
         {
