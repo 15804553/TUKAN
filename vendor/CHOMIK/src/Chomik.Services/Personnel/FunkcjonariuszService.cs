@@ -381,8 +381,8 @@ public sealed class FunkcjonariuszService(
         {
             NumerZmiany = shift,
             SearchTerm = filter.Szukaj,
-            UprawnienieNazwa = filter.UprawnienieNazwa,
-            UprawnieniePodtyp = filter.UprawnieniePodtyp
+            Uprawnienia = filter.Uprawnienia,
+            LaczenieUprawnien = filter.LaczenieUprawnien
         };
     }
 

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Chomik.Core;
+using Chomik.Core.Models;
 
 namespace Chomik.App.ViewModels;
 
@@ -99,16 +100,39 @@ public sealed class FunkcjonariuszRowViewModel : INotifyPropertyChanged
 public sealed class FunkcjonariuszRowFilter
 {
     public int? NumerZmiany { get; init; }
-    public string? UprawnienieNazwa { get; init; }
-    public string? UprawnieniePodtyp { get; init; }
+
+    /// <summary>Pusta lista: wszystkie osoby.</summary>
+    public IReadOnlyList<UprawnienieTypFiltr> Uprawnienia { get; init; } = [];
+
+    public SposobLaczeniaUprawnien LaczenieUprawnien { get; init; } = SposobLaczeniaUprawnien.Lub;
+
     public string? Szukaj { get; init; }
 }
 
-public sealed class PermissionFilterOption
+public sealed class PermissionFilterOption : INotifyPropertyChanged
 {
     public string Label { get; init; } = string.Empty;
     public string? Nazwa { get; init; }
     public string? Podtyp { get; init; }
+
+    private bool _czyWybrane;
+
+    public bool CzyWybrane
+    {
+        get => _czyWybrane;
+        set
+        {
+            if (_czyWybrane == value)
+            {
+                return;
+            }
+
+            _czyWybrane = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CzyWybrane)));
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public override string ToString() => Label;
 }

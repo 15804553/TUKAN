@@ -361,19 +361,29 @@ public sealed class FunkcjonariuszRepository(AccessConnectionFactory connectionF
         var parameters = new List<OleDbParameter>();
         var sql = SelectSql;
 
-        if (!string.IsNullOrWhiteSpace(query.UprawnienieNazwa))
+        var permissionConditions = new List<string>();
+        foreach (var filtr in WybraneUprawnienia(query))
         {
-            var (permissionWhere, permissionParameters) = BuildUprawnienieTypeWhere(query);
-            sql += $"""
-
-                INNER JOIN (
+            var (permissionWhere, permissionParameters) = BuildSingleUprawnienieWhere(filtr);
+            permissionConditions.Add($"""
+                f.Id IN (
                     SELECT DISTINCT fu.FunkcjonariuszId
-                    FROM FunkcjonariuszUprawnienia AS fu
-                    INNER JOIN TypyUprawnien AS tu ON tu.Id = fu.TypUprawnieniaId
+                    FROM (FunkcjonariuszUprawnienia AS fu
+                    INNER JOIN TypyUprawnien AS tu ON tu.Id = fu.TypUprawnieniaId)
                     WHERE {permissionWhere}
-                ) AS upr_sel ON upr_sel.FunkcjonariuszId = f.Id
-                """;
+                )
+                """);
             parameters.AddRange(permissionParameters);
+        }
+
+        if (permissionConditions.Count == 1)
+        {
+            conditions.Add(permissionConditions[0]);
+        }
+        else if (permissionConditions.Count > 1)
+        {
+            var joiner = query.LaczenieUprawnien == SposobLaczeniaUprawnien.I ? " AND " : " OR ";
+            conditions.Add("(" + string.Join(joiner, permissionConditions) + ")");
         }
 
         if (!string.IsNullOrWhiteSpace(query.SearchTerm))
@@ -441,26 +451,69 @@ public sealed class FunkcjonariuszRepository(AccessConnectionFactory connectionF
         return count > 0;
     }
 
-    private static (string Where, List<OleDbParameter> Parameters) BuildUprawnienieTypeWhere(FunkcjonariuszListQuery query)
+    private static List<UprawnienieTypFiltr> WybraneUprawnienia(FunkcjonariuszListQuery query) =>
+        query.Uprawnienia
+            .Where(filtr => !string.IsNullOrWhiteSpace(filtr.Nazwa))
+            .GroupBy(filtr => $"{filtr.Nazwa.Trim()}|{filtr.Podtyp?.Trim()}", StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+
+    private static (string Where, List<OleDbParameter> Parameters) BuildSingleUprawnienieWhere(UprawnienieTypFiltr filtr)
     {
         var parts = new List<string>();
         var parameters = new List<OleDbParameter>();
-        var nazwa = query.UprawnienieNazwa!.Trim();
-
         parts.Add("tu.Nazwa = ?");
-        parameters.Add(CreateStringParameter(nazwa));
+        parameters.Add(CreateStringParameter(filtr.Nazwa.Trim()));
 
-        if (string.IsNullOrWhiteSpace(query.UprawnieniePodtyp))
+        if (string.IsNullOrWhiteSpace(filtr.Podtyp))
         {
             parts.Add("(tu.Podtyp IS NULL OR tu.Podtyp = '' OR tu.Podtyp = ' ')");
         }
         else
         {
             parts.Add("tu.Podtyp = ?");
-            parameters.Add(CreateStringParameter(query.UprawnieniePodtyp.Trim()));
+            parameters.Add(CreateStringParameter(filtr.Podtyp.Trim()));
         }
 
         return (string.Join(" AND ", parts), parameters);
+    }
+
+    private static (string Sql, List<OleDbParameter> Parameters) BuildUprawnieniaDictionaryFilter(
+        IReadOnlyList<Funkcjonariusz> funkcjonariusze,
+        FunkcjonariuszListQuery query)
+    {
+        var clauses = new List<string>();
+        var parameters = new List<OleDbParameter>();
+
+        if (funkcjonariusze.Count is > 0 and <= 200)
+        {
+            var ids = string.Join(',', funkcjonariusze.Select(f => f.Id));
+            clauses.Add($"fu.FunkcjonariuszId IN ({ids})");
+        }
+
+        var typeClauses = new List<string>();
+        foreach (var filtr in WybraneUprawnienia(query))
+        {
+            var (where, typeParameters) = BuildSingleUprawnienieWhere(filtr);
+            typeClauses.Add($"({where})");
+            parameters.AddRange(typeParameters);
+        }
+
+        if (typeClauses.Count == 1)
+        {
+            clauses.Add(typeClauses[0]);
+        }
+        else if (typeClauses.Count > 1)
+        {
+            clauses.Add("(" + string.Join(" OR ", typeClauses) + ")");
+        }
+
+        if (clauses.Count == 0)
+        {
+            return (string.Empty, parameters);
+        }
+
+        return (" WHERE " + string.Join(" AND ", clauses), parameters);
     }
 
     private static OleDbParameter CreateStringParameter(string value) =>
@@ -500,25 +553,20 @@ public sealed class FunkcjonariuszRepository(AccessConnectionFactory connectionF
             return new Dictionary<int, IReadOnlyList<UprawnieniePrzypisanie>>();
         }
 
-        var idFilter = BuildPersonnelIdFilter(funkcjonariusze, "fu.FunkcjonariuszId");
-        var permissionFilter = BuildUprawnieniaTypeFilter(query);
+        var (uprawnieniaFilter, uprawnieniaParameters) = BuildUprawnieniaDictionaryFilter(funkcjonariusze, query);
         await using var command = new OleDbCommand(
             $"""
             SELECT fu.FunkcjonariuszId, fu.Id, tu.Nazwa, tu.Podtyp, fu.WazneDo
-            FROM FunkcjonariuszUprawnienia fu
-            INNER JOIN TypyUprawnien tu ON tu.Id = fu.TypUprawnieniaId
-            {idFilter}{permissionFilter}
+            FROM (FunkcjonariuszUprawnienia AS fu
+            INNER JOIN TypyUprawnien AS tu ON tu.Id = fu.TypUprawnieniaId)
+            {uprawnieniaFilter}
             ORDER BY fu.FunkcjonariuszId, tu.Nazwa, tu.Podtyp
             """,
             connection);
 
-        if (!string.IsNullOrWhiteSpace(query.UprawnienieNazwa))
+        foreach (var parameter in uprawnieniaParameters)
         {
-            var (_, permissionParameters) = BuildUprawnienieTypeWhere(query);
-            foreach (var parameter in permissionParameters)
-            {
-                command.Parameters.Add(parameter);
-            }
+            command.Parameters.Add(parameter);
         }
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -645,17 +693,6 @@ public sealed class FunkcjonariuszRepository(AccessConnectionFactory connectionF
             connection);
         odz.Parameters.AddWithValue("@p1", id);
         await odz.ExecuteNonQueryAsync(cancellationToken);
-    }
-
-    private static string BuildUprawnieniaTypeFilter(FunkcjonariuszListQuery query)
-    {
-        if (string.IsNullOrWhiteSpace(query.UprawnienieNazwa))
-        {
-            return string.Empty;
-        }
-
-        var (permissionWhere, _) = BuildUprawnienieTypeWhere(query);
-        return $" AND {permissionWhere}";
     }
 
     private static string BuildPersonnelIdFilter(IReadOnlyList<Funkcjonariusz> funkcjonariusze, string columnName)

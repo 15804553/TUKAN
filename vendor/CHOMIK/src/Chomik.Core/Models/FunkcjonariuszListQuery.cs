@@ -6,7 +6,8 @@ public sealed class FunkcjonariuszListQuery
 
     public string? SearchTerm { get; init; }
 
-    public string? UprawnienieNazwa { get; init; }
+    /// <summary>Pusta lista oznacza brak filtra.</summary>
+    public IReadOnlyList<UprawnienieTypFiltr> Uprawnienia { get; init; } = [];
 
-    public string? UprawnieniePodtyp { get; init; }
+    public SposobLaczeniaUprawnien LaczenieUprawnien { get; init; } = SposobLaczeniaUprawnien.Lub;
 }

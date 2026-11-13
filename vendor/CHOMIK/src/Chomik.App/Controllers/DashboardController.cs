@@ -92,21 +92,16 @@ public sealed class DashboardController(AppServices services)
         CancellationToken cancellationToken = default)
     {
         var dictionaries = await services.Funkcjonariusze.GetDictionariesAsync(cancellationToken);
-        var options = new List<PermissionFilterOption>
-        {
-            new() { Label = "Wszystkie uprawnienia" }
-        };
-
-        options.AddRange(
-            dictionaries.TypyUprawnien
-                .OrderBy(t => t.Nazwa)
-                .ThenBy(t => t.Podtyp)
-                .Select(t => new PermissionFilterOption
-                {
-                    Label = t.Etykieta,
-                    Nazwa = t.Nazwa,
-                    Podtyp = t.Podtyp
-                }));
+        var options = dictionaries.TypyUprawnien
+            .OrderBy(t => t.Nazwa)
+            .ThenBy(t => t.Podtyp)
+            .Select(t => new PermissionFilterOption
+            {
+                Label = t.Etykieta,
+                Nazwa = t.Nazwa,
+                Podtyp = t.Podtyp
+            })
+            .ToList();
 
         return options;
     }
@@ -147,8 +142,8 @@ public sealed class DashboardController(AppServices services)
             new FunkcjonariuszFilter
             {
                 NumerZmiany = filter.NumerZmiany,
-                UprawnienieNazwa = filter.UprawnienieNazwa,
-                UprawnieniePodtyp = filter.UprawnieniePodtyp,
+                Uprawnienia = filter.Uprawnienia,
+                LaczenieUprawnien = filter.LaczenieUprawnien,
                 Szukaj = filter.Szukaj
             },
             cancellationToken).ConfigureAwait(false);
@@ -169,29 +164,28 @@ public sealed class DashboardController(AppServices services)
         };
     }
 
-    private static string BuildPersonnelCacheKey(FunkcjonariuszRowFilter filter) =>
-        $"{filter.NumerZmiany}|{filter.UprawnienieNazwa}|{filter.UprawnieniePodtyp}|{filter.Szukaj}";
+    private static string BuildPersonnelCacheKey(FunkcjonariuszRowFilter filter)
+    {
+        var uprawnienia = string.Join(
+            ";",
+            filter.Uprawnienia.Select(u => $"{u.Nazwa.Trim()}|{u.Podtyp?.Trim()}"));
+        return $"{filter.NumerZmiany}|{filter.LaczenieUprawnien}|{uprawnienia}|{filter.Szukaj}";
+    }
 
     private List<FunkcjonariuszRowViewModel> MapPersonnelRows(
         IReadOnlyList<FunkcjonariuszListItem> items,
         FunkcjonariuszRowFilter filter)
     {
-        var hasSelectedPermission = !string.IsNullOrWhiteSpace(filter.UprawnienieNazwa);
-        var selectedNazwa = filter.UprawnienieNazwa?.Trim();
-        var selectedPodtyp = filter.UprawnieniePodtyp?.Trim();
+        var singlePermission = filter.Uprawnienia.Count == 1 ? filter.Uprawnienia[0] : null;
 
         return items.Select(item =>
         {
             var f = item.Entity;
             UprawnieniePrzypisanie? wybraneUprawnienie = null;
-            if (hasSelectedPermission)
+            if (singlePermission is not null)
             {
                 wybraneUprawnienie = item.Uprawnienia
-                    .FirstOrDefault(u =>
-                        u.Nazwa.Equals(selectedNazwa, StringComparison.OrdinalIgnoreCase) &&
-                        (string.IsNullOrWhiteSpace(selectedPodtyp)
-                            ? string.IsNullOrWhiteSpace(u.Podtyp)
-                            : selectedPodtyp.Equals(u.Podtyp, StringComparison.OrdinalIgnoreCase)));
+                    .FirstOrDefault(u => singlePermission.Pasuje(u.Nazwa, u.Podtyp));
             }
 
             var uprawnieniaAlert = ShowUprawnieniaAlerts

@@ -34,7 +34,9 @@ public partial class GeneralPersonnelView : UserControl
     private bool _isSaving;
     private bool _suppressGridEditEvents;
     private bool _isInitializingFilters;
+    private bool _suppressPermissionFilterEvents;
     private bool _stopnieLoaded;
+    private List<PermissionFilterOption> _permissionFilterOptions = [];
     private CancellationTokenSource? _searchCancellation;
     private int _loadGeneration;
     private GeneralViewColumnPreferences _columnPreferences = GeneralViewColumnPreferences.DefaultVisible;
@@ -144,17 +146,17 @@ public partial class GeneralPersonnelView : UserControl
 
     private void ApplyPermissionFilterOverrides()
     {
-        var permissionItem = PermissionFilterComboBox.SelectedItem as PermissionFilterOption;
-        var hasSelectedPermission = !string.IsNullOrWhiteSpace(permissionItem?.Nazwa);
+        var selected = GetSelectedPermissionFilters();
         var hidden = Visibility.Collapsed;
         var visible = Visibility.Visible;
+        var singlePermission = selected.Count == 1 ? selected[0] : null;
 
-        SelectedPermissionValidityColumn.Visibility = hasSelectedPermission ? visible : hidden;
-        SelectedPermissionValidityColumn.Header = hasSelectedPermission
-            ? $"Ważne do ({permissionItem!.Label})"
-            : "Ważne do";
+        SelectedPermissionValidityColumn.Visibility = singlePermission is null ? hidden : visible;
+        SelectedPermissionValidityColumn.Header = singlePermission is null
+            ? "Ważne do"
+            : $"Ważne do ({singlePermission.Label})";
 
-        if (!_controller.IsPaUser || !hasSelectedPermission)
+        if (!_controller.IsPaUser || selected.Count == 0)
         {
             return;
         }
@@ -208,9 +210,19 @@ public partial class GeneralPersonnelView : UserControl
             ShiftFilterComboBox.ItemsSource = shiftOptions;
             ShiftFilterComboBox.SelectedIndex = shiftOptions.Count > 0 ? 0 : -1;
 
-            var permissionOptions = await _controller.GetPermissionFilterOptionsAsync();
-            PermissionFilterComboBox.ItemsSource = permissionOptions;
-            PermissionFilterComboBox.SelectedIndex = permissionOptions.Count > 0 ? 0 : -1;
+            foreach (var option in _permissionFilterOptions)
+            {
+                option.PropertyChanged -= OnPermissionFilterOptionChanged;
+            }
+
+            _permissionFilterOptions = (await _controller.GetPermissionFilterOptionsAsync()).ToList();
+            foreach (var option in _permissionFilterOptions)
+            {
+                option.PropertyChanged += OnPermissionFilterOptionChanged;
+            }
+
+            PermissionFilterList.ItemsSource = _permissionFilterOptions;
+            UpdatePermissionFilterSummary();
             UpdateColumnsForPermissionFilter();
         }
         finally
@@ -297,14 +309,99 @@ public partial class GeneralPersonnelView : UserControl
     private FunkcjonariuszRowFilter BuildFilter()
     {
         var shiftItem = ShiftFilterComboBox.SelectedItem as ShiftFilterOption;
-        var permissionItem = PermissionFilterComboBox.SelectedItem as PermissionFilterOption;
         return new FunkcjonariuszRowFilter
         {
             NumerZmiany = shiftItem?.Value,
-            UprawnienieNazwa = permissionItem?.Nazwa,
-            UprawnieniePodtyp = permissionItem?.Podtyp,
+            Uprawnienia = GetSelectedPermissionFilters()
+                .Select(option => new UprawnienieTypFiltr
+                {
+                    Nazwa = option.Nazwa!,
+                    Podtyp = option.Podtyp
+                })
+                .ToList(),
+            LaczenieUprawnien = PermissionAndRadio.IsChecked == true
+                ? SposobLaczeniaUprawnien.I
+                : SposobLaczeniaUprawnien.Lub,
             Szukaj = SearchTextBox.Text
         };
+    }
+
+    private List<PermissionFilterOption> GetSelectedPermissionFilters() =>
+        _permissionFilterOptions
+            .Where(option => option.CzyWybrane && !string.IsNullOrWhiteSpace(option.Nazwa))
+            .ToList();
+
+    private void UpdatePermissionFilterSummary()
+    {
+        var selected = GetSelectedPermissionFilters();
+        var lacznik = PermissionAndRadio.IsChecked == true ? " i " : " lub ";
+        var summary = selected.Count switch
+        {
+            0 => "Wszystkie uprawnienia",
+            1 => selected[0].Label,
+            _ => string.Join(lacznik, selected.Select(option => option.Label))
+        };
+
+        PermissionFilterToggle.ApplyTemplate();
+        if (PermissionFilterToggle.Template.FindName("PermissionFilterSummary", PermissionFilterToggle) is TextBlock summaryText)
+        {
+            summaryText.Text = summary;
+            summaryText.ToolTip = summary;
+        }
+    }
+
+    private async void OnPermissionFilterOptionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(PermissionFilterOption.CzyWybrane)
+            || _suppressPermissionFilterEvents
+            || _isInitializingFilters)
+        {
+            return;
+        }
+
+        UpdatePermissionFilterSummary();
+        UpdateColumnsForPermissionFilter();
+        if (IsLoaded)
+        {
+            await LoadPersonnelAsync();
+        }
+    }
+
+    private async void OnPermissionJoinChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializingFilters || !IsLoaded || PermissionOrRadio is null || PermissionAndRadio is null)
+        {
+            return;
+        }
+
+        UpdatePermissionFilterSummary();
+        if (GetSelectedPermissionFilters().Count > 1)
+        {
+            await LoadPersonnelAsync();
+        }
+    }
+
+    private async void OnClearPermissionFilterClick(object sender, RoutedEventArgs e)
+    {
+        _suppressPermissionFilterEvents = true;
+        try
+        {
+            foreach (var option in _permissionFilterOptions)
+            {
+                option.CzyWybrane = false;
+            }
+        }
+        finally
+        {
+            _suppressPermissionFilterEvents = false;
+        }
+
+        UpdatePermissionFilterSummary();
+        UpdateColumnsForPermissionFilter();
+        if (IsLoaded && !_isInitializingFilters)
+        {
+            await LoadPersonnelAsync();
+        }
     }
 
     private async void OnRefreshClick(object sender, RoutedEventArgs e)
