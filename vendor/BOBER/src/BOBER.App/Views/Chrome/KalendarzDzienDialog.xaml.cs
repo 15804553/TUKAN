@@ -46,6 +46,12 @@ public partial class KalendarzDzienDialog : Window
         DeleteSelectedButton.Visibility = canDeleteVisibleEntries ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    private void OnTitleBarMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+            DragMove();
+    }
+
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Escape)
